@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {ERC20} from "solmate/tokens/ERC20.sol";
 import {ISemaphore} from "./interfaces/ISemaphore.sol";
+import {IERC20} from "openzeppelin-contracts/contracts/token/ERC20/IERC20.sol";
 
 /// @title Semaphore Airdrop Manager
 /// @author Miguel Piedrafita
@@ -34,7 +34,7 @@ contract SemaphoreAirdrop {
     uint256 internal immutable groupId;
 
     /// @notice The ERC20 token airdropped to participants
-    ERC20 public immutable token;
+    IERC20 public immutable token;
 
     /// @notice The address that holds the tokens that are being airdropped
     /// @dev Make sure the holder has approved spending for this contract!
@@ -56,7 +56,7 @@ contract SemaphoreAirdrop {
     constructor(
         ISemaphore _semaphore,
         uint256 _groupId,
-        ERC20 _token,
+        IERC20 _token,
         address _holder,
         uint256 _airdropAmount
     ) payable {
