@@ -8,14 +8,14 @@ contract SemaphoreAirdrop {
     error InvalidProof();
 
     ISemaphore internal immutable semaphore;
-    bytes32 internal immutable groupId;
+    uint256 internal immutable groupId;
     ERC20 public immutable token;
     address public immutable holder;
     uint256 public immutable airdropAmount;
 
     constructor(
         ISemaphore _semaphore,
-        bytes32 _groupId,
+        uint256 _groupId,
         ERC20 _token,
         address _holder,
         uint256 _airdropAmount
@@ -34,10 +34,10 @@ contract SemaphoreAirdrop {
     ) public {
         if (
             !semaphore._isValidProof(
-                receiver,
+                string(abi.encodePacked(receiver)),
                 semaphore.getRoot(groupId),
                 nullifierHash,
-                address(this),
+                uint256(uint160(address(this))),
                 proof
             )
         ) revert InvalidProof();
