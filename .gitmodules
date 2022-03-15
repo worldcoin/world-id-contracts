@@ -13,3 +13,6 @@
 [submodule "lib/zk-kit"]
 	path = lib/zk-kit
 	url = https://github.com/appliedzkp/zk-kit
+[submodule "lib/openzeppelin-contracts"]
+	path = lib/openzeppelin-contracts
+	url = https://github.com/openzeppelin/openzeppelin-contracts
