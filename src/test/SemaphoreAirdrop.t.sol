@@ -10,6 +10,8 @@ import {SemaphoreAirdrop} from "../SemaphoreAirdrop.sol";
 contract User {}
 
 contract SemaphoreAirdropTest is DSTest {
+    event AmountUpdated(uint256 amount);
+
     User internal user;
     TestERC20 internal token;
     Semaphore internal semaphore;
@@ -28,12 +30,31 @@ contract SemaphoreAirdropTest is DSTest {
             1 ether
         );
 
-        hevm.startPrank(address(user));
+        // Issue some tokens to the user address, to be airdropped from the contract
         token.issue(address(user), 10 ether);
+
+        // Approve spending from the airdrop contract
+        hevm.prank(address(user));
         token.approve(address(airdrop), type(uint256).max);
     }
 
-    function testExample() public {
-        assertTrue(true);
+    function testUpdateAirdropAmount() public {
+        assertEq(airdrop.airdropAmount(), 1 ether);
+
+        hevm.expectEmit(false, false, false, true);
+        emit AmountUpdated(2 ether);
+        airdrop.updateAmount(2 ether);
+
+        assertEq(airdrop.airdropAmount(), 2 ether);
+    }
+
+    function testCannotUpdateAirdropAmountIfNotManager() public {
+        assertEq(airdrop.airdropAmount(), 1 ether);
+
+        hevm.expectRevert(SemaphoreAirdrop.Unauthorized.selector);
+        hevm.prank(address(user));
+        airdrop.updateAmount(2 ether);
+
+        assertEq(airdrop.airdropAmount(), 1 ether);
     }
 }

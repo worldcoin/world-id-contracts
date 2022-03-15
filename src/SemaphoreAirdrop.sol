@@ -29,6 +29,10 @@ contract SemaphoreAirdrop {
     /// @param receiver The address that received the airdrop
     event AirdropClaimed(address receiver);
 
+    /// @notice Emitted when the airdropped amount is changed
+    /// @param amount The new amount that participants will receive
+    event AmountUpdated(uint256 amount);
+
     ////////////////////////////////////////////////////////////////////////////
     ///                            CONFIG STORAGE                            ///
     ////////////////////////////////////////////////////////////////////////////
@@ -113,5 +117,6 @@ contract SemaphoreAirdrop {
         if (msg.sender != manager) revert Unauthorized();
 
         airdropAmount = amount;
+        emit AmountUpdated(amount);
     }
 }

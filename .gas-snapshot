@@ -1,0 +1,2 @@
+SemaphoreAirdropTest:testCannotUpdateAirdropAmountIfNotManager() (gas: 3853)
+SemaphoreAirdropTest:testUpdateAirdropAmount() (gas: 5464)
