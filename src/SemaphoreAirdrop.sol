@@ -42,7 +42,7 @@ contract SemaphoreAirdrop {
             )
         ) revert InvalidProof();
 
-        semaphore._saveNullifierHash(nullifierHash);
+        semaphore.saveNullifierHash(nullifierHash);
 
         token.transferFrom(holder, receiver, airdropAmount);
     }

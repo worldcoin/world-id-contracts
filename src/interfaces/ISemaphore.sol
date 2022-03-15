@@ -23,16 +23,8 @@ interface ISemaphore {
     /// Attention! Remember to call it when you verify a proof if you
     /// need to prevent double-signaling.
     /// @param nullifierHash: Semaphore nullifier hash.
-    function _saveNullifierHash(uint256 nullifierHash) external;
+    function saveNullifierHash(uint256 nullifierHash) external;
 
     // @dev See {ISemaphoreGroups-getRoot}.
-    function getRoot(uint256 groupId)
-        public
-        view
-        virtual
-        override
-        returns (uint256)
-    {
-        return groups[groupId].root;
-    }
+    function getRoot(uint256 groupId) external view returns (uint256);
 }
