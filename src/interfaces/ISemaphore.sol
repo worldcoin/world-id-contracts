@@ -1,16 +1,13 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {ISemaphoreGroups} from "semaphore/interfaces/ISemaphoreGroups.sol";
-
 interface ISemaphore {
-    /// @dev Returns true if no nullifier already exists and if the zero-knowledge proof is valid.
-    /// Otherwise it returns false.
-    /// @param signal: Semaphore signal.
-    /// @param root: Root of the Merkle tree.
-    /// @param nullifierHash: Nullifier hash.
-    /// @param externalNullifier: External nullifier.
-    /// @param proof: Zero-knowledge proof.
+    /// @dev Wether no nullifier already exists and if the zero-knowledge proof is valid.
+    /// @param signal The Semaphore signal
+    /// @param root The root of the Merkle tree to check
+    /// @param nullifierHash The nullifier hash
+    /// @param externalNullifier The external nullifier
+    /// @param proof The zero-knowledge proof
     function _isValidProof(
         string calldata signal,
         uint256 root,
@@ -20,11 +17,11 @@ interface ISemaphore {
     ) external view returns (bool);
 
     /// @dev Stores the nullifier hash to prevent double-signaling.
-    /// Attention! Remember to call it when you verify a proof if you
-    /// need to prevent double-signaling.
-    /// @param nullifierHash: Semaphore nullifier hash.
+    /// @param nullifierHash The Semaphore nullifier hash to be stored
     function saveNullifierHash(uint256 nullifierHash) external;
 
-    // @dev See {ISemaphoreGroups-getRoot}.
+    /// @dev Returns the last root hash of a group.
+    /// @param groupId Id of the group.
+    /// @return Root hash of the group.
     function getRoot(uint256 groupId) external view returns (uint256);
 }
