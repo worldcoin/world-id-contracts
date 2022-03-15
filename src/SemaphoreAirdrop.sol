@@ -12,6 +12,9 @@ contract SemaphoreAirdrop {
     ///            ERRORS            ///
     ////////////////////////////////////
 
+    /// @notice Thrown when trying to update the airdrop amount without being the manager
+    error Unauthorized();
+
     /// @notice Thrown when the proof provided when claiming is not valid
     error InvalidProof();
 
@@ -43,8 +46,11 @@ contract SemaphoreAirdrop {
     /// @dev Make sure the holder has approved spending for this contract!
     address public immutable holder;
 
+    /// @notice The address that manages this airdrop, which is allowed to update the `airdropAmount`.
+    address public immutable manager = msg.sender;
+
     /// @notice The amount of tokens that participants will receive upon claiming
-    uint256 public immutable airdropAmount;
+    uint256 public airdropAmount;
 
     /// @dev Wether a nullifier hash has been used already. Used to prevent double-signaling
     mapping(uint256 => bool) internal nullifierHashes;
@@ -101,5 +107,11 @@ contract SemaphoreAirdrop {
         nullifierHashes[nullifierHash] = true;
 
         token.transferFrom(holder, receiver, airdropAmount);
+    }
+
+    function updateAmount(uint256 amount) public {
+        if (msg.sender != manager) revert Unauthorized();
+
+        airdropAmount = amount;
     }
 }
