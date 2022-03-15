@@ -16,10 +16,6 @@ interface ISemaphore {
         uint256[8] calldata proof
     ) external view returns (bool);
 
-    /// @dev Stores the nullifier hash to prevent double-signaling.
-    /// @param nullifierHash The Semaphore nullifier hash to be stored
-    function saveNullifierHash(uint256 nullifierHash) external;
-
     /// @dev Returns the last root hash of a group.
     /// @param groupId Id of the group.
     /// @return Root hash of the group.

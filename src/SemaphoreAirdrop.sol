@@ -15,6 +15,9 @@ contract SemaphoreAirdrop {
     /// @notice Thrown when the proof provided when claiming is not valid
     error InvalidProof();
 
+    /// @notice Thrown when attempting to reuse a nullifier
+    error InvalidNullifier();
+
     ////////////////////////////////////
     ///            EVENTS            ///
     ////////////////////////////////////
@@ -42,6 +45,9 @@ contract SemaphoreAirdrop {
 
     /// @notice The amount of tokens that participants will receive upon claiming
     uint256 public immutable airdropAmount;
+
+    /// @dev Wether a nullifier hash has been used already. Used to prevent double-signaling
+    mapping(uint256 => bool) internal nullifierHashes;
 
     /////////////////////////////////////////////////////////////
     ///                      CONSTRUCTOR                      ///
@@ -80,6 +86,8 @@ contract SemaphoreAirdrop {
         uint256 nullifierHash,
         uint256[8] calldata proof
     ) public {
+        if (nullifierHashes[nullifierHash]) revert InvalidNullifier();
+
         if (
             !semaphore._isValidProof(
                 string(abi.encodePacked(receiver)),
@@ -90,7 +98,7 @@ contract SemaphoreAirdrop {
             )
         ) revert InvalidProof();
 
-        semaphore.saveNullifierHash(nullifierHash);
+        nullifierHashes[nullifierHash] = true;
 
         token.transferFrom(holder, receiver, airdropAmount);
     }
