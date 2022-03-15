@@ -10,3 +10,6 @@
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/brockelmore/forge-std
+[submodule "lib/zk-kit"]
+	path = lib/zk-kit
+	url = https://github.com/appliedzkp/zk-kit
