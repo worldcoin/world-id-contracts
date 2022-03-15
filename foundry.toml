@@ -2,6 +2,6 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
-remappings = ['ds-test/=lib/ds-test/src/']
+remappings = ['ds-test/=lib/ds-test/src/', '@zk-kit/=lib/zk-kit/packages/', '@openzeppelin/=lib/openzeppelin-contracts/']
 
 # See more config options https://github.com/gakonst/foundry/tree/master/config
