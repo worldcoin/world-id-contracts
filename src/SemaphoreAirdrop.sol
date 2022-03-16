@@ -113,6 +113,12 @@ contract SemaphoreAirdrop {
         token.transferFrom(holder, receiver, airdropAmount);
     }
 
+    //////////////////////////////////////////////////////////////////
+    ///                        CONFIG LOGIC                        ///
+    //////////////////////////////////////////////////////////////////
+
+    /// @notice Update the number of claimable tokens, for any addresses that haven't already claimed. Can only be called by the deployer
+    /// @param amount The new amount of tokens that should be airdropped
     function updateAmount(uint256 amount) public {
         if (msg.sender != manager) revert Unauthorized();
 
