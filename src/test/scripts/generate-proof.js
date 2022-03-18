@@ -1,5 +1,5 @@
-const ethers = require("ethers");
 const { ZkIdentity, Strategy } = require("@zk-kit/identity");
+const { defaultAbiCoder: abi } = require("@ethersproject/abi");
 const { Semaphore, generateMerkleProof } = require("@zk-kit/protocols");
 
 async function main() {
@@ -38,7 +38,7 @@ async function main() {
 	);
 
 	process.stdout.write(
-		ethers.utils.defaultAbiCoder.encode(
+		abi.encode(
 			["uint256", "uint256[8]"],
 			[nullifierHash, Semaphore.packToSolidityProof(proof)]
 		)
