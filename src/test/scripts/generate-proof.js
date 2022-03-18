@@ -29,17 +29,13 @@ async function main() {
 	const signal = abi.encode(["address"], [process.argv[3]]);
 
 	const identity = new ZkIdentity(Strategy.MESSAGE, "test-identity");
-	const identityCommitments = [
-		BigInt(1),
-		identity.genIdentityCommitment(),
-		BigInt(2),
-	];
+	const identityCommitment = identity.genIdentityCommitment();
 
 	const merkleProof = generateMerkleProof(
 		20,
 		BigInt(0),
-		identityCommitments,
-		1
+		[identityCommitment, BigInt(1)],
+		identityCommitment
 	);
 
 	const witness = generateSemaphoreWitness(
