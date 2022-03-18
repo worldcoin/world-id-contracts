@@ -36,6 +36,10 @@ contract SemaphoreAirdropTest is DSTest {
             1 ether
         );
 
+        hevm.label(address(this), "Sender");
+        hevm.label(address(user), "Holder");
+        hevm.label(address(airdrop), "SemaphoreAirdrop");
+
         // Issue some tokens to the user address, to be airdropped from the contract
         token.issue(address(user), 10 ether);
 
