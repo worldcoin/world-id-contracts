@@ -24,12 +24,13 @@ contract SemaphoreAirdropTest is DSTest {
     Vm internal hevm = Vm(HEVM_ADDRESS);
 
     function setUp() public {
+        groupId = 1;
         user = new User();
         token = new TestERC20();
         semaphore = new Semaphore();
         airdrop = new SemaphoreAirdrop(
             semaphore,
-            0,
+            groupId,
             token,
             address(user),
             1 ether
