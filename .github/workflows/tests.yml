@@ -20,5 +20,13 @@ jobs:
         with:
           version: nightly
 
+      - uses: actions/setup-node@v2
+        with:
+          node-version: "14"
+          cache: "yarn"
+
+      - name: Install Node Dependencies
+        run: yarn install
+
       - name: Run tests
         run: forge test -vvv --gas-report
