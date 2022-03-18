@@ -9,7 +9,7 @@ interface ISemaphore {
     /// @param externalNullifier The external nullifier
     /// @param proof The zero-knowledge proof
     function isValidProof(
-        string calldata signal,
+        bytes32 signal,
         uint256 root,
         uint256 nullifierHash,
         uint256 externalNullifier,

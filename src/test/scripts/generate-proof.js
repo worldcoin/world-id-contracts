@@ -4,7 +4,7 @@ const { Semaphore, generateMerkleProof } = require("@zk-kit/protocols");
 
 async function main() {
 	const airdropAddress = process.argv[2];
-	const signal = Buffer.from(process.argv[3].slice(2), "hex").toString("utf-8");
+	const signal = abi.encode(["address"], [process.argv[3]]);
 
 	const identity = new ZkIdentity(Strategy.MESSAGE, "test-identity");
 	const identityCommitments = [
@@ -25,7 +25,7 @@ async function main() {
 		identity.getNullifier(),
 		merkleProof,
 		airdropAddress,
-		"fake-signal" //signal
+		signal
 	);
 
 	const {

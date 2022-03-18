@@ -8,7 +8,7 @@ import {SemaphoreGroups} from "semaphore/base/SemaphoreGroups.sol";
 
 contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
     function isValidProof(
-        string calldata signal,
+        bytes32 signal,
         uint256 root,
         uint256 nullifierHash,
         uint256 externalNullifier,
