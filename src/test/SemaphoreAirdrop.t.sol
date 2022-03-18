@@ -64,6 +64,18 @@ contract SemaphoreAirdropTest is DSTest {
         return abi.decode(returnData, (uint256, uint256[8]));
     }
 
+    function testCanClaim() public {
+        assertEq(token.balanceOf(address(this)), 0);
+
+        semaphore.createGroup(groupId, 20, 0);
+        semaphore.addMember(groupId, genIdentityCommitment());
+
+        (uint256 nullifierHash, uint256[8] memory proof) = genProof();
+        airdrop.claim(address(this), nullifierHash, proof);
+
+        assertEq(token.balanceOf(address(this)), airdrop.airdropAmount());
+    }
+
     function testUpdateAirdropAmount() public {
         assertEq(airdrop.airdropAmount(), 1 ether);
 
