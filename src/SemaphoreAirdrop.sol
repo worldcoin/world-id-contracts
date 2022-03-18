@@ -99,8 +99,8 @@ contract SemaphoreAirdrop {
         if (nullifierHashes[nullifierHash]) revert InvalidNullifier();
 
         if (
-            !semaphore._isValidProof(
                 string(abi.encodePacked(receiver)),
+            !semaphore.isValidProof(
                 semaphore.getRoot(groupId),
                 nullifierHash,
                 uint256(uint160(address(this))),

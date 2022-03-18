@@ -8,7 +8,7 @@ interface ISemaphore {
     /// @param nullifierHash The nullifier hash
     /// @param externalNullifier The external nullifier
     /// @param proof The zero-knowledge proof
-    function _isValidProof(
+    function isValidProof(
         string calldata signal,
         uint256 root,
         uint256 nullifierHash,

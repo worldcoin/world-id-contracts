@@ -7,7 +7,7 @@ import {SemaphoreCore} from "semaphore/base/SemaphoreCore.sol";
 import {SemaphoreGroups} from "semaphore/base/SemaphoreGroups.sol";
 
 contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
-    function _isValidProof(
+    function isValidProof(
         string calldata signal,
         uint256 root,
         uint256 nullifierHash,
@@ -30,6 +30,18 @@ contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
                 [proof[6], proof[7]],
                 publicSignals
             );
+    }
+
+    function createGroup(
+        uint256 groupId,
+        uint8 depth,
+        uint256 zeroValue
+    ) public {
+        _createGroup(groupId, depth, zeroValue);
+    }
+
+    function addMember(uint256 groupId, uint256 identityCommitment) public {
+        _addMember(groupId, identityCommitment);
     }
 
     function getRoot(uint256 groupId)
