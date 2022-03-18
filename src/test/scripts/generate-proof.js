@@ -25,7 +25,7 @@ async function main() {
 		identity.getNullifier(),
 		merkleProof,
 		airdropAddress,
-		signal
+		"fake-signal" //signal
 	);
 
 	const {

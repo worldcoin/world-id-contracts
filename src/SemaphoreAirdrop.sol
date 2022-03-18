@@ -100,7 +100,7 @@ contract SemaphoreAirdrop {
 
         if (
             !semaphore.isValidProof(
-                string(abi.encodePacked(receiver)),
+                "fake-signal", //string(abi.encodePacked(receiver)),
                 semaphore.getRoot(groupId),
                 nullifierHash,
                 uint256(uint160(address(this))),
