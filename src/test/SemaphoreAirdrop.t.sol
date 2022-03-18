@@ -38,6 +38,15 @@ contract SemaphoreAirdropTest is DSTest {
         token.approve(address(airdrop), type(uint256).max);
     }
 
+    function genIdentityCommitment() internal returns (uint256) {
+        string[] memory ffiArgs = new string[](2);
+        ffiArgs[0] = "node";
+        ffiArgs[1] = "src/test/scripts/generate-commitment.js";
+
+        bytes memory returnData = hevm.ffi(ffiArgs);
+        return abi.decode(returnData, (uint256));
+    }
+
     function testUpdateAirdropAmount() public {
         assertEq(airdrop.airdropAmount(), 1 ether);
 
