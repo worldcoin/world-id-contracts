@@ -56,7 +56,7 @@ async function main() {
 	} = await Semaphore.genProof(
 		witness,
 		"./src/test/scripts/vendor/semaphore.wasm",
-		"./src/test/scripts/vendor/semaphore.zkey"
+		"./src/test/scripts/vendor/semaphore_final.zkey"
 	);
 
 	process.stdout.write(

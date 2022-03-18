@@ -1,11 +1,9 @@
 const fs = require("fs");
-const { ethers } = require("ethers");
-const { poseidonContract } = require("circomlibjs");
-const { defaultAbiCoder: abi, Interface } = require("@ethersproject/abi");
+const { poseidon_gencontract } = require("circomlibjs");
 
 function main() {
-	const poseidonT3Bytecode = poseidonContract.createCode(2);
-	const poseidonT3Abi = poseidonContract.generateABI(2);
+	const poseidonT3Bytecode = poseidon_gencontract.createCode(2);
+	const poseidonT3Abi = poseidon_gencontract.generateABI(2);
 
 	fs.writeFileSync(
 		"./out/Hashes.sol/PoseidonT3.json",
@@ -23,6 +21,8 @@ function main() {
 			},
 		})
 	);
+
+	console.log("Updated.");
 }
 
 main();
