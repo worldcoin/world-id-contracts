@@ -28,5 +28,11 @@ jobs:
       - name: Install Node Dependencies
         run: yarn install
 
+      - name: Build contracts
+        run: forge build
+
+      - name: Inject Poseidon Lib
+        run: node src/test/scripts/generate-circom-lib.js
+
       - name: Run tests
         run: forge test -vvv --gas-report
