@@ -5,14 +5,19 @@ import {Vm} from "forge-std/Vm.sol";
 import {DSTest} from "ds-test/test.sol";
 import {Semaphore} from "./mock/Semaphore.sol";
 import {TestERC20} from "./mock/TestERC20.sol";
+import {TypeConverter} from "./utils/TypeConverter.sol";
 import {SemaphoreAirdrop} from "../SemaphoreAirdrop.sol";
 
 contract User {}
 
 contract SemaphoreAirdropTest is DSTest {
+    using TypeConverter for address;
+    using TypeConverter for uint256;
+
     event AmountUpdated(uint256 amount);
 
     User internal user;
+    uint256 internal groupId;
     TestERC20 internal token;
     Semaphore internal semaphore;
     SemaphoreAirdrop internal airdrop;
@@ -45,6 +50,18 @@ contract SemaphoreAirdropTest is DSTest {
 
         bytes memory returnData = hevm.ffi(ffiArgs);
         return abi.decode(returnData, (uint256));
+    }
+
+    function genProof() internal returns (uint256, uint256[8] memory proof) {
+        string[] memory ffiArgs = new string[](4);
+        ffiArgs[0] = "node";
+        ffiArgs[1] = "src/test/scripts/generate-proof.js";
+        ffiArgs[2] = uint256(uint160(address(semaphore))).toString();
+        ffiArgs[3] = string.concat("0x", address(this).toString());
+
+        bytes memory returnData = hevm.ffi(ffiArgs);
+
+        return abi.decode(returnData, (uint256, uint256[8]));
     }
 
     function testUpdateAirdropAmount() public {
