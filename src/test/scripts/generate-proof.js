@@ -1,3 +1,4 @@
+const { readFile } = require('fs/promises');
 const { keccak256 } = require("@ethersproject/solidity");
 const { ZkIdentity, Strategy } = require("@zk-kit/identity");
 const { defaultAbiCoder: abi } = require("@ethersproject/abi");
@@ -46,15 +47,19 @@ async function main() {
 		signal
 	);
 
-	const {
-		proof,
-		publicSignals: { nullifierHash },
-	} = await Semaphore.genProof(
+	const fullProof = await Semaphore.genProof(
 		witness,
 		"./src/test/scripts/vendor/semaphore.wasm",
 		"./src/test/scripts/vendor/semaphore_final.zkey"
 	);
 
+	const verificationKey = JSON.parse(await readFile("./src/test/scripts/vendor/verification_key.json", "utf-8"));
+	let success = await Semaphore.verifyProof(verificationKey, fullProof);
+	if (!success) {
+		console.error("Generated proof failed to verify");
+	}
+
+	const { proof, publicSignals: { nullifierHash } } = fullProof;
 	process.stdout.write(
 		abi.encode(
 			["uint256", "uint256[8]"],
