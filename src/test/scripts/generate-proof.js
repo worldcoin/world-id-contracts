@@ -34,7 +34,7 @@ async function main() {
 	const merkleProof = generateMerkleProof(
 		20,
 		BigInt(0),
-		[identityCommitment, BigInt(1)],
+		[identityCommitment],
 		identityCommitment
 	);
 

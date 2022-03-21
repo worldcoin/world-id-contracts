@@ -61,7 +61,7 @@ contract SemaphoreAirdropTest is DSTest {
         string[] memory ffiArgs = new string[](4);
         ffiArgs[0] = "node";
         ffiArgs[1] = "src/test/scripts/generate-proof.js";
-        ffiArgs[2] = uint256(uint160(address(semaphore))).toString();
+        ffiArgs[2] = uint256(uint160(address(airdrop))).toString();
         ffiArgs[3] = address(this).toString();
 
         bytes memory returnData = hevm.ffi(ffiArgs);
