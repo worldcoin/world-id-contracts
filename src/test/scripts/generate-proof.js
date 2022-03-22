@@ -1,8 +1,8 @@
 const { keccak256 } = require('@ethersproject/solidity')
 const { ZkIdentity, Strategy } = require('@zk-kit/identity')
 const { defaultAbiCoder: abi } = require('@ethersproject/abi')
-const verificationKey = require('./vendor/verification_key.json')
 const { Semaphore, generateMerkleProof } = require('@zk-kit/protocols')
+const verificationKey = require('../../../lib/semaphore/build/snark/verification_key.json')
 
 function genSignalHash(signal) {
 	return BigInt(keccak256(['bytes32'], [signal])) >> BigInt(8)
@@ -33,8 +33,8 @@ async function main(airdropAddress, receiverAddress) {
 
 	const { proof, publicSignals } = await Semaphore.genProof(
 		witness,
-		'./src/test/scripts/vendor/semaphore.wasm',
-		'./src/test/scripts/vendor/semaphore_final.zkey'
+		'./lib/semaphore/build/snark/semaphore.wasm',
+		'./lib/semaphore/build/snark/semaphore_final.zkey'
 	)
 
 	// Exit if the generated proof isn't valid, since Foundry won't show logs on failure.
