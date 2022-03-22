@@ -21,3 +21,5 @@ You can see the complete flow in action on the [SemaphoreAirdrop tests](./src/te
 This repository uses [Foundry](https://github.com/gakonst/foundry). You can download the Foundry installer by running `curl -L https://foundry.paradigm.xyz | bash`, and then install the latest version by running `foundryup` on a new terminal window. (Additional instructions are available [on the Foundry repo](https://github.com/gakonst/foundry#installation)). You'll also need [Node JS](https://nodejs.org) and [the Yarn package manager](https://yarnpkg.com) if you're planning to run the automated tests.
 
 Once you have everything installed, you can run `make` from the base directory to install all dependencies, build the smart contracts, and configure the Poseidon Solidity library.
+
+> Note: This project makes use of Foundry's `ffi` feature, which can spawn processes when running the outomated tests. We use this to generate identity commitments & proofs with Node, and you should be mindful of executing any forks or PRs without first reviewing them.
