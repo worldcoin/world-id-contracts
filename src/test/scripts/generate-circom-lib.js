@@ -22,7 +22,7 @@ function main() {
 		})
 	)
 
-	console.log('Updated.')
+	console.log('Poseidon library injected.')
 }
 
 main()

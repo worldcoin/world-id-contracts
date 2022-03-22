@@ -1,38 +1,35 @@
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+    push:
+        branches:
+            - main
+    pull_request:
 
 name: Unit Tests
 
 jobs:
-  tests:
-    runs-on: ubuntu-latest
+    tests:
+        runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v2
-        with:
-          submodules: recursive
+        steps:
+            - uses: actions/checkout@v2
+              with:
+                  submodules: recursive
 
-      - name: Install Foundry
-        uses: onbjerg/foundry-toolchain@v1
-        with:
-          version: nightly
+            - name: Install Foundry
+              uses: onbjerg/foundry-toolchain@v1
+              with:
+                  version: nightly
 
-      - uses: actions/setup-node@v2
-        with:
-          node-version: "14"
-          cache: "yarn"
+            - uses: actions/setup-node@v2
+              with:
+                  node-version: '14'
+                  cache: 'yarn'
 
-      - name: Install Node Dependencies
-        run: yarn install
+            - name: Install Dependencies
+              run: make install
 
-      - name: Build contracts
-        run: forge build
+            - name: Build contracts
+              run: make build
 
-      - name: Inject Poseidon Lib
-        run: node src/test/scripts/generate-circom-lib.js
-
-      - name: Run tests
-        run: forge test -vvv --gas-report
+            - name: Run tests
+              run: forge test -vvv --gas-report
