@@ -37,9 +37,8 @@ async function main(airdropAddress, receiverAddress) {
 		'./lib/semaphore/build/snark/semaphore_final.zkey'
 	)
 
-	// Exit if the generated proof isn't valid, since Foundry won't show logs on failure.
 	await Semaphore.verifyProof(verificationKey, { proof, publicSignals }).then(isValid => {
-		if (!isValid) process.exit(1)
+		if (!isValid) console.error('Generated proof failed to verify')
 	})
 
 	process.stdout.write(
