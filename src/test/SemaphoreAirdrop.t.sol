@@ -3,7 +3,7 @@ pragma solidity ^0.8.10;
 
 import { Vm } from 'forge-std/Vm.sol';
 import { DSTest } from 'ds-test/test.sol';
-import { Semaphore } from './mock/Semaphore.sol';
+import { Semaphore } from '../Semaphore.sol';
 import { TestERC20 } from './mock/TestERC20.sol';
 import { TypeConverter } from './utils/TypeConverter.sol';
 import { SemaphoreAirdrop } from '../SemaphoreAirdrop.sol';
