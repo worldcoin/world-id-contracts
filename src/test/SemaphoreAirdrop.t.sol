@@ -32,6 +32,8 @@ contract SemaphoreAirdropTest is DSTest {
 
 		hevm.label(address(this), 'Sender');
 		hevm.label(address(user), 'Holder');
+		hevm.label(address(token), 'Token');
+		hevm.label(address(semaphore), 'Semaphore');
 		hevm.label(address(airdrop), 'SemaphoreAirdrop');
 
 		// Issue some tokens to the user address, to be airdropped from the contract
