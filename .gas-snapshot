@@ -1,2 +1,6 @@
-SemaphoreAirdropTest:testCannotUpdateAirdropAmountIfNotManager() (gas: 3853)
-SemaphoreAirdropTest:testUpdateAirdropAmount() (gas: 5464)
+SemaphoreAirdropTest:testCanClaim() (gas: 2954388)
+SemaphoreAirdropTest:testCannotClaimWithInvalidProof() (gas: 2909622)
+SemaphoreAirdropTest:testCannotClaimWithInvalidSignal() (gas: 2909810)
+SemaphoreAirdropTest:testCannotDoubleClaim() (gas: 2958653)
+SemaphoreAirdropTest:testCannotUpdateAirdropAmountIfNotManager() (gas: 3865)
+SemaphoreAirdropTest:testUpdateAirdropAmount() (gas: 5508)
