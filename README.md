@@ -22,4 +22,4 @@ This repository uses the [Foundry](https://github.com/gakonst/foundry) smart con
 
 Once you have everything installed, you can run `make` from the base directory to install all dependencies, build the smart contracts, and configure the Poseidon Solidity library.
 
-> Note: This project makes use of Foundry's `ffi` feature, which can spawn processes when running the automated tests, which we use to generate identity commitments & proofs. Be mindful of executing any forks or PRs without first reviewing them.
+> Note: This project makes use of Foundry's `ffi` feature, which can spawn processes when running the automated tests, which we use to generate identity commitments & proofs. Be mindful of running tests on any forks or PRs without first reviewing them.
