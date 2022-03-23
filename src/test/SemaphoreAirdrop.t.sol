@@ -94,6 +94,18 @@ contract SemaphoreAirdropTest is DSTest {
 		assertEq(token.balanceOf(address(this)), airdrop.airdropAmount());
 	}
 
+	function testCannotClaimIfNotMember() public {
+		assertEq(token.balanceOf(address(this)), 0);
+
+		semaphore.createGroup(groupId, 20, 0);
+
+		hevm.expectRevert(SemaphoreAirdrop.InvalidProof.selector);
+		(uint256 nullifierHash, uint256[8] memory proof) = genProof();
+		airdrop.claim(address(this), nullifierHash, proof);
+
+		assertEq(token.balanceOf(address(this)), 0);
+	}
+
 	function testCannotClaimWithInvalidSignal() public {
 		assertEq(token.balanceOf(address(this)), 0);
 
