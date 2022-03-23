@@ -4,8 +4,8 @@ const { defaultAbiCoder: abi } = require('@ethersproject/abi')
 const { Semaphore, generateMerkleProof } = require('@zk-kit/protocols')
 const verificationKey = require('../../../lib/semaphore/build/snark/verification_key.json')
 
-function genSignalHash(signal) {
-	return BigInt(keccak256(['bytes32'], [signal])) >> BigInt(8)
+function hashBytes(signal) {
+	return BigInt(keccak256(['bytes'], [signal])) >> BigInt(8)
 }
 
 function generateSemaphoreWitness(identityTrapdoor, identityNullifier, merkleProof, externalNullifier, signal) {
@@ -15,7 +15,7 @@ function generateSemaphoreWitness(identityTrapdoor, identityNullifier, merklePro
 		treePathIndices: merkleProof.pathIndices,
 		treeSiblings: merkleProof.siblings,
 		externalNullifier: externalNullifier,
-		signalHash: genSignalHash(signal),
+		signalHash: hashBytes(signal),
 	}
 }
 
@@ -27,7 +27,7 @@ async function main(airdropAddress, receiverAddress) {
 		identity.getTrapdoor(),
 		identity.getNullifier(),
 		generateMerkleProof(20, BigInt(0), [identityCommitment], identityCommitment),
-		airdropAddress,
+		hashBytes(abi.encode(['address'], [airdropAddress])),
 		abi.encode(['address'], [receiverAddress])
 	)
 

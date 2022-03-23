@@ -2,6 +2,7 @@
 pragma solidity ^0.8.10;
 
 import { ERC20 } from 'solmate/tokens/ERC20.sol';
+import { ByteHasher } from './libraries/ByteHasher.sol';
 import { ISemaphore } from './interfaces/ISemaphore.sol';
 import { SafeTransferLib } from 'solmate/utils/SafeTransferLib.sol';
 
@@ -9,6 +10,8 @@ import { SafeTransferLib } from 'solmate/utils/SafeTransferLib.sol';
 /// @author Miguel Piedrafita
 /// @notice Template contract for airdropping tokens to Semaphore group members
 contract SemaphoreAirdrop {
+	using ByteHasher for bytes;
+
 	////////////////////////////////////
 	///            ERRORS            ///
 	////////////////////////////////////
@@ -102,9 +105,9 @@ contract SemaphoreAirdrop {
 		if (
 			!semaphore.isValidProof(
 				groupId,
-				bytes32(uint256(uint160(receiver))),
+				abi.encode(receiver).hash(),
 				nullifierHash,
-				uint256(uint160(address(this))),
+				abi.encode(address(this)).hash(),
 				proof
 			)
 		) revert InvalidProof();
