@@ -76,9 +76,9 @@ contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
 	/// @param signal The Semaphore signal
 	/// @param nullifierHash The nullifier hash
 	/// @param externalNullifier The external nullifier
-	/// @param proof The Zero-knowledge proof
+	/// @param proof The zero-knowledge proof
 	/// @return Wether the proof is valid or not
-	/// @dev Note that a double-signaling check is not included here, and should be carried by the caller.
+	/// @dev Note that this function doesn't verify that the root is valid, or protect from double-signaling. These checks should be performed by the caller.
 	function isValidProof(
 		uint256 groupId,
 		bytes32 signal,
