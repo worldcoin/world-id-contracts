@@ -125,8 +125,17 @@ contract SemaphoreAirdropTest is DSTest {
 		semaphore.createGroup(groupId, 20, 0);
 		semaphore.addMember(groupId, genIdentityCommitment());
 
-		uint256[8] memory proof;
 		(uint256 nullifierHash, ) = genProof();
+
+		uint256[8] memory proof;
+		proof[0] = 1111;
+		proof[1] = 2222;
+		proof[2] = 3333;
+		proof[3] = 4444;
+		proof[4] = 5555;
+		proof[5] = 6666;
+		proof[6] = 7777;
+		proof[7] = 8888;
 
 		hevm.expectRevert(SemaphoreAirdrop.InvalidProof.selector);
 		airdrop.claim(address(this), nullifierHash, proof);
