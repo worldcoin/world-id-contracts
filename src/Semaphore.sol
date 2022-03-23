@@ -67,35 +67,28 @@ contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
 		_removeMember(groupId, identityCommitment, proofSiblings, proofPathIndices);
 	}
 
-	/// @notice Fetch the last root hash for a group
-	/// @param groupId The id of the group
-	/// @return The root hash of the group
-	function getRoot(uint256 groupId) public view override(ISemaphore, SemaphoreGroups) returns (uint256) {
-		return SemaphoreGroups.getRoot(groupId);
-	}
-
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	///                                            PROOF VALIDATION LOGIC                                            ///
 	////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/// @notice Wether the zero-knowledge proof is valid.
+	/// @param groupId The id of the Semaphore group
 	/// @param signal The Semaphore signal
-	/// @param root The of the Merkle tree
 	/// @param nullifierHash The nullifier hash
 	/// @param externalNullifier The external nullifier
 	/// @param proof The Zero-knowledge proof
 	/// @return Wether the proof is valid or not
 	/// @dev Note that a double-signaling check is not included here, and should be carried by the caller.
 	function isValidProof(
+		uint256 groupId,
 		bytes32 signal,
-		uint256 root,
 		uint256 nullifierHash,
 		uint256 externalNullifier,
 		uint256[8] calldata proof
 	) public view returns (bool) {
 		uint256 signalHash = uint256(keccak256(abi.encodePacked(signal))) >> 8;
 
-		uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifier];
+		uint256[4] memory publicSignals = [getRoot(groupId), nullifierHash, signalHash, externalNullifier];
 
 		return
 			verifyProof(

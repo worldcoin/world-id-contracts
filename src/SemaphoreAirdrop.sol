@@ -101,8 +101,8 @@ contract SemaphoreAirdrop {
 
 		if (
 			!semaphore.isValidProof(
+				groupId,
 				bytes32(uint256(uint160(receiver))),
-				semaphore.getRoot(groupId),
 				nullifierHash,
 				uint256(uint160(address(this))),
 				proof
