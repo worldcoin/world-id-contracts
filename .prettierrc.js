@@ -7,4 +7,13 @@ module.exports = {
 	useTabs: true,
 	bracketSpacing: true,
 	arrowParens: 'avoid',
+	overrides: [
+		{
+			files: '*.sol',
+			options: {
+				explicitTypes: 'always',
+				compiler: '0.8.12',
+			},
+		},
+	],
 }
