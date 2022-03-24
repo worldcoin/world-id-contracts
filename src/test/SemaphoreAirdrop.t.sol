@@ -147,7 +147,7 @@ contract SemaphoreAirdropTest is DSTest {
 		proof[0] ^= 42;
 
 		uint256 root = semaphore.getRoot(groupId);
-		hevm.expectRevert(bytes(''));
+		hevm.expectRevert();
 		airdrop.claim(address(this), root, nullifierHash, proof);
 
 		assertEq(token.balanceOf(address(this)), 0);
