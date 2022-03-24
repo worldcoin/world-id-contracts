@@ -93,10 +93,12 @@ contract SemaphoreAirdrop {
 
 	/// @notice Claim the airdrop
 	/// @param receiver The address that will receive the tokens
+	/// @param root The of the Merkle tree
 	/// @param nullifierHash The nullifier for this proof, preventing double signaling
 	/// @param proof The zero knowledge proof that demostrates the claimer is part of the Semaphore group
 	function claim(
 		address receiver,
+		uint256 root,
 		uint256 nullifierHash,
 		uint256[8] calldata proof
 	) public {
@@ -104,6 +106,7 @@ contract SemaphoreAirdrop {
 
 		if (
 			!semaphore.isValidProof(
+				root,
 				groupId,
 				abi.encode(receiver).hash(),
 				nullifierHash,

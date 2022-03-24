@@ -71,7 +71,21 @@ contract SemaphoreAirdropTest is DSTest {
 		semaphore.addMember(groupId, genIdentityCommitment());
 
 		(uint256 nullifierHash, uint256[8] memory proof) = genProof();
-		airdrop.claim(address(this), nullifierHash, proof);
+		airdrop.claim(address(this), semaphore.getRoot(groupId), nullifierHash, proof);
+
+		assertEq(token.balanceOf(address(this)), airdrop.airdropAmount());
+	}
+
+	function testCanClaimAfterNewMemberAdded() public {
+		assertEq(token.balanceOf(address(this)), 0);
+
+		semaphore.createGroup(groupId, 20, 0);
+		semaphore.addMember(groupId, genIdentityCommitment());
+		uint256 root = semaphore.getRoot(groupId);
+		semaphore.addMember(groupId, 1);
+
+		(uint256 nullifierHash, uint256[8] memory proof) = genProof();
+		airdrop.claim(address(this), root, nullifierHash, proof);
 
 		assertEq(token.balanceOf(address(this)), airdrop.airdropAmount());
 	}
@@ -83,12 +97,13 @@ contract SemaphoreAirdropTest is DSTest {
 		semaphore.addMember(groupId, genIdentityCommitment());
 
 		(uint256 nullifierHash, uint256[8] memory proof) = genProof();
-		airdrop.claim(address(this), nullifierHash, proof);
+		airdrop.claim(address(this), semaphore.getRoot(groupId), nullifierHash, proof);
 
 		assertEq(token.balanceOf(address(this)), airdrop.airdropAmount());
 
+		uint256 root = semaphore.getRoot(groupId);
 		hevm.expectRevert(SemaphoreAirdrop.InvalidNullifier.selector);
-		airdrop.claim(address(this), nullifierHash, proof);
+		airdrop.claim(address(this), root, nullifierHash, proof);
 
 		assertEq(token.balanceOf(address(this)), airdrop.airdropAmount());
 	}
@@ -98,9 +113,11 @@ contract SemaphoreAirdropTest is DSTest {
 
 		semaphore.createGroup(groupId, 20, 0);
 
-		hevm.expectRevert(SemaphoreAirdrop.InvalidProof.selector);
+		uint256 root = semaphore.getRoot(groupId);
 		(uint256 nullifierHash, uint256[8] memory proof) = genProof();
-		airdrop.claim(address(this), nullifierHash, proof);
+
+		hevm.expectRevert(SemaphoreAirdrop.InvalidProof.selector);
+		airdrop.claim(address(this), root, nullifierHash, proof);
 
 		assertEq(token.balanceOf(address(this)), 0);
 	}
@@ -113,8 +130,9 @@ contract SemaphoreAirdropTest is DSTest {
 
 		(uint256 nullifierHash, uint256[8] memory proof) = genProof();
 
+		uint256 root = semaphore.getRoot(groupId);
 		hevm.expectRevert(SemaphoreAirdrop.InvalidProof.selector);
-		airdrop.claim(address(user), nullifierHash, proof);
+		airdrop.claim(address(user), root, nullifierHash, proof);
 
 		assertEq(token.balanceOf(address(this)), 0);
 	}
@@ -128,8 +146,9 @@ contract SemaphoreAirdropTest is DSTest {
 		(uint256 nullifierHash, uint256[8] memory proof) = genProof();
 		proof[0] ^= 42;
 
+		uint256 root = semaphore.getRoot(groupId);
 		hevm.expectRevert(bytes(''));
-		airdrop.claim(address(this), nullifierHash, proof);
+		airdrop.claim(address(this), root, nullifierHash, proof);
 
 		assertEq(token.balanceOf(address(this)), 0);
 	}
