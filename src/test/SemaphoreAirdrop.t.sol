@@ -53,11 +53,12 @@ contract SemaphoreAirdropTest is DSTest {
 	}
 
 	function genProof() internal returns (uint256, uint256[8] memory proof) {
-		string[] memory ffiArgs = new string[](4);
+		string[] memory ffiArgs = new string[](5);
 		ffiArgs[0] = 'node';
-		ffiArgs[1] = 'src/test/scripts/generate-proof.js';
-		ffiArgs[2] = address(airdrop).toString();
-		ffiArgs[3] = address(this).toString();
+		ffiArgs[1] = '--no-warnings';
+		ffiArgs[2] = 'src/test/scripts/generate-proof.js';
+		ffiArgs[3] = address(airdrop).toString();
+		ffiArgs[4] = address(this).toString();
 
 		bytes memory returnData = hevm.ffi(ffiArgs);
 

@@ -1,5 +1,5 @@
-const { ZkIdentity, Strategy } = require('@zk-kit/identity')
-const { defaultAbiCoder: abi } = require('@ethersproject/abi')
+import { ZkIdentity, Strategy } from '@zk-kit/identity'
+import { defaultAbiCoder as abi } from '@ethersproject/abi'
 
 function main() {
 	const identity = new ZkIdentity(Strategy.MESSAGE, 'test-identity')

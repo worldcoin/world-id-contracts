@@ -1,8 +1,8 @@
-const { keccak256 } = require('@ethersproject/solidity')
-const { ZkIdentity, Strategy } = require('@zk-kit/identity')
-const { defaultAbiCoder: abi } = require('@ethersproject/abi')
-const { Semaphore, generateMerkleProof } = require('@zk-kit/protocols')
-const verificationKey = require('../../../lib/semaphore/build/snark/verification_key.json')
+import { keccak256 } from '@ethersproject/solidity'
+import { ZkIdentity, Strategy } from '@zk-kit/identity'
+import { defaultAbiCoder as abi } from '@ethersproject/abi'
+import { Semaphore, generateMerkleProof } from '@zk-kit/protocols'
+import verificationKey from '../../../lib/semaphore/build/snark/verification_key.json' assert { type: 'json' }
 
 function hashBytes(signal) {
 	return BigInt(keccak256(['bytes'], [signal])) >> BigInt(8)

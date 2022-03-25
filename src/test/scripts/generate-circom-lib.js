@@ -1,5 +1,5 @@
-const fs = require('fs')
-const { poseidon_gencontract } = require('circomlibjs')
+import fs from 'fs'
+import { poseidon_gencontract } from 'circomlibjs'
 
 function main() {
 	const poseidonT3Bytecode = poseidon_gencontract.createCode(2)
