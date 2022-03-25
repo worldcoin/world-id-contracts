@@ -7,3 +7,5 @@ build:; forge build && node ./src/test/scripts/generate-circom-lib.js
 test:; forge test -vvv --gas-report
 # Update forge dependencies.
 update:; forge update
+# Deploy contracts
+deploy:; node --no-warnings scripts/deploy.js
