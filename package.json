@@ -1,10 +1,15 @@
 {
 	"dependencies": {
 		"@ethersproject/abi": "^5.6.0",
+		"@ethersproject/bytes": "^5.6.0",
+		"@ethersproject/providers": "^5.6.1",
 		"@ethersproject/solidity": "^5.6.0",
+		"@ethersproject/wallet": "^5.6.0",
 		"@zk-kit/identity": "^1.4.1",
 		"@zk-kit/protocols": "^1.11.0",
-		"circomlibjs": "0.0.8"
+		"circomlibjs": "0.0.8",
+		"dotenv": "^16.0.0",
+		"ora": "^6.1.0"
 	},
 	"type": "module",
 	"devDependencies": {
