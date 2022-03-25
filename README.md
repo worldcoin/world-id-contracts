@@ -16,6 +16,10 @@ Once you have an identity that belongs to the configured group, you should gener
 
 You can see the complete flow in action on the [SemaphoreAirdrop tests](./src/test/SemaphoreAirdrop.t.sol).
 
+## Usage with Worldcoin
+
+Worldcoin will maintain a Semaphore instance with a group for all the people that have onboarded to the protocol. Once the insance is deployed, we'll provide information here so you can point your `SemaphoreAirdrop` instances to it, ensuring only unique humans can claim your airdrop.
+
 ## Development
 
 This repository uses the [Foundry](https://github.com/gakonst/foundry) smart contract toolkit. You can download the Foundry installer by running `curl -L https://foundry.paradigm.xyz | bash`, and then install the latest version by running `foundryup` on a new terminal window (additional instructions are available [on the Foundry repo](https://github.com/gakonst/foundry#installation)). You'll also need [Node.js](https://nodejs.org) if you're planning to run the automated tests.
