@@ -79,7 +79,7 @@ contract SemaphoreAirdrop {
         ERC20 _token,
         address _holder,
         uint256 _airdropAmount
-    ) payable {
+    ) {
         semaphore = _semaphore;
         groupId = _groupId;
         token = _token;
