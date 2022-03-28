@@ -52,7 +52,10 @@ async function deployPoseidon() {
 async function deployIBT(poseidonAddress) {
     const spinner = ora(`Deploying IncrementalBinaryTree library...`).start()
     let tx = await wallet.sendTransaction({
-        data: IncrementalBinaryTree.bytecode.object.replace(/__\$\w*?\$__/g, poseidonAddress.slice(2)),
+        data: IncrementalBinaryTree.bytecode.object.replace(
+            /__\$\w*?\$__/g,
+            poseidonAddress.slice(2)
+        ),
     })
     spinner.text = `Waiting for IncrementalBinaryTree deploy transaction (tx: ${tx.hash})`
     tx = await tx.wait()

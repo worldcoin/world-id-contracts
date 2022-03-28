@@ -8,7 +8,13 @@ function hashBytes(signal) {
     return BigInt(keccak256(['bytes'], [signal])) >> BigInt(8)
 }
 
-function generateSemaphoreWitness(identityTrapdoor, identityNullifier, merkleProof, externalNullifier, signal) {
+function generateSemaphoreWitness(
+    identityTrapdoor,
+    identityNullifier,
+    merkleProof,
+    externalNullifier,
+    signal
+) {
     return {
         identityNullifier: identityNullifier,
         identityTrapdoor: identityTrapdoor,
@@ -42,7 +48,10 @@ async function main(airdropAddress, receiverAddress) {
     })
 
     process.stdout.write(
-        abi.encode(['uint256', 'uint256[8]'], [publicSignals.nullifierHash, Semaphore.packToSolidityProof(proof)])
+        abi.encode(
+            ['uint256', 'uint256[8]'],
+            [publicSignals.nullifierHash, Semaphore.packToSolidityProof(proof)]
+        )
     )
 }
 
