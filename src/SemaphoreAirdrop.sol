@@ -12,9 +12,9 @@ import { SafeTransferLib } from 'solmate/utils/SafeTransferLib.sol';
 contract SemaphoreAirdrop {
     using ByteHasher for bytes;
 
-    ////////////////////////////////////
-    ///            ERRORS            ///
-    ////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  ERRORS                                ///
+    //////////////////////////////////////////////////////////////////////////////
 
     /// @notice Thrown when trying to update the airdrop amount without being the manager
     error Unauthorized();
@@ -25,9 +25,9 @@ contract SemaphoreAirdrop {
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
 
-    ////////////////////////////////////
-    ///            EVENTS            ///
-    ////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  EVENTS                                ///
+    //////////////////////////////////////////////////////////////////////////////
 
     /// @notice Emitted when an airdrop is successfully claimed
     /// @param receiver The address that received the airdrop
@@ -37,9 +37,9 @@ contract SemaphoreAirdrop {
     /// @param amount The new amount that participants will receive
     event AmountUpdated(uint256 amount);
 
-    ////////////////////////////////////////////////////////////////////////////
-    ///                            CONFIG STORAGE                            ///
-    ////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                              CONFIG STORAGE                            ///
+    //////////////////////////////////////////////////////////////////////////////
 
     /// @dev The Semaphore instance that will be used for managing groups and verifying proofs
     ISemaphore internal immutable semaphore;
@@ -63,9 +63,9 @@ contract SemaphoreAirdrop {
     /// @dev Wether a nullifier hash has been used already. Used to prevent double-signaling
     mapping(uint256 => bool) internal nullifierHashes;
 
-    /////////////////////////////////////////////////////////////
-    ///                      CONSTRUCTOR                      ///
-    /////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                               CONSTRUCTOR                              ///
+    //////////////////////////////////////////////////////////////////////////////
 
     /// @notice Deploys a SemaphoreAirdrop instance
     /// @param _semaphore The Semaphore instance that will manage groups and verify proofs
@@ -87,9 +87,9 @@ contract SemaphoreAirdrop {
         airdropAmount = _airdropAmount;
     }
 
-    /////////////////////////////////////////////////////////////
-    ///                      CLAIM LOGIC                      ///
-    /////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                               CLAIM LOGIC                               ///
+    //////////////////////////////////////////////////////////////////////////////
 
     /// @notice Claim the airdrop
     /// @param receiver The address that will receive the tokens
@@ -120,9 +120,9 @@ contract SemaphoreAirdrop {
         SafeTransferLib.safeTransferFrom(token, holder, receiver, airdropAmount);
     }
 
-    //////////////////////////////////////////////////////////////////
-    ///                        CONFIG LOGIC                        ///
-    //////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                               CONFIG LOGIC                             ///
+    //////////////////////////////////////////////////////////////////////////////
 
     /// @notice Update the number of claimable tokens, for any addresses that haven't already claimed. Can only be called by the deployer
     /// @param amount The new amount of tokens that should be airdropped
