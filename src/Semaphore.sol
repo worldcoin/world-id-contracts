@@ -78,34 +78,32 @@ contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
     ///                          PROOF VALIDATION LOGIC                        ///
     //////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Wether the zero-knowledge proof is valid.
+    /// @notice Reverts if the zero-knowledge proof is invalid.
     /// @param root The of the Merkle tree
     /// @param groupId The id of the Semaphore group
     /// @param signalHash A keccak256 hash of the Semaphore signal
     /// @param nullifierHash The nullifier hash
     /// @param externalNullifierHash A keccak256 hash of the external nullifier
     /// @param proof The zero-knowledge proof
-    /// @return Wether the proof is valid or not
     /// @dev  Note that a double-signaling check is not included here, and should be carried by the caller.
-    function isValidProof(
+    function verifyProof(
         uint256 root,
         uint256 groupId,
         uint256 signalHash,
         uint256 nullifierHash,
         uint256 externalNullifierHash,
         uint256[8] calldata proof
-    ) public view returns (bool) {
         if (rootHistory[root] != groupId && getNumberOfLeaves(groupId) > 0) revert InvalidRoot();
+    ) public view {
 
         uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
 
-        return
-            verifyProof(
-                [proof[0], proof[1]],
-                [[proof[2], proof[3]], [proof[4], proof[5]]],
-                [proof[6], proof[7]],
-                publicSignals
-            );
+        verifyProof(
+            [proof[0], proof[1]],
+            [[proof[2], proof[3]], [proof[4], proof[5]]],
+            [proof[6], proof[7]],
+            publicSignals
+        );
     }
 
     ///////////////////////////////////////////////////////////////////////////////

@@ -19,9 +19,6 @@ contract SemaphoreAirdrop {
     /// @notice Thrown when trying to update the airdrop amount without being the manager
     error Unauthorized();
 
-    /// @notice Thrown when the proof provided when claiming is not valid
-    error InvalidProof();
-
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
 
@@ -103,17 +100,14 @@ contract SemaphoreAirdrop {
         uint256[8] calldata proof
     ) public {
         if (nullifierHashes[nullifierHash]) revert InvalidNullifier();
-
-        if (
-            !semaphore.isValidProof(
-                root,
-                groupId,
-                abi.encode(receiver).hash(),
-                nullifierHash,
-                abi.encode(address(this)).hash(),
-                proof
-            )
-        ) revert InvalidProof();
+        semaphore.verifyProof(
+            root,
+            groupId,
+            abi.encode(receiver).hash(),
+            nullifierHash,
+            abi.encode(address(this)).hash(),
+            proof
+        );
 
         nullifierHashes[nullifierHash] = true;
 
