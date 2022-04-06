@@ -91,6 +91,22 @@ contract SemaphoreAirdropTest is DSTest {
         assertEq(token.balanceOf(address(this)), airdrop.airdropAmount());
     }
 
+    function testCannotClaimHoursAfterNewMemberAdded() public {
+        assertEq(token.balanceOf(address(this)), 0);
+
+        semaphore.createGroup(groupId, 20, 0);
+        semaphore.addMember(groupId, genIdentityCommitment());
+        uint256 root = semaphore.getRoot(groupId);
+        semaphore.addMember(groupId, 1);
+
+        hevm.warp(block.timestamp + 2 hours);
+
+        (uint256 nullifierHash, uint256[8] memory proof) = genProof();
+        airdrop.claim(address(this), root, nullifierHash, proof);
+
+        assertEq(token.balanceOf(address(this)), airdrop.airdropAmount());
+    }
+
     function testCannotDoubleClaim() public {
         assertEq(token.balanceOf(address(this)), 0);
 

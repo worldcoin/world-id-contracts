@@ -5,11 +5,17 @@ import { Verifier } from 'semaphore/base/Verifier.sol';
 import { ISemaphore } from './interfaces/ISemaphore.sol';
 import { SemaphoreCore } from 'semaphore/base/SemaphoreCore.sol';
 import { SemaphoreGroups } from 'semaphore/base/SemaphoreGroups.sol';
+import {
+    IncrementalBinaryTree,
+    IncrementalTreeData
+} from '@zk-kit/incremental-merkle-tree.sol/contracts/IncrementalBinaryTree.sol';
 
 /// @title Semaphore Group Manager
 /// @author Miguel Piedrafita
 /// @notice A simple implementation of a ZK-based identity group manager using Semaphore
 contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
+    using IncrementalBinaryTree for IncrementalTreeData;
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  ERRORS                                 ///
     //////////////////////////////////////////////////////////////////////////////
@@ -24,11 +30,29 @@ contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
     error InvalidRoot();
 
     ///////////////////////////////////////////////////////////////////////////////
+    ///                                 STRUCTS                                  ///
+    //////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Stores the group a root belongs to, along with a timestamp for when it was generated
+    /// @param groupId The group this root belongs to
+    /// @param timestamp The time the root was generated at
+    struct RootHistory {
+        uint128 groupId;
+        uint128 timestamp;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
     ///                              CONFIG STORAGE                            ///
     //////////////////////////////////////////////////////////////////////////////
 
+    /// @notice The amount of time an outdated root for a group is considered as valid
+    /// @dev This prevents proofs getting invalidated in the mempool by another tx modifying the group
+    uint256 internal constant ROOT_HISTORY_EXPIRY = 1 hours;
+
     /// @notice The address that manages this contract, which is allowed to update and create groups.
     address public manager = msg.sender;
+
+    mapping(uint256 => RootHistory) internal rootHistory;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                          GROUP MANAGEMENT LOGIC                        ///
@@ -54,8 +78,17 @@ contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
     /// @param identityCommitment The identity commitment for the new member
     function addMember(uint256 groupId, uint256 identityCommitment) public {
         if (msg.sender != manager) revert Unauthorized();
+        if (getDepth(groupId) == 0) revert InvalidId();
 
-        _addMember(groupId, identityCommitment);
+        groups[groupId].insert(identityCommitment);
+
+        uint256 root = getRoot(groupId);
+        rootHistory[root] = RootHistory({
+            groupId: uint128(groupId),
+            timestamp: uint128(block.timestamp)
+        });
+
+        emit MemberAdded(groupId, identityCommitment, root);
     }
 
     /// @notice Remove a member from an existing group. Can only be called by the manager
@@ -70,8 +103,17 @@ contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
         uint8[] calldata proofPathIndices
     ) public {
         if (msg.sender != manager) revert Unauthorized();
+        if (getDepth(groupId) == 0) revert InvalidId();
 
-        _removeMember(groupId, identityCommitment, proofSiblings, proofPathIndices);
+        groups[groupId].remove(identityCommitment, proofSiblings, proofPathIndices);
+
+        uint256 root = getRoot(groupId);
+        rootHistory[root] = RootHistory({
+            groupId: uint128(groupId),
+            timestamp: uint128(block.timestamp)
+        });
+
+        emit MemberRemoved(groupId, identityCommitment, groups[groupId].root);
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -93,8 +135,14 @@ contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
         uint256 nullifierHash,
         uint256 externalNullifierHash,
         uint256[8] calldata proof
-        if (rootHistory[root] != groupId && getNumberOfLeaves(groupId) > 0) revert InvalidRoot();
     ) public view {
+        RootHistory memory rootData = rootHistory[root];
+
+        if (
+            rootData.groupId != groupId &&
+            block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY &&
+            getNumberOfLeaves(groupId) > 0
+        ) revert InvalidRoot();
 
         uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
 
