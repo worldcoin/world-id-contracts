@@ -140,8 +140,7 @@ contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
 
         if (
             rootData.groupId != groupId ||
-            block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY ||
-            getNumberOfLeaves(groupId) == 0
+            block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY
         ) revert InvalidRoot();
 
         uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
