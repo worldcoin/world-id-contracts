@@ -102,9 +102,10 @@ contract SemaphoreAirdropTest is DSTest {
         hevm.warp(block.timestamp + 2 hours);
 
         (uint256 nullifierHash, uint256[8] memory proof) = genProof();
+        hevm.expectRevert(Semaphore.InvalidRoot.selector);
         airdrop.claim(address(this), root, nullifierHash, proof);
 
-        assertEq(token.balanceOf(address(this)), airdrop.airdropAmount());
+        assertEq(token.balanceOf(address(this)), 0);
     }
 
     function testCannotDoubleClaim() public {
@@ -129,6 +130,7 @@ contract SemaphoreAirdropTest is DSTest {
         assertEq(token.balanceOf(address(this)), 0);
 
         semaphore.createGroup(groupId, 20, 0);
+        semaphore.addMember(groupId, 1);
 
         uint256 root = semaphore.getRoot(groupId);
         (uint256 nullifierHash, uint256[8] memory proof) = genProof();
