@@ -100,9 +100,9 @@ async function deployAirdrop(semaphoreAddress) {
             ])
         ),
     })
-    spinner.text = `Waiting for Semaphore deploy transaction (tx: ${tx.hash})`
+    spinner.text = `Waiting for SemaphoreAirdrop deploy transaction (tx: ${tx.hash})`
     tx = await tx.wait()
-    spinner.succeed(`Deployed Semaphore contract to ${tx.contractAddress}`)
+    spinner.succeed(`Deployed SemaphoreAirdrop contract to ${tx.contractAddress}`)
 
     return tx.contractAddress
 }
