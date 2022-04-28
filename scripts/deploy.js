@@ -8,6 +8,7 @@ import { JsonRpcProvider } from '@ethersproject/providers'
 import { defaultAbiCoder as abi } from '@ethersproject/abi'
 import Semaphore from '../out/Semaphore.sol/Semaphore.json' assert { type: 'json' }
 import SemaphoreAirdrop from '../out/SemaphoreAirdrop.sol/SemaphoreAirdrop.json' assert { type: 'json' }
+import SemaphoreAirdrops from '../out/SemaphoreAirdrops.sol/SemaphoreAirdrops.json' assert { type: 'json' }
 import IncrementalBinaryTree from '../out/IncrementalBinaryTree.sol/IncrementalBinaryTree.json' assert { type: 'json' }
 dotenv.config()
 
@@ -107,12 +108,46 @@ async function deployAirdrop(semaphoreAddress) {
     return tx.contractAddress
 }
 
+async function deployAirdrops(semaphoreAddress) {
+    const spinner = ora(`Deploying SemaphoreAirdrops contract...`).start()
+
+    let tx = await wallet.sendTransaction({
+        data: hexlify(
+            concat([
+                SemaphoreAirdrops.bytecode.object,
+                abi.encode(SemaphoreAirdrops.abi[0].inputs, [semaphoreAddress]),
+            ])
+        ),
+    })
+    spinner.text = `Waiting for SemaphoreAirdrops deploy transaction (tx: ${tx.hash})`
+    tx = await tx.wait()
+    spinner.succeed(`Deployed SemaphoreAirdrops contract to ${tx.contractAddress}`)
+
+    return tx.contractAddress
+}
+
 async function main(poseidonAddress, ibtAddress, semaphoreAddress) {
     if (!poseidonAddress) poseidonAddress = await deployPoseidon()
     if (!ibtAddress) poseidonAddress = await deployIBT(poseidonAddress)
     if (!semaphoreAddress) semaphoreAddress = await deploySemaphore(ibtAddress)
 
-    await deployAirdrop(semaphoreAddress)
+    const option = await ask('Deploy SemaphoreAirdrop (1) or SemaphoreAirdrops (2)?: ').then(
+        answer => answer.trim()
+    )
+
+    switch (option) {
+        case '1':
+            await deployAirdrop(semaphoreAddress)
+            break
+        case '2':
+            await deployAirdrops(semaphoreAddress)
+            break
+
+        default:
+            console.log('Please enter either 1 or 2. Exiting...')
+            process.exit(1)
+            break
+    }
 }
 
 main(...process.argv.splice(2)).then(() => process.exit(0))
