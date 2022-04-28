@@ -204,4 +204,36 @@ contract SemaphoreAirdropsTest is DSTest {
 
         assertEq(token.balanceOf(address(this)), 0);
     }
+
+    function testCanUpdateAirdropDetails() public {
+        airdrop.createAirdrop(groupId, token, address(user), 1 ether);
+
+        (uint256 oldGroupId, ERC20 oldToken, address oldManager, address oldHolder, uint256 oldAmount) = airdrop.getAirdrop(1);
+
+        assertEq(oldGroupId, groupId);
+        assertEq(address(oldToken), address(token));
+        assertEq(oldManager, address(this));
+        assertEq(oldHolder, address(user));
+        assertEq(oldAmount, 1 ether);
+
+        SemaphoreAirdrops.Airdrop memory newDetails = SemaphoreAirdrops.Airdrop({
+            groupId: groupId + 1,
+            token: token,
+            manager: address(user),
+            holder: address(this),
+            amount: 2 ether
+        });
+
+        hevm.expectEmit(true, false, false, true);
+        emit AirdropUpdated(1, newDetails);
+        airdrop.updateDetails(1, newDetails);
+
+        (uint256 _groupId, ERC20 _token, address manager, address _holder, uint256 amount) = airdrop.getAirdrop(1);
+
+        assertEq(_groupId, newDetails.groupId);
+        assertEq(address(_token), address(newDetails.token));
+        assertEq(manager, newDetails.manager);
+        assertEq(_holder, newDetails.holder);
+        assertEq(amount, newDetails.amount);
+    }
 }
