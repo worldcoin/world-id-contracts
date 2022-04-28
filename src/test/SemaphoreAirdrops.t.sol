@@ -248,6 +248,7 @@ contract SemaphoreAirdropsTest is DSTest {
         assertEq(oldHolder, address(user));
         assertEq(oldAmount, 1 ether);
 
+        hevm.prank(address(user));
         hevm.expectRevert(SemaphoreAirdrops.Unauthorized.selector);
         airdrop.updateDetails(1, SemaphoreAirdrops.Airdrop({
             groupId: groupId + 1,
