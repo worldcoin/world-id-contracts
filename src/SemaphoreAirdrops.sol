@@ -58,7 +58,7 @@ contract SemaphoreAirdrops {
     /// @dev Wether a nullifier hash has been used already. Used to prevent double-signaling
     mapping(uint256 => bool) internal nullifierHashes;
 
-    uint256 internal airdropId;
+    uint256 internal airdropId = 1;
     mapping(uint256 => Airdrop) public getAirdrop;
 
     ///////////////////////////////////////////////////////////////////////////////
