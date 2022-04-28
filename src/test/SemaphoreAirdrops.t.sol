@@ -58,7 +58,7 @@ contract SemaphoreAirdropsTest is DSTest {
         string[] memory ffiArgs = new string[](5);
         ffiArgs[0] = 'node';
         ffiArgs[1] = '--no-warnings';
-        ffiArgs[2] = 'src/test/scripts/generate-proof.js';
+        ffiArgs[2] = 'src/test/scripts/generate-proof-multiple.js';
         ffiArgs[3] = address(airdrop).toString();
         ffiArgs[4] = address(this).toString();
 
