@@ -236,4 +236,33 @@ contract SemaphoreAirdropsTest is DSTest {
         assertEq(_holder, newDetails.holder);
         assertEq(amount, newDetails.amount);
     }
+
+    function testNonOwnerCannotUpdateAirdropDetails() public {
+        airdrop.createAirdrop(groupId, token, address(user), 1 ether);
+
+        (uint256 oldGroupId, ERC20 oldToken, address oldManager, address oldHolder, uint256 oldAmount) = airdrop.getAirdrop(1);
+
+        assertEq(oldGroupId, groupId);
+        assertEq(address(oldToken), address(token));
+        assertEq(oldManager, address(this));
+        assertEq(oldHolder, address(user));
+        assertEq(oldAmount, 1 ether);
+
+        hevm.expectRevert(SemaphoreAirdrops.Unauthorized.selector);
+        airdrop.updateDetails(1, SemaphoreAirdrops.Airdrop({
+            groupId: groupId + 1,
+            token: token,
+            manager: address(user),
+            holder: address(this),
+            amount: 2 ether
+        }));
+
+        (uint256 _groupId, ERC20 _token, address manager, address _holder, uint256 amount) = airdrop.getAirdrop(1);
+
+        assertEq(_groupId, groupId);
+        assertEq(address(_token), address(token));
+        assertEq(manager, address(this));
+        assertEq(_holder, address(user));
+        assertEq(amount, 1 ether);
+    }
 }
