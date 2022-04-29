@@ -6,7 +6,7 @@ import { ByteHasher } from './libraries/ByteHasher.sol';
 import { ISemaphore } from './interfaces/ISemaphore.sol';
 import { SafeTransferLib } from 'solmate/utils/SafeTransferLib.sol';
 
-/// @title Semaphore Airdrop Manager
+/// @title Semaphore Single Airdrop Manager
 /// @author Miguel Piedrafita
 /// @notice Template contract for airdropping tokens to Semaphore group members
 contract SemaphoreAirdrop {

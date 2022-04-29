@@ -6,22 +6,22 @@ import { DSTest } from 'ds-test/test.sol';
 import { Semaphore } from '../Semaphore.sol';
 import { TestERC20, ERC20 } from './mock/TestERC20.sol';
 import { TypeConverter } from './utils/TypeConverter.sol';
-import { SemaphoreAirdrops } from '../SemaphoreAirdrops.sol';
+import { SemaphoreAirdropManager } from '../SemaphoreAirdropManager.sol';
 
 contract User {}
 
-contract SemaphoreAirdropsTest is DSTest {
+contract SemaphoreAirdropManagerTest is DSTest {
     using TypeConverter for address;
 
     event AirdropClaimed(uint256 indexed airdropId, address receiver);
-    event AirdropCreated(uint256 airdropId, SemaphoreAirdrops.Airdrop airdrop);
-    event AirdropUpdated(uint256 indexed airdropId, SemaphoreAirdrops.Airdrop airdrop);
+    event AirdropCreated(uint256 airdropId, SemaphoreAirdropManager.Airdrop airdrop);
+    event AirdropUpdated(uint256 indexed airdropId, SemaphoreAirdropManager.Airdrop airdrop);
 
     User internal user;
     uint256 internal groupId;
     TestERC20 internal token;
     Semaphore internal semaphore;
-    SemaphoreAirdrops internal airdrop;
+    SemaphoreAirdropManager internal manager;
     Vm internal hevm = Vm(HEVM_ADDRESS);
 
     function setUp() public {
@@ -29,20 +29,20 @@ contract SemaphoreAirdropsTest is DSTest {
         user = new User();
         token = new TestERC20();
         semaphore = new Semaphore();
-        airdrop = new SemaphoreAirdrops(semaphore);
+        manager = new SemaphoreAirdropManager(semaphore);
 
         hevm.label(address(this), 'Sender');
         hevm.label(address(user), 'Holder');
         hevm.label(address(token), 'Token');
         hevm.label(address(semaphore), 'Semaphore');
-        hevm.label(address(airdrop), 'SemaphoreAirdrops');
+        hevm.label(address(manager), 'SemaphoreAirdropManager');
 
         // Issue some tokens to the user address, to be airdropped from the contract
         token.issue(address(user), 10 ether);
 
         // Approve spending from the airdrop contract
         hevm.prank(address(user));
-        token.approve(address(airdrop), type(uint256).max);
+        token.approve(address(manager), type(uint256).max);
     }
 
     function genIdentityCommitment() internal returns (uint256) {
@@ -59,7 +59,7 @@ contract SemaphoreAirdropsTest is DSTest {
         ffiArgs[0] = 'node';
         ffiArgs[1] = '--no-warnings';
         ffiArgs[2] = 'src/test/scripts/generate-proof-multiple.js';
-        ffiArgs[3] = address(airdrop).toString();
+        ffiArgs[3] = address(manager).toString();
         ffiArgs[4] = address(this).toString();
 
         bytes memory returnData = hevm.ffi(ffiArgs);
@@ -69,16 +69,16 @@ contract SemaphoreAirdropsTest is DSTest {
 
     function testCanCreateAirdrop() public {
         hevm.expectEmit(false, false, false, true);
-        emit AirdropCreated(1, SemaphoreAirdrops.Airdrop({
+        emit AirdropCreated(1, SemaphoreAirdropManager.Airdrop({
             groupId: groupId,
             token: token,
             manager: address(this),
             holder: address(user),
             amount: 1 ether
         }));
-        airdrop.createAirdrop(groupId, token, address(user), 1 ether);
+        manager.createAirdrop(groupId, token, address(user), 1 ether);
 
-        (uint256 _groupId, ERC20 _token, address manager, address _holder, uint256 amount) = airdrop.getAirdrop(1);
+        (uint256 _groupId, ERC20 _token, address manager, address _holder, uint256 amount) = manager.getAirdrop(1);
 
         assertEq(_groupId, groupId);
         assertEq(address(_token), address(token));
@@ -90,7 +90,7 @@ contract SemaphoreAirdropsTest is DSTest {
     function testCanClaim() public {
         assertEq(token.balanceOf(address(this)), 0);
 
-        airdrop.createAirdrop(groupId, token, address(user), 1 ether);
+        manager.createAirdrop(groupId, token, address(user), 1 ether);
         semaphore.createGroup(groupId, 20, 0);
         semaphore.addMember(groupId, genIdentityCommitment());
 
@@ -99,7 +99,7 @@ contract SemaphoreAirdropsTest is DSTest {
 
         hevm.expectEmit(true, false, false, true);
         emit AirdropClaimed(1, address(this));
-        airdrop.claim(1, address(this), root, nullifierHash, proof);
+        manager.claim(1, address(this), root, nullifierHash, proof);
 
         assertEq(token.balanceOf(address(this)), 1 ether);
     }
@@ -107,14 +107,14 @@ contract SemaphoreAirdropsTest is DSTest {
     function testCanClaimAfterNewMemberAdded() public {
         assertEq(token.balanceOf(address(this)), 0);
 
-        airdrop.createAirdrop(groupId, token, address(user), 1 ether);
+        manager.createAirdrop(groupId, token, address(user), 1 ether);
         semaphore.createGroup(groupId, 20, 0);
         semaphore.addMember(groupId, genIdentityCommitment());
         uint256 root = semaphore.getRoot(groupId);
         semaphore.addMember(groupId, 1);
 
         (uint256 nullifierHash, uint256[8] memory proof) = genProof();
-        airdrop.claim(1, address(this), root, nullifierHash, proof);
+        manager.claim(1, address(this), root, nullifierHash, proof);
 
         assertEq(token.balanceOf(address(this)), 1 ether);
     }
@@ -122,7 +122,7 @@ contract SemaphoreAirdropsTest is DSTest {
     function testCannotClaimHoursAfterNewMemberAdded() public {
         assertEq(token.balanceOf(address(this)), 0);
 
-        airdrop.createAirdrop(groupId, token, address(user), 1 ether);
+        manager.createAirdrop(groupId, token, address(user), 1 ether);
         semaphore.createGroup(groupId, 20, 0);
         semaphore.addMember(groupId, genIdentityCommitment());
         uint256 root = semaphore.getRoot(groupId);
@@ -132,7 +132,7 @@ contract SemaphoreAirdropsTest is DSTest {
 
         (uint256 nullifierHash, uint256[8] memory proof) = genProof();
         hevm.expectRevert(Semaphore.InvalidRoot.selector);
-        airdrop.claim(1, address(this), root, nullifierHash, proof);
+        manager.claim(1, address(this), root, nullifierHash, proof);
 
         assertEq(token.balanceOf(address(this)), 0);
     }
@@ -140,18 +140,18 @@ contract SemaphoreAirdropsTest is DSTest {
     function testCannotDoubleClaim() public {
         assertEq(token.balanceOf(address(this)), 0);
 
-        airdrop.createAirdrop(groupId, token, address(user), 1 ether);
+        manager.createAirdrop(groupId, token, address(user), 1 ether);
         semaphore.createGroup(groupId, 20, 0);
         semaphore.addMember(groupId, genIdentityCommitment());
 
         (uint256 nullifierHash, uint256[8] memory proof) = genProof();
-        airdrop.claim(1, address(this), semaphore.getRoot(groupId), nullifierHash, proof);
+        manager.claim(1, address(this), semaphore.getRoot(groupId), nullifierHash, proof);
 
         assertEq(token.balanceOf(address(this)), 1 ether);
 
         uint256 root = semaphore.getRoot(groupId);
-        hevm.expectRevert(SemaphoreAirdrops.InvalidNullifier.selector);
-        airdrop.claim(1, address(this), root, nullifierHash, proof);
+        hevm.expectRevert(SemaphoreAirdropManager.InvalidNullifier.selector);
+        manager.claim(1, address(this), root, nullifierHash, proof);
 
         assertEq(token.balanceOf(address(this)), 1 ether);
     }
@@ -159,7 +159,7 @@ contract SemaphoreAirdropsTest is DSTest {
     function testCannotClaimIfNotMember() public {
         assertEq(token.balanceOf(address(this)), 0);
 
-        airdrop.createAirdrop(groupId, token, address(user), 1 ether);
+        manager.createAirdrop(groupId, token, address(user), 1 ether);
         semaphore.createGroup(groupId, 20, 0);
         semaphore.addMember(groupId, 1);
 
@@ -167,7 +167,7 @@ contract SemaphoreAirdropsTest is DSTest {
         (uint256 nullifierHash, uint256[8] memory proof) = genProof();
 
         hevm.expectRevert(abi.encodeWithSignature('InvalidProof()'));
-        airdrop.claim(1, address(this), root, nullifierHash, proof);
+        manager.claim(1, address(this), root, nullifierHash, proof);
 
         assertEq(token.balanceOf(address(this)), 0);
     }
@@ -175,7 +175,7 @@ contract SemaphoreAirdropsTest is DSTest {
     function testCannotClaimWithInvalidSignal() public {
         assertEq(token.balanceOf(address(this)), 0);
 
-        airdrop.createAirdrop(groupId, token, address(user), 1 ether);
+        manager.createAirdrop(groupId, token, address(user), 1 ether);
         semaphore.createGroup(groupId, 20, 0);
         semaphore.addMember(groupId, genIdentityCommitment());
 
@@ -183,7 +183,7 @@ contract SemaphoreAirdropsTest is DSTest {
 
         uint256 root = semaphore.getRoot(groupId);
         hevm.expectRevert(abi.encodeWithSignature('InvalidProof()'));
-        airdrop.claim(1, address(user), root, nullifierHash, proof);
+        manager.claim(1, address(user), root, nullifierHash, proof);
 
         assertEq(token.balanceOf(address(this)), 0);
     }
@@ -191,7 +191,7 @@ contract SemaphoreAirdropsTest is DSTest {
     function testCannotClaimWithInvalidProof() public {
         assertEq(token.balanceOf(address(this)), 0);
 
-        airdrop.createAirdrop(groupId, token, address(user), 1 ether);
+        manager.createAirdrop(groupId, token, address(user), 1 ether);
         semaphore.createGroup(groupId, 20, 0);
         semaphore.addMember(groupId, genIdentityCommitment());
 
@@ -200,15 +200,15 @@ contract SemaphoreAirdropsTest is DSTest {
 
         uint256 root = semaphore.getRoot(groupId);
         hevm.expectRevert(abi.encodeWithSignature('InvalidProof()'));
-        airdrop.claim(1, address(this), root, nullifierHash, proof);
+        manager.claim(1, address(this), root, nullifierHash, proof);
 
         assertEq(token.balanceOf(address(this)), 0);
     }
 
     function testCanUpdateAirdropDetails() public {
-        airdrop.createAirdrop(groupId, token, address(user), 1 ether);
+        manager.createAirdrop(groupId, token, address(user), 1 ether);
 
-        (uint256 oldGroupId, ERC20 oldToken, address oldManager, address oldHolder, uint256 oldAmount) = airdrop.getAirdrop(1);
+        (uint256 oldGroupId, ERC20 oldToken, address oldManager, address oldHolder, uint256 oldAmount) = manager.getAirdrop(1);
 
         assertEq(oldGroupId, groupId);
         assertEq(address(oldToken), address(token));
@@ -216,7 +216,7 @@ contract SemaphoreAirdropsTest is DSTest {
         assertEq(oldHolder, address(user));
         assertEq(oldAmount, 1 ether);
 
-        SemaphoreAirdrops.Airdrop memory newDetails = SemaphoreAirdrops.Airdrop({
+        SemaphoreAirdropManager.Airdrop memory newDetails = SemaphoreAirdropManager.Airdrop({
             groupId: groupId + 1,
             token: token,
             manager: address(user),
@@ -226,9 +226,9 @@ contract SemaphoreAirdropsTest is DSTest {
 
         hevm.expectEmit(true, false, false, true);
         emit AirdropUpdated(1, newDetails);
-        airdrop.updateDetails(1, newDetails);
+        manager.updateDetails(1, newDetails);
 
-        (uint256 _groupId, ERC20 _token, address manager, address _holder, uint256 amount) = airdrop.getAirdrop(1);
+        (uint256 _groupId, ERC20 _token, address manager, address _holder, uint256 amount) = manager.getAirdrop(1);
 
         assertEq(_groupId, newDetails.groupId);
         assertEq(address(_token), address(newDetails.token));
@@ -238,9 +238,9 @@ contract SemaphoreAirdropsTest is DSTest {
     }
 
     function testNonOwnerCannotUpdateAirdropDetails() public {
-        airdrop.createAirdrop(groupId, token, address(user), 1 ether);
+        manager.createAirdrop(groupId, token, address(user), 1 ether);
 
-        (uint256 oldGroupId, ERC20 oldToken, address oldManager, address oldHolder, uint256 oldAmount) = airdrop.getAirdrop(1);
+        (uint256 oldGroupId, ERC20 oldToken, address oldManager, address oldHolder, uint256 oldAmount) = manager.getAirdrop(1);
 
         assertEq(oldGroupId, groupId);
         assertEq(address(oldToken), address(token));
@@ -249,8 +249,8 @@ contract SemaphoreAirdropsTest is DSTest {
         assertEq(oldAmount, 1 ether);
 
         hevm.prank(address(user));
-        hevm.expectRevert(SemaphoreAirdrops.Unauthorized.selector);
-        airdrop.updateDetails(1, SemaphoreAirdrops.Airdrop({
+        hevm.expectRevert(SemaphoreAirdropManager.Unauthorized.selector);
+        manager.updateDetails(1, SemaphoreAirdropManager.Airdrop({
             groupId: groupId + 1,
             token: token,
             manager: address(user),
@@ -258,7 +258,7 @@ contract SemaphoreAirdropsTest is DSTest {
             amount: 2 ether
         }));
 
-        (uint256 _groupId, ERC20 _token, address manager, address _holder, uint256 amount) = airdrop.getAirdrop(1);
+        (uint256 _groupId, ERC20 _token, address manager, address _holder, uint256 amount) = manager.getAirdrop(1);
 
         assertEq(_groupId, groupId);
         assertEq(address(_token), address(token));

@@ -8,7 +8,7 @@ import { JsonRpcProvider } from '@ethersproject/providers'
 import { defaultAbiCoder as abi } from '@ethersproject/abi'
 import Semaphore from '../out/Semaphore.sol/Semaphore.json' assert { type: 'json' }
 import SemaphoreAirdrop from '../out/SemaphoreAirdrop.sol/SemaphoreAirdrop.json' assert { type: 'json' }
-import SemaphoreAirdrops from '../out/SemaphoreAirdrops.sol/SemaphoreAirdrops.json' assert { type: 'json' }
+import SemaphoreAirdropManager from '../out/SemaphoreAirdropManager.sol/SemaphoreAirdropManager.json' assert { type: 'json' }
 import IncrementalBinaryTree from '../out/IncrementalBinaryTree.sol/IncrementalBinaryTree.json' assert { type: 'json' }
 dotenv.config()
 
@@ -109,19 +109,19 @@ async function deployAirdrop(semaphoreAddress) {
 }
 
 async function deployAirdrops(semaphoreAddress) {
-    const spinner = ora(`Deploying SemaphoreAirdrops contract...`).start()
+    const spinner = ora(`Deploying SemaphoreAirdropManager contract...`).start()
 
     let tx = await wallet.sendTransaction({
         data: hexlify(
             concat([
-                SemaphoreAirdrops.bytecode.object,
-                abi.encode(SemaphoreAirdrops.abi[0].inputs, [semaphoreAddress]),
+                SemaphoreAirdropManager.bytecode.object,
+                abi.encode(SemaphoreAirdropManager.abi[0].inputs, [semaphoreAddress]),
             ])
         ),
     })
-    spinner.text = `Waiting for SemaphoreAirdrops deploy transaction (tx: ${tx.hash})`
+    spinner.text = `Waiting for SemaphoreAirdropManager deploy transaction (tx: ${tx.hash})`
     tx = await tx.wait()
-    spinner.succeed(`Deployed SemaphoreAirdrops contract to ${tx.contractAddress}`)
+    spinner.succeed(`Deployed SemaphoreAirdropManager contract to ${tx.contractAddress}`)
 
     return tx.contractAddress
 }
@@ -131,7 +131,7 @@ async function main(poseidonAddress, ibtAddress, semaphoreAddress) {
     if (!ibtAddress) poseidonAddress = await deployIBT(poseidonAddress)
     if (!semaphoreAddress) semaphoreAddress = await deploySemaphore(ibtAddress)
 
-    const option = await ask('Deploy SemaphoreAirdrop (1) or SemaphoreAirdrops (2)?: ').then(
+    const option = await ask('Deploy SemaphoreAirdrop (1) or SemaphoreAirdropManager (2)?: ').then(
         answer => answer.trim()
     )
 

@@ -8,8 +8,8 @@ import { SafeTransferLib } from 'solmate/utils/SafeTransferLib.sol';
 
 /// @title Semaphore Multiple Airdrop Manager
 /// @author Miguel Piedrafita
-/// @notice Template contract for managing multiple airdrops using Semaphore groupds
-contract SemaphoreAirdrops {
+/// @notice Template contract for managing multiple airdrops using Semaphore groups
+contract SemaphoreAirdropManager {
     using ByteHasher for bytes;
 
     ///////////////////////////////////////////////////////////////////////////////
