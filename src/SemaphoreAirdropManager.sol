@@ -44,6 +44,12 @@ contract SemaphoreAirdropManager {
     ///                                 STRUCTS                                ///
     //////////////////////////////////////////////////////////////////////////////
 
+    /// @notice Stores the details for a specific airdrop
+    /// @param groupId The ID of the Semaphore group that will be eligible to claim this airdrop
+    /// @param token The ERC20 token that will be airdropped to eligible participants
+    /// @param manager The address that manages this airdrop, which is allowed to update the airdrop details.
+    /// @param holder The address holding the tokens that will be airdropped
+    /// @param amount The amount of tokens that each participant will receive upon claiming
     struct Airdrop {
         uint256 groupId;
         ERC20 token;
