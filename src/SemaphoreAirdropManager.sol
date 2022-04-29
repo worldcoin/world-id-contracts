@@ -22,6 +22,9 @@ contract SemaphoreAirdropManager {
     /// @notice Thrown when attempting to reuse a nullifier
     error InvalidNullifier();
 
+    /// @notice Thrown when attempting to claim a non-existant airdrop
+    error InvalidAirdrop();
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  EVENTS                                ///
     //////////////////////////////////////////////////////////////////////////////
@@ -126,6 +129,7 @@ contract SemaphoreAirdropManager {
         if (nullifierHashes[nullifierHash]) revert InvalidNullifier();
 
         Airdrop memory airdrop = getAirdrop[airdropId];
+        if (airdropId == 0 || airdropId >= nextAirdropId) revert InvalidAirdrop();
 
         semaphore.verifyProof(
             root,

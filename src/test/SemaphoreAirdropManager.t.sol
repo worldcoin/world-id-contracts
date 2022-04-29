@@ -104,6 +104,21 @@ contract SemaphoreAirdropManagerTest is DSTest {
         assertEq(token.balanceOf(address(this)), 1 ether);
     }
 
+    function testCannotClaimNonExistantAirdrop() public {
+        assertEq(token.balanceOf(address(this)), 0);
+
+        semaphore.createGroup(groupId, 20, 0);
+        semaphore.addMember(groupId, genIdentityCommitment());
+
+        (uint256 nullifierHash, uint256[8] memory proof) = genProof();
+        uint256 root = semaphore.getRoot(groupId);
+
+        hevm.expectRevert(SemaphoreAirdropManager.InvalidAirdrop.selector);
+        manager.claim(1, address(this), root, nullifierHash, proof);
+
+        assertEq(token.balanceOf(address(this)), 1 ether);
+    }
+
     function testCanClaimAfterNewMemberAdded() public {
         assertEq(token.balanceOf(address(this)), 0);
 
