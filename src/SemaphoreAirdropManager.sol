@@ -40,6 +40,10 @@ contract SemaphoreAirdropManager {
     /// @param airdrop The new details for the airdrop
     event AirdropUpdated(uint256 indexed airdropId, Airdrop airdrop);
 
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                 STRUCTS                                ///
+    //////////////////////////////////////////////////////////////////////////////
+
     struct Airdrop {
         uint256 groupId;
         ERC20 token;
