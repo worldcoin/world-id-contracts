@@ -55,7 +55,7 @@ contract SemaphoreAirdropManager {
     /// @dev The Semaphore instance that will be used for managing groups and verifying proofs
     ISemaphore internal immutable semaphore;
 
-    /// @dev Wether a nullifier hash has been used already. Used to prevent double-signaling
+    /// @dev Whether a nullifier hash has been used already. Used to prevent double-signaling
     mapping(uint256 => bool) internal nullifierHashes;
 
     uint256 internal airdropId = 1;
@@ -74,8 +74,8 @@ contract SemaphoreAirdropManager {
     }
 
     /// @notice Create a new airdrop
-    /// @param groupId The ID of the Semaphore group that will be elegible to claim this airdrop
-    /// @param token The ERC20 token that will be airdropped to elegible participants
+    /// @param groupId The ID of the Semaphore group that will be eligible to claim this airdrop
+    /// @param token The ERC20 token that will be airdropped to eligible participants
     /// @param holder The address holding the tokens that will be airdropped
     /// @param amount The amount of tokens that each participant will receive upon claiming
     function createAirdrop(

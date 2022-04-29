@@ -57,7 +57,7 @@ contract SemaphoreAirdrop {
     /// @notice The amount of tokens that participants will receive upon claiming
     uint256 public airdropAmount;
 
-    /// @dev Wether a nullifier hash has been used already. Used to prevent double-signaling
+    /// @dev Whether a nullifier hash has been used already. Used to prevent double-signaling
     mapping(uint256 => bool) internal nullifierHashes;
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -66,8 +66,8 @@ contract SemaphoreAirdrop {
 
     /// @notice Deploys a SemaphoreAirdrop instance
     /// @param _semaphore The Semaphore instance that will manage groups and verify proofs
-    /// @param _groupId The ID of the Semaphore group that will be elegible to claim this airdrop
-    /// @param _token The ERC20 token that will be airdropped to elegible participants
+    /// @param _groupId The ID of the Semaphore group that will be eligible to claim this airdrop
+    /// @param _token The ERC20 token that will be airdropped to eligible participants
     /// @param _holder The address holding the tokens that will be airdropped
     /// @param _airdropAmount The amount of tokens that each participant will receive upon claiming
     constructor(
