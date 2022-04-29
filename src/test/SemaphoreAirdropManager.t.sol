@@ -116,7 +116,7 @@ contract SemaphoreAirdropManagerTest is DSTest {
         hevm.expectRevert(SemaphoreAirdropManager.InvalidAirdrop.selector);
         manager.claim(1, address(this), root, nullifierHash, proof);
 
-        assertEq(token.balanceOf(address(this)), 1 ether);
+        assertEq(token.balanceOf(address(this)), 0);
     }
 
     function testCanClaimAfterNewMemberAdded() public {
