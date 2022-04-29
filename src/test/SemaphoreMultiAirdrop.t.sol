@@ -29,7 +29,7 @@ contract SemaphoreMultiAirdropTest is DSTest {
         user = new User();
         token = new TestERC20();
         semaphore = new Semaphore();
-        manager = new SemaphoreMultiAirdrop(semaphore);
+        airdrop = new SemaphoreMultiAirdrop(semaphore);
 
         hevm.label(address(this), 'Sender');
         hevm.label(address(user), 'Holder');
