@@ -106,7 +106,9 @@ contract SemaphoreMultiAirdrop {
         });
 
         getAirdrop[nextAirdropId] = airdrop;
-        emit AirdropCreated(nextAirdropId++, airdrop);
+        emit AirdropCreated(nextAirdropId, airdrop);
+
+        ++nextAirdropId;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
