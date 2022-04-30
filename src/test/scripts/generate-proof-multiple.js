@@ -34,7 +34,7 @@ async function main(airdropAddress, receiverAddress) {
         identity.getNullifier(),
         generateMerkleProof(20, BigInt(0), [identityCommitment], identityCommitment),
         hashBytes(pack(['address', 'uint256'], [airdropAddress, 1])),
-        pack(['address'], [receiverAddress])
+        receiverAddress
     )
 
     const { proof, publicSignals } = await Semaphore.genProof(

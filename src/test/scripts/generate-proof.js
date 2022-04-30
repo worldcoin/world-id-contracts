@@ -33,8 +33,8 @@ async function main(airdropAddress, receiverAddress) {
         identity.getTrapdoor(),
         identity.getNullifier(),
         generateMerkleProof(20, BigInt(0), [identityCommitment], identityCommitment),
-        hashBytes(pack(['address'], [airdropAddress])),
-        pack(['address'], [receiverAddress])
+        hashBytes(airdropAddress),
+        receiverAddress
     )
 
     const { proof, publicSignals } = await Semaphore.genProof(
