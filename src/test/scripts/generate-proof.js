@@ -1,4 +1,4 @@
-import { keccak256 } from '@ethersproject/solidity'
+import { keccak256, pack } from '@ethersproject/solidity'
 import { ZkIdentity, Strategy } from '@zk-kit/identity'
 import { defaultAbiCoder as abi } from '@ethersproject/abi'
 import { Semaphore, generateMerkleProof } from '@zk-kit/protocols'
@@ -33,8 +33,8 @@ async function main(airdropAddress, receiverAddress) {
         identity.getTrapdoor(),
         identity.getNullifier(),
         generateMerkleProof(20, BigInt(0), [identityCommitment], identityCommitment),
-        hashBytes(abi.encode(['address'], [airdropAddress])),
-        abi.encode(['address'], [receiverAddress])
+        hashBytes(airdropAddress),
+        receiverAddress
     )
 
     const { proof, publicSignals } = await Semaphore.genProof(

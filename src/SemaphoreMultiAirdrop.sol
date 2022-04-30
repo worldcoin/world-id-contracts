@@ -136,9 +136,9 @@ contract SemaphoreMultiAirdrop {
         semaphore.verifyProof(
             root,
             airdrop.groupId,
-            abi.encode(receiver).hashToField(),
+            abi.encodePacked(receiver).hashToField(),
             nullifierHash,
-            abi.encode(address(this), airdropId).hashToField(),
+            abi.encodePacked(address(this), airdropId).hashToField(),
             proof
         );
 
