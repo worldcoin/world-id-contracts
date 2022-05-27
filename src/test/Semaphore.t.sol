@@ -35,6 +35,14 @@ contract SemaphoreTest is DSTest {
         semaphore.transferAccess(address(this));
     }
 
+    function testCanUpdateMultipleMembers() public {
+        assertEq(semaphore.manager(), address(this));
+        semaphore.createGroup(1, 20, 0);
+
+        uint256[] memory members = new uint256[](3);
+        semaphore.addMembers(1, members);
+    }
+
     function testCanUpdateManager(address user) public {
         assertEq(semaphore.manager(), address(this));
 

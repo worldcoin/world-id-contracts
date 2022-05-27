@@ -114,7 +114,6 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
         }
     }
 
-
     /// @notice Remove a member from an existing group. Can only be called by the manager
     /// @param groupId The id of the group
     /// @param identityCommitment The identity commitment for the member that'll be removed
