@@ -91,6 +91,30 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
         emit MemberAdded(groupId, identityCommitment, root);
     }
 
+    /// @dev Adds a batch of identity commitments to single group
+    /// @param groupId: Id of the group to be updated.
+    /// @param identityCommitments: New identity commitments indexed to a specific groupId.
+    function addMembers(uint256 groupId, uint256[] memory identityCommitments) public {
+        if (msg.sender != manager) revert Unauthorized();
+        if (getDepth(groupId) == 0) revert InvalidId();
+
+        uint256 commitment;
+
+        for (uint i = 0; i < identityCommitments.length; i++) {
+            commitment = identityCommitments[i];
+            groups[groupId].insert(commitment);
+
+            uint256 root = getRoot(groupId);
+            rootHistory[root] = RootHistory({
+                groupId: uint128(groupId),
+                timestamp: uint128(block.timestamp)
+            });
+
+            emit MemberAdded(groupId, commitment, root);
+        }
+    }
+
+
     /// @notice Remove a member from an existing group. Can only be called by the manager
     /// @param groupId The id of the group
     /// @param identityCommitment The identity commitment for the member that'll be removed
