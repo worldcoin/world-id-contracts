@@ -26,6 +26,6 @@ This repository uses the [Foundry](https://github.com/gakonst/foundry) smart con
 
 Once you have everything installed, you can run `make` from the base directory to install all dependencies, build the smart contracts, and configure the Poseidon Solidity library.
 
-## License
 
-This project is open-sourced software licensed under the MIT license. See the [License file](LICENSE) for more information.
+<!-- WORLD-ID-SHARED-README-TAG:START - Do not remove or modify this section directly -->
+<!-- WORLD-ID-SHARED-README-TAG:END -->
