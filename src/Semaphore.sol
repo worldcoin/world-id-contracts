@@ -2,7 +2,7 @@
 pragma solidity ^0.8.10;
 
 import { Verifier } from 'semaphore/base/Verifier.sol';
-import { ISemaphore } from './interfaces/ISemaphore.sol';
+import { IWorldID } from './interfaces/IWorldID.sol';
 import { SemaphoreCore } from 'semaphore/base/SemaphoreCore.sol';
 import { SemaphoreGroups } from 'semaphore/base/SemaphoreGroups.sol';
 import {
@@ -13,7 +13,7 @@ import {
 /// @title Semaphore Group Manager
 /// @author Miguel Piedrafita
 /// @notice A simple implementation of a ZK-based identity group manager using Semaphore
-contract Semaphore is ISemaphore, SemaphoreCore, Verifier, SemaphoreGroups {
+contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     using IncrementalBinaryTree for IncrementalTreeData;
 
     ///////////////////////////////////////////////////////////////////////////////
