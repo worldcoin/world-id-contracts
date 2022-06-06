@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import { Verifier } from 'semaphore/base/Verifier.sol';
+import { Verifier20 } from 'semaphore/verifiers/Verifier20.sol';
 import { IWorldID } from './interfaces/IWorldID.sol';
 import { SemaphoreCore } from 'semaphore/base/SemaphoreCore.sol';
 import { SemaphoreGroups } from 'semaphore/base/SemaphoreGroups.sol';
@@ -13,7 +13,7 @@ import {
 /// @title Semaphore Group Manager
 /// @author Miguel Piedrafita
 /// @notice A simple implementation of a ZK-based identity group manager using Semaphore
-contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
+contract Semaphore is IWorldID, SemaphoreCore, Verifier20, SemaphoreGroups {
     using IncrementalBinaryTree for IncrementalTreeData;
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -60,17 +60,12 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
 
     /// @notice Create a new identity group. Can only be called by the manager
     /// @param groupId The id of the group
-    /// @param depth The depth of the tree
     /// @param zeroValue The zero value of the tree
-    function createGroup(
-        uint256 groupId,
-        uint8 depth,
-        uint256 zeroValue
-    ) public {
+    function createGroup(uint256 groupId, uint256 zeroValue) public {
         if (msg.sender != manager) revert Unauthorized();
         if (groupId == 0) revert InvalidId();
 
-        _createGroup(groupId, depth, zeroValue);
+        _createGroup(groupId, 20, zeroValue);
     }
 
     /// @notice Add a new member to an existing group. Can only be called by the manager
