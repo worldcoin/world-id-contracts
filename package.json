@@ -1,19 +1,44 @@
 {
-	"dependencies": {
-		"@ethersproject/abi": "^5.6.0",
-		"@ethersproject/bytes": "^5.6.0",
-		"@ethersproject/providers": "^5.6.1",
-		"@ethersproject/solidity": "^5.6.0",
-		"@ethersproject/wallet": "^5.6.0",
-		"@zk-kit/identity": "^1.4.1",
-		"@zk-kit/protocols": "^1.11.0",
-		"circomlibjs": "0.0.8",
-		"dotenv": "^16.0.0",
-		"ora": "^6.1.0"
-	},
-	"type": "module",
-	"devDependencies": {
-		"prettier": "^2.6.0",
-		"prettier-plugin-solidity": "^1.0.0-beta.19"
-	}
+    "name": "@worldcoin/world-id-contracts",
+    "version": "0.1.0",
+    "description": "Smart contracts powering the World ID protocol.",
+    "license": "MIT",
+    "files": [
+        "src/*.sol"
+    ],
+    "keywords": [
+        "blockchain",
+        "ethereum",
+        "smart-contracts",
+        "semaphore",
+        "identity",
+        "solidity",
+        "zero-knowledge",
+        "proof-of-uniqueness"
+    ],
+    "homepage": "https://github.com/worldcoin/world-id-contracts",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/worldcoin/world-id-contracts.git"
+    },
+    "bugs": {
+        "url": "https://github.com/worldcoin/world-id-contracts/issues"
+    },
+    "dependencies": {
+        "@ethersproject/abi": "^5.6.0",
+        "@ethersproject/bytes": "^5.6.0",
+        "@ethersproject/providers": "^5.6.1",
+        "@ethersproject/solidity": "^5.6.0",
+        "@ethersproject/wallet": "^5.6.0",
+        "@zk-kit/identity": "^1.4.1",
+        "@zk-kit/protocols": "^1.11.0",
+        "circomlibjs": "0.0.8",
+        "dotenv": "^16.0.0",
+        "ora": "^6.1.0"
+    },
+    "type": "module",
+    "devDependencies": {
+        "prettier": "^2.6.0",
+        "prettier-plugin-solidity": "^1.0.0-beta.19"
+    }
 }
