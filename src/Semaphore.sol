@@ -29,6 +29,12 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     /// @notice Thrown when attempting to validate a root that doesn't belong to the specified group.
     error InvalidRoot();
 
+    /// @notice Thrown when attempting to validate a root that has expired.
+    error ExpiredRoot();
+
+    /// @notice Thrown when attempting to validate a root that has yet to be added to the root history.
+    error NonExistentRoot();
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                 STRUCTS                                  ///
     //////////////////////////////////////////////////////////////////////////////
@@ -164,4 +170,29 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
 
         manager = newManager;
     }
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                          VIEW FUNCTIONS                                ///
+    //////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Checks if a given root value is valid and has been added to the root history
+    /// @param root  The root of a given identity group
+    /// @param groupId The id of the group
+    function checkValidRoot(uint256 root, uint256 groupId) public view returns (bool) {
+        RootHistory memory rootData = rootHistory[root];
+
+        if (
+            rootData.groupId != groupId
+        ) revert InvalidRoot();
+
+        if (
+            block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY
+        ) revert ExpiredRoot();
+
+        if (
+            rootData.groupId == 0 && rootData.timestamp == 0
+        ) revert NonExistentRoot();
+
+        return true;
+    }
+
 }
