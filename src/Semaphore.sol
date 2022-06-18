@@ -63,6 +63,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
 
     mapping(uint256 => RootHistory) internal rootHistory;
 
+    event MemberAdded(uint256 indexed groupId, uint256 identityCommitment, uint256 root, uint256 numLeaves);
     ///////////////////////////////////////////////////////////////////////////////
     ///                          GROUP MANAGEMENT LOGIC                        ///
     //////////////////////////////////////////////////////////////////////////////
@@ -99,7 +100,9 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
             timestamp: uint128(block.timestamp)
         });
 
-        emit MemberAdded(groupId, identityCommitment, root);
+        uint256 numLeaves = groups[groupId].numberOfLeaves;
+
+        emit MemberAdded(groupId, identityCommitment, root, numLeaves);
     }
 
     /// @notice Remove a member from an existing group. Can only be called by the manager
