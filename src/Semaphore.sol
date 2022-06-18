@@ -35,6 +35,9 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     /// @notice Thrown when attempting to validate a root that has yet to be added to the root history.
     error NonExistentRoot();
 
+    /// @notice Thrown when trying to insert the initial leaf into a given group. 
+    error InvalidCommitment();
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                 STRUCTS                                  ///
     //////////////////////////////////////////////////////////////////////////////
@@ -85,6 +88,8 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     function addMember(uint256 groupId, uint256 identityCommitment) public {
         if (msg.sender != manager) revert Unauthorized();
         if (getDepth(groupId) == 0) revert InvalidId();
+
+        if (identityCommitment == uint256(0)) revert InvalidCommitment();
 
         groups[groupId].insert(identityCommitment);
 
