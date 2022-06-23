@@ -35,7 +35,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     /// @notice Thrown when attempting to validate a root that has yet to be added to the root history.
     error NonExistentRoot();
 
-    /// @notice Thrown when trying to insert the initial leaf into a given group. 
+    /// @notice Thrown when trying to insert the initial leaf into a given group.
     error InvalidCommitment();
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -63,7 +63,14 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
 
     mapping(uint256 => RootHistory) internal rootHistory;
 
+    uint256 internal latestRoot;
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                EVENTS                                  ///
+    //////////////////////////////////////////////////////////////////////////////
+
     event MemberAdded(uint256 indexed groupId, uint256 identityCommitment, uint256 root, uint256 numLeaves);
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                          GROUP MANAGEMENT LOGIC                        ///
     //////////////////////////////////////////////////////////////////////////////
@@ -100,6 +107,8 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
             timestamp: uint128(block.timestamp)
         });
 
+        latestRoot = root;
+
         uint256 numLeaves = groups[groupId].numberOfLeaves;
 
         emit MemberAdded(groupId, identityCommitment, root, numLeaves);
@@ -127,6 +136,8 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
             timestamp: uint128(block.timestamp)
         });
 
+        latestRoot = root;
+
         emit MemberRemoved(groupId, identityCommitment, groups[groupId].root);
     }
 
@@ -153,8 +164,8 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
         RootHistory memory rootData = rootHistory[root];
 
         if (
-            rootData.groupId != groupId ||
-            block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY
+                rootData.groupId != groupId ||
+                (root != latestRoot && block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY)
         ) revert InvalidRoot();
 
         uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
@@ -193,7 +204,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
         ) revert InvalidRoot();
 
         if (
-            block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY
+            block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY && root != latestRoot
         ) revert ExpiredRoot();
 
         if (
