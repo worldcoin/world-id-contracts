@@ -69,7 +69,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     ///                                EVENTS                                  ///
     //////////////////////////////////////////////////////////////////////////////
 
-    event MemberAdded(uint256 indexed groupId, uint256 identityCommitment, uint256 root, uint256 numLeaves);
+    event MemberAdded(uint256 indexed groupId, uint256 identityCommitment, uint256 root, uint256 leafIndex);
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                          GROUP MANAGEMENT LOGIC                        ///
@@ -99,7 +99,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
 
         if (identityCommitment == uint256(0)) revert InvalidCommitment();
 
-        groups[groupId].insert(identityCommitment);
+        uint256 leafIndex = groups[groupId].insert(identityCommitment);
 
         uint256 root = getRoot(groupId);
         rootHistory[root] = RootHistory({
@@ -109,9 +109,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
 
         latestRoot = root;
 
-        uint256 numLeaves = groups[groupId].numberOfLeaves;
-
-        emit MemberAdded(groupId, identityCommitment, root, numLeaves);
+        emit MemberAdded(groupId, identityCommitment, root, leafIndex);
     }
 
     /// @notice Remove a member from an existing group. Can only be called by the manager

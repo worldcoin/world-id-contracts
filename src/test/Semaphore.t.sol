@@ -2,12 +2,16 @@
 pragma solidity ^0.8.10;
 
 import { Vm } from 'forge-std/Vm.sol';
+import 'forge-std/console.sol';
+
 import { DSTest } from 'ds-test/test.sol';
 import { Semaphore } from '../Semaphore.sol';
 
 contract SemaphoreTest is DSTest {
     Semaphore internal semaphore;
     Vm internal hevm = Vm(HEVM_ADDRESS);
+
+    event MemberAdded(uint256 indexed groupId, uint256 identityCommitment, uint256 root, uint256 leafIndex);
 
     function setUp() public {
         semaphore = new Semaphore();
@@ -41,5 +45,19 @@ contract SemaphoreTest is DSTest {
         semaphore.transferAccess(user);
 
         assertEq(semaphore.manager(), user);
+    }
+
+    function testAddMemberEvent() public {
+        uint256 groupId = 1;
+        uint256 identityCommitment = 123;
+        uint256 updatedRoot = uint256(15544942873243012709540684980060519338171669902328326108400346498057157852487);
+        uint256 updatedLeaves = uint256(1);
+
+        semaphore.createGroup(groupId, 20, 0);
+
+        hevm.expectEmit(true, false, false, true);
+        emit MemberAdded(groupId, identityCommitment, updatedRoot, updatedLeaves);
+
+        semaphore.addMember(groupId, identityCommitment);
     }
 }
