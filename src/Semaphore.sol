@@ -63,7 +63,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
 
     mapping(uint256 => RootHistory) internal rootHistory;
 
-    uint256 internal latestRoot;
+    mapping(uint256 => uint256) internal latestRoots;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                EVENTS                                  ///
@@ -107,7 +107,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
             timestamp: uint128(block.timestamp)
         });
 
-        latestRoot = root;
+        latestRoots[groupId] = root;
 
         emit MemberAdded(groupId, identityCommitment, root, leafIndex);
     }
@@ -134,7 +134,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
             timestamp: uint128(block.timestamp)
         });
 
-        latestRoot = root;
+        latestRoots[groupId] = root;
 
         emit MemberRemoved(groupId, identityCommitment, groups[groupId].root);
     }
@@ -163,7 +163,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
 
         if (
                 rootData.groupId != groupId ||
-                (root != latestRoot && block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY)
+                (root != latestRoots[groupId] && block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY)
         ) revert InvalidRoot();
 
         uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
@@ -202,7 +202,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
         ) revert InvalidRoot();
 
         if (
-            block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY && root != latestRoot
+            block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY && root != latestRoots[groupId]
         ) revert ExpiredRoot();
 
         if (

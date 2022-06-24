@@ -51,12 +51,12 @@ contract SemaphoreTest is DSTest {
         uint256 groupId = 1;
         uint256 identityCommitment = 123;
         uint256 updatedRoot = uint256(15544942873243012709540684980060519338171669902328326108400346498057157852487);
-        uint256 updatedLeaves = uint256(1);
+        uint256 leafIndex = uint256(0);
 
         semaphore.createGroup(groupId, 20, 0);
 
         hevm.expectEmit(true, false, false, true);
-        emit MemberAdded(groupId, identityCommitment, updatedRoot, updatedLeaves);
+        emit MemberAdded(groupId, identityCommitment, updatedRoot, leafIndex);
 
         semaphore.addMember(groupId, identityCommitment);
     }
