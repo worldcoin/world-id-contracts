@@ -63,7 +63,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
 
     mapping(uint256 => RootHistory) internal rootHistory;
 
-    mapping(uint256 => uint256) internal latestRoots;
+    mapping(uint256 => uint256) public latestRoots;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                EVENTS                                  ///
