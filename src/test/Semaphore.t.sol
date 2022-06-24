@@ -89,4 +89,23 @@ contract SemaphoreTest is Test {
 
     // TODO: test that the latest root's proof can always be verified
     // function testVerifyProofWithLatestRoot()
+
+    function testRevertForInvalidCommitment() public {
+        uint256 groupId = 1;
+        semaphore.createGroup(groupId, 20, 0);
+
+        hevm.expectRevert(Semaphore.InvalidCommitment.selector);
+        semaphore.addMember(groupId, uint256(0));
+    }
+
+    function testRevetForNonExistentRoots() public {
+        uint256 groupId = 1;
+        semaphore.createGroup(groupId, 20, 0);
+
+        hevm.expectRevert(Semaphore.InvalidRoot.selector);
+        semaphore.checkValidRoot(updatedRoot, groupId);
+
+        hevm.expectRevert(Semaphore.NonExistentRoot.selector);
+        semaphore.checkValidRoot(updatedRoot, 0);
+    }
 }
