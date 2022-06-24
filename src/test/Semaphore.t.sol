@@ -3,7 +3,6 @@ pragma solidity ^0.8.10;
 
 import { Vm } from 'forge-std/Vm.sol';
 import { Test } from 'forge-std/Test.sol';
-import 'forge-std/console.sol';
 
 import { Semaphore } from '../Semaphore.sol';
 
@@ -87,4 +86,7 @@ contract SemaphoreTest is Test {
         hevm.expectRevert(Semaphore.ExpiredRoot.selector);
         semaphore.checkValidRoot(updatedRoot, groupId);
     }
+
+    // TODO: test that the latest root's proof can always be verified
+    // function testVerifyProofWithLatestRoot()
 }
