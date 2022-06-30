@@ -13,6 +13,7 @@ contract SemaphoreTest is Test {
     uint256 identityCommitment = 123;
 
     event MemberAdded(uint256 indexed groupId, uint256 identityCommitment, uint256 root, uint256 leafIndex);
+    event GroupCreated(uint256 indexed groupId, uint8 depth, uint256 zeroValue);
 
     function setUp() public {
         semaphore = new Semaphore();
@@ -46,6 +47,16 @@ contract SemaphoreTest is Test {
         semaphore.transferAccess(user);
 
         assertEq(semaphore.manager(), user);
+    }
+
+    function testCanCreateGroup() public {
+        uint256 groupId = 0;
+        uint8 depth = 20;
+
+        hevm.expectEmit(true, false, false, true);
+        emit GroupCreated(groupId, depth, 0);
+
+        semaphore.createGroup(groupId, depth);
     }
 
     function testAddMemberEvent() public {
@@ -102,14 +113,14 @@ contract SemaphoreTest is Test {
         uint256 groupId = 1;
         semaphore.createGroup(groupId, 20);
 
-        hevm.expectRevert(Semaphore.InvalidRoot.selector);
+        hevm.expectRevert(Semaphore.NonExistentRoot.selector);
         semaphore.checkValidRoot(groupId, updatedRoot);
 
         hevm.expectRevert(Semaphore.NonExistentRoot.selector);
         semaphore.checkValidRoot(0, updatedRoot);
 
         // Test empty root for a given group
-        hevm.expectRevert(Semaphore.InvalidRoot.selector);
+        hevm.expectRevert(Semaphore.NonExistentRoot.selector);
         semaphore.checkValidRoot(groupId, 0);
     }
 }

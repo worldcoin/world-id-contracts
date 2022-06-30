@@ -87,7 +87,6 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
         uint8 depth
     ) public {
         if (msg.sender != manager) revert Unauthorized();
-        if (groupId == 0) revert InvalidId();
 
         _createGroup(groupId, depth, EMPTY_LEAF);
     }
@@ -97,7 +96,6 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     /// @param identityCommitment The identity commitment for the new member
     function addMember(uint256 groupId, uint256 identityCommitment) public {
         if (msg.sender != manager) revert Unauthorized();
-        if (getDepth(groupId) == 0) revert InvalidId();
 
         if (identityCommitment == EMPTY_LEAF) revert InvalidCommitment();
 
@@ -194,10 +192,6 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     function checkValidRoot(uint256 groupId, uint256 root) public view returns (bool) {
         if (root != latestRoots[groupId] || latestRoots[groupId] == EMPTY_LEAF) {
             RootHistory memory rootData = rootHistory[root];
-
-            if (
-                rootData.groupId != groupId
-            ) revert InvalidRoot();
 
             if (
                 block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY
