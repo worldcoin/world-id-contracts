@@ -26,7 +26,7 @@ contract SemaphoreTest is Test {
         hevm.startPrank(user);
 
         hevm.expectRevert(Semaphore.Unauthorized.selector);
-        semaphore.createGroup(1, 20, 0);
+        semaphore.createGroup(1, 20);
 
         hevm.expectRevert(Semaphore.Unauthorized.selector);
         semaphore.addMember(1, 0);
@@ -52,10 +52,10 @@ contract SemaphoreTest is Test {
         uint256 groupId = 1;
         uint256 leafIndex = uint256(0);
 
-        semaphore.createGroup(groupId, 20, 0);
+        semaphore.createGroup(groupId, 20);
 
         hevm.expectEmit(true, false, false, true);
-        emit MemberAdded(groupId, identityCommitment, updatedRoot, leafIndex);
+        emit MemberAdded(groupId, leafIndex, identityCommitment, updatedRoot);
 
         semaphore.addMember(groupId, identityCommitment);
     }
@@ -63,7 +63,7 @@ contract SemaphoreTest is Test {
     function testCanUpdateLatestRoots() public {
         uint256 groupId = 2;
 
-        semaphore.createGroup(groupId, 20, 0);
+        semaphore.createGroup(groupId, 20);
         semaphore.addMember(groupId, identityCommitment);
 
         assertEq(semaphore.latestRoots(groupId), updatedRoot);
@@ -73,7 +73,7 @@ contract SemaphoreTest is Test {
         uint256 groupId = 3;
         uint256 latestRoot = uint256(3994783695359171940075887118805985611479098781999381159167665757376630615738);
 
-        semaphore.createGroup(groupId, 20, 0);
+        semaphore.createGroup(groupId, 20);
         // the updatedRoot should expire
         semaphore.addMember(groupId, identityCommitment);
         semaphore.addMember(groupId, identityCommitment);
@@ -81,10 +81,10 @@ contract SemaphoreTest is Test {
         // approx ~1hr
         skip(3620);
 
-        assertTrue(semaphore.checkValidRoot(latestRoot, groupId));
+        assertTrue(semaphore.checkValidRoot(groupId, latestRoot));
 
         hevm.expectRevert(Semaphore.ExpiredRoot.selector);
-        semaphore.checkValidRoot(updatedRoot, groupId);
+        semaphore.checkValidRoot(groupId, updatedRoot);
     }
 
     // TODO: test that the latest root's proof can always be verified
@@ -92,7 +92,7 @@ contract SemaphoreTest is Test {
 
     function testRevertForInvalidCommitment() public {
         uint256 groupId = 1;
-        semaphore.createGroup(groupId, 20, 0);
+        semaphore.createGroup(groupId, 20);
 
         hevm.expectRevert(Semaphore.InvalidCommitment.selector);
         semaphore.addMember(groupId, uint256(0));
@@ -100,12 +100,16 @@ contract SemaphoreTest is Test {
 
     function testRevetForNonExistentRoots() public {
         uint256 groupId = 1;
-        semaphore.createGroup(groupId, 20, 0);
+        semaphore.createGroup(groupId, 20);
 
         hevm.expectRevert(Semaphore.InvalidRoot.selector);
-        semaphore.checkValidRoot(updatedRoot, groupId);
+        semaphore.checkValidRoot(groupId, updatedRoot);
 
         hevm.expectRevert(Semaphore.NonExistentRoot.selector);
-        semaphore.checkValidRoot(updatedRoot, 0);
+        semaphore.checkValidRoot(0, updatedRoot);
+
+        // Test empty root for a given group
+        hevm.expectRevert(Semaphore.InvalidRoot.selector);
+        semaphore.checkValidRoot(groupId, 0);
     }
 }
