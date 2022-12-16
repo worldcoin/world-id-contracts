@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import { Verifier } from 'semaphore/base/Verifier.sol';
-import { IWorldID } from './interfaces/IWorldID.sol';
-import { SemaphoreCore } from 'semaphore/base/SemaphoreCore.sol';
-import { SemaphoreGroups } from 'semaphore/base/SemaphoreGroups.sol';
+import {Verifier} from "semaphore/base/Verifier.sol";
+import {IWorldID} from "./interfaces/IWorldID.sol";
+import {SemaphoreCore} from "semaphore/base/SemaphoreCore.sol";
+import {SemaphoreGroups} from "semaphore/base/SemaphoreGroups.sol";
 import {
     IncrementalBinaryTree,
     IncrementalTreeData
-} from '@zk-kit/incremental-merkle-tree.sol/contracts/IncrementalBinaryTree.sol';
+} from "@zk-kit/incremental-merkle-tree.sol/contracts/IncrementalBinaryTree.sol";
 
 /// @title Semaphore Group Manager
 /// @author Miguel Piedrafita
 /// @notice A simple implementation of a ZK-based identity group manager using Semaphore
 contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
-    using IncrementalBinaryTree for IncrementalTreeData;
+    using IncrementalBinaryTree for IncrementalTreeData; // Not used.
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  ERRORS                                 ///
@@ -82,10 +82,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     /// @notice Create a new identity group. Can only be called by the manager
     /// @param groupId The id of the group
     /// @param depth The depth of the tree
-    function createGroup(
-        uint256 groupId,
-        uint8 depth
-    ) public {
+    function createGroup(uint256 groupId, uint8 depth) public {
         if (msg.sender != manager) revert Unauthorized();
 
         _createGroup(groupId, depth, EMPTY_LEAF);
@@ -102,10 +99,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
         uint256 leafIndex = groups[groupId].insert(identityCommitment);
 
         uint256 root = getRoot(groupId);
-        rootHistory[root] = RootHistory({
-            groupId: uint128(groupId),
-            timestamp: uint128(block.timestamp)
-        });
+        rootHistory[root] = RootHistory({groupId: uint128(groupId), timestamp: uint128(block.timestamp)});
 
         latestRoots[groupId] = root;
 
@@ -129,10 +123,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
         groups[groupId].remove(identityCommitment, proofSiblings, proofPathIndices);
 
         uint256 root = getRoot(groupId);
-        rootHistory[root] = RootHistory({
-            groupId: uint128(groupId),
-            timestamp: uint128(block.timestamp)
-        });
+        rootHistory[root] = RootHistory({groupId: uint128(groupId), timestamp: uint128(block.timestamp)});
 
         latestRoots[groupId] = root;
 
@@ -143,6 +134,8 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     ///                          PROOF VALIDATION LOGIC                        ///
     //////////////////////////////////////////////////////////////////////////////
 
+    /// A verifier for the semaphore protocol.
+    ///
     /// @notice Reverts if the zero-knowledge proof is invalid.
     /// @param root The of the Merkle tree
     /// @param groupId The id of the Semaphore group
@@ -153,7 +146,7 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     /// @dev  Note that a double-signaling check is not included here, and should be carried by the caller.
     function verifyProof(
         uint256 root,
-        uint256 groupId,
+        uint256 groupId, // Needs to not take this.
         uint256 signalHash,
         uint256 nullifierHash,
         uint256 externalNullifierHash,
@@ -163,17 +156,14 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
 
         if (checkValidRoot(groupId, root)) {
             verifyProof(
-                [proof[0], proof[1]],
-                [[proof[2], proof[3]], [proof[4], proof[5]]],
-                [proof[6], proof[7]],
-                publicSignals
+                [proof[0], proof[1]], [[proof[2], proof[3]], [proof[4], proof[5]]], [proof[6], proof[7]], publicSignals
             );
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                               CONFIG LOGIC                             ///
-    //////////////////////////////////////////////////////////////////////////////
+    ///                               CONFIG LOGIC                              ///
+    ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Transfer management access to a different address, or to 0x0 to renounce. Can only be called by the manager
     /// @param newManager The address of the new manager
@@ -182,10 +172,12 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
 
         manager = newManager;
     }
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                          VIEW FUNCTIONS                                ///
-    //////////////////////////////////////////////////////////////////////////////
 
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                          VIEW FUNCTIONS                                 ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    // Remove the group id here.
     /// @notice Checks if a given root value is valid and has been added to the root history
     /// @param groupId The id of the group
     /// @param root  The root of a given identity group
@@ -193,16 +185,12 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
         if (root != latestRoots[groupId] || latestRoots[groupId] == EMPTY_LEAF) {
             RootHistory memory rootData = rootHistory[root];
 
-            if (
-                block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY
-            ) revert ExpiredRoot();
+            // Does it exist and is it recent.
+            if (block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY) revert ExpiredRoot();
 
-            if (
-                rootData.groupId == 0 && rootData.timestamp == 0
-            ) revert NonExistentRoot();
+            if (rootData.groupId == 0 && rootData.timestamp == 0) revert NonExistentRoot();
         }
 
         return true;
     }
-
 }
