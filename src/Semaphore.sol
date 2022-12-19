@@ -10,34 +10,13 @@ import {
     IncrementalTreeData
 } from "@zk-kit/incremental-merkle-tree.sol/contracts/IncrementalBinaryTree.sol";
 
-/// @title Semaphore Group Manager
+/// @title WorldID Identity Manager
 /// @author Worldcoin
-/// @notice A simple implementation of a ZK-based identity group manager using Semaphore
+/// @notice An implementation of a batch-based identity manager for the WorldID protocol.
+/// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs.
 contract Semaphore is IWorldID, SemaphoreCore {
     ///////////////////////////////////////////////////////////////////////////////
-    ///                                  ERRORS                                 ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Thrown when trying to update or create groups without being the manager
-    error Unauthorized();
-
-    /// @notice Thrown when trying to create a group with id 0, since this can later cause issues with root history verification.
-    error InvalidId();
-
-    /// @notice Thrown when attempting to validate a root that doesn't belong to the specified group.
-    error InvalidRoot();
-
-    /// @notice Thrown when attempting to validate a root that has expired.
-    error ExpiredRoot();
-
-    /// @notice Thrown when attempting to validate a root that has yet to be added to the root history.
-    error NonExistentRoot();
-
-    /// @notice Thrown when trying to insert the initial leaf into a given group.
-    error InvalidCommitment();
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                              CONFIG STORAGE                             ///
+    ///                          CONFIGURATION STORAGE                          ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice The amount of time an outdated root for a group is considered as valid.
@@ -86,51 +65,6 @@ contract Semaphore is IWorldID, SemaphoreCore {
     }
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                                MODIFIERS                                ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// @notice A modifier that states that the annotated function must only be called by the owner of the contract.
-    /// @dev Will revert with `Unauthorized` if the caller is not the owner of this contract.
-    modifier mustBeCalledByOwner() virtual {
-        if (msg.sender != manager) {
-            revert Unauthorized();
-        }
-        _;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                    SEMAPHORE PROOF VALIDATION LOGIC                     ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// A verifier for the semaphore protocol.
-    ///
-    /// @notice Reverts if the zero-knowledge proof is invalid.
-    /// @param root The of the Merkle tree
-    /// @param signalHash A keccak256 hash of the Semaphore signal
-    /// @param nullifierHash The nullifier hash
-    /// @param externalNullifierHash A keccak256 hash of the external nullifier
-    /// @param proof The zero-knowledge proof
-    /// @dev  Note that a double-signaling check is not included here, and should be carried by the caller.
-    function verifyProof(
-        uint256 root,
-        uint256 signalHash,
-        uint256 nullifierHash,
-        uint256 externalNullifierHash,
-        uint256[8] calldata proof
-    ) public view {
-        uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
-
-        if (checkValidRoot(root)) {
-            semaphoreVerifier.verifyProof(
-                [proof[0], proof[1]],
-                [[proof[2], proof[3]], [proof[4], proof[5]]],
-                [proof[6], proof[7]],
-                publicSignals
-            );
-        }
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////
     ///                            CONFIGURATION LOGIC                          ///
     ///////////////////////////////////////////////////////////////////////////////
 
@@ -164,5 +98,72 @@ contract Semaphore is IWorldID, SemaphoreCore {
         }
 
         return true;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                MODIFIERS                                ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice A modifier that states that the annotated function must only be called by the owner of the contract.
+    /// @dev Will revert with `Unauthorized` if the caller is not the owner of this contract.
+    modifier mustBeCalledByOwner() virtual {
+        if (msg.sender != manager) {
+            revert Unauthorized();
+        }
+        _;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  ERRORS                                 ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Thrown when trying to update or create groups without being the manager
+    error Unauthorized();
+
+    /// @notice Thrown when trying to create a group with id 0, since this can later cause issues with root history verification.
+    error InvalidId();
+
+    /// @notice Thrown when attempting to validate a root that doesn't belong to the specified group.
+    error InvalidRoot();
+
+    /// @notice Thrown when attempting to validate a root that has expired.
+    error ExpiredRoot();
+
+    /// @notice Thrown when attempting to validate a root that has yet to be added to the root history.
+    error NonExistentRoot();
+
+    /// @notice Thrown when trying to insert the initial leaf into a given group.
+    error InvalidCommitment();
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                    SEMAPHORE PROOF VALIDATION LOGIC                     ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// A verifier for the semaphore protocol.
+    ///
+    /// @notice Reverts if the zero-knowledge proof is invalid.
+    /// @param root The of the Merkle tree
+    /// @param signalHash A keccak256 hash of the Semaphore signal
+    /// @param nullifierHash The nullifier hash
+    /// @param externalNullifierHash A keccak256 hash of the external nullifier
+    /// @param proof The zero-knowledge proof
+    /// @dev  Note that a double-signaling check is not included here, and should be carried by the caller.
+    function verifyProof(
+        uint256 root,
+        uint256 signalHash,
+        uint256 nullifierHash,
+        uint256 externalNullifierHash,
+        uint256[8] calldata proof
+    ) public view {
+        uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
+
+        if (checkValidRoot(root)) {
+            semaphoreVerifier.verifyProof(
+                [proof[0], proof[1]],
+                [[proof[2], proof[3]], [proof[4], proof[5]]],
+                [proof[6], proof[7]],
+                publicSignals
+            );
+        }
     }
 }
