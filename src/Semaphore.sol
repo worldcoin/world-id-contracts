@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {Verifier} from "semaphore/base/Verifier.sol";
+import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
 import {SemaphoreCore} from "semaphore/base/SemaphoreCore.sol";
 import {SemaphoreGroups} from "semaphore/base/SemaphoreGroups.sol";
@@ -9,6 +9,7 @@ import {
     IncrementalBinaryTree,
     IncrementalTreeData
 } from "@zk-kit/incremental-merkle-tree.sol/contracts/IncrementalBinaryTree.sol";
+import {Verifier as MerkleTreeVerifier} from "./TreeVerifier.sol";
 
 /// @title WorldID Identity Manager
 /// @author Worldcoin
@@ -40,8 +41,11 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///                          INTERNAL FUNCTIONALITY                         ///
     ///////////////////////////////////////////////////////////////////////////////
 
+    /// @notice The verifier instance needed for verifying batch identity insertions.
+    MerkleTreeVerifier private merkleTreeVerifier;
+
     /// @notice The verifier instance needed for operating within the semaphore protocol.
-    Verifier private semaphoreVerifier;
+    SemaphoreVerifier private semaphoreVerifier;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                          GROUP MANAGEMENT LOGIC                         ///
@@ -62,6 +66,34 @@ contract Semaphore is IWorldID, SemaphoreCore {
         // latestRoots[groupId] = root;
 
         // emit MemberAdded(groupId, leafIndex, identityCommitment, root);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                            INTERNAL FUNCTIONS                           ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Calculates the input hash for the merkle tree verifier.
+    /// @dev Implements the computation described below.
+    /// @param startIndex The index in the tree from which inserting started.
+    /// @param preRoot The root value of the tree before these insertions were made.
+    /// @param postRoot The root value of the tree after these insertsions were made.
+    /// @param identityCommitments The identities that were added to the tree to produce `postRoot`.
+    ///
+    /// We keccak hash all input to save verification gas. Inputs are arranged as follows:
+    /// StartIndex || PreRoot || PostRoot || IdComms[0] || IdComms[1] || ... || IdComms[batchSize-1]
+    ///     32	   ||   256   ||   256    ||    256     ||    256     || ... ||     256 bits
+    function calculateTreeVerifierInputHash(
+        uint32 startIndex,
+        uint256 preRoot,
+        uint256 postRoot,
+        uint256[] calldata identityCommitments
+    ) public pure returns (bytes32 hash) {
+        // This may not be the most efficient way to do this. For now we use it as it is _simple_.
+        // Gas golf should be performed to work out the most efficient way to calculate this.
+        bytes memory bytesToHash =
+            abi.encodePacked(startIndex, preRoot, postRoot, identityCommitments);
+
+        hash = keccak256(bytesToHash);
     }
 
     ///////////////////////////////////////////////////////////////////////////////
