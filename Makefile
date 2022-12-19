@@ -5,6 +5,8 @@ install:; forge install && npm install
 build:; forge build && node ./src/test/scripts/generate-circom-lib.js
 # Run tests, with debug information and gas reports.
 test:; FOUNDRY_PROFILE=debug forge test --gas-report
+# Format the solidity code.
+format:; forge fmt
 # Update forge dependencies.
 update:; forge update
 # Deploy contracts

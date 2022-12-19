@@ -9,10 +9,13 @@ import {Semaphore} from "../Semaphore.sol";
 contract SemaphoreTest is Test {
     Semaphore internal semaphore;
     Vm internal hevm = Vm(HEVM_ADDRESS);
-    uint256 updatedRoot = uint256(15544942873243012709540684980060519338171669902328326108400346498057157852487);
+    uint256 updatedRoot =
+        uint256(15544942873243012709540684980060519338171669902328326108400346498057157852487);
     uint256 identityCommitment = 123;
 
-    event MemberAdded(uint256 indexed groupId, uint256 identityCommitment, uint256 root, uint256 leafIndex);
+    event MemberAdded(
+        uint256 indexed groupId, uint256 identityCommitment, uint256 root, uint256 leafIndex
+    );
     event GroupCreated(uint256 indexed groupId, uint8 depth, uint256 zeroValue);
 
     function setUp() public {
@@ -22,7 +25,7 @@ contract SemaphoreTest is Test {
         hevm.label(address(semaphore), "Semaphore");
     }
 
-    // TODO [Ara] Tests are currently not testing any useful functionality so 
+    // TODO [Ara] Tests are currently not testing any useful functionality so
     // have been removed. Need to add new tests once the current functionality
     // is updated.
 }

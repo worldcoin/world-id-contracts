@@ -11,14 +11,12 @@ import {
 } from "@zk-kit/incremental-merkle-tree.sol/contracts/IncrementalBinaryTree.sol";
 
 /// @title Semaphore Group Manager
-/// @author Miguel Piedrafita
+/// @author Worldcoin
 /// @notice A simple implementation of a ZK-based identity group manager using Semaphore
-contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
-    using IncrementalBinaryTree for IncrementalTreeData; // Not used.
-
+contract Semaphore is IWorldID, SemaphoreCore {
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  ERRORS                                 ///
-    //////////////////////////////////////////////////////////////////////////////
+    ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Thrown when trying to update or create groups without being the manager
     error Unauthorized();
@@ -39,106 +37,75 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     error InvalidCommitment();
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                                 STRUCTS                                  ///
-    //////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Stores the group a root belongs to, along with a timestamp for when it was generated
-    /// @param groupId The group this root belongs to
-    /// @param timestamp The time the root was generated at
-    struct RootHistory {
-        uint128 groupId;
-        uint128 timestamp;
-    }
-
+    ///                              CONFIG STORAGE                             ///
     ///////////////////////////////////////////////////////////////////////////////
-    ///                              CONFIG STORAGE                            ///
-    //////////////////////////////////////////////////////////////////////////////
 
-    /// @notice The amount of time an outdated root for a group is considered as valid
-    /// @dev This prevents proofs getting invalidated in the mempool by another tx modifying the group
+    /// @notice The amount of time an outdated root for a group is considered as valid.
+    /// @dev This prevents proofs getting invalidated in the mempool by another tx modifying the group.
     uint256 internal constant ROOT_HISTORY_EXPIRY = 1 hours;
 
-    /// @notice Represents the initial leaf in an empty merkle tree
+    /// @notice Represents the initial leaf in an empty merkle tree.
     /// @dev Prevents the empty leaf from being inserted into the root history.
     uint256 internal constant EMPTY_LEAF = uint256(0);
 
     /// @notice The address that manages this contract, which is allowed to update and create groups.
     address public manager = msg.sender;
 
-    mapping(uint256 => RootHistory) internal rootHistory;
+    /// @notice A mapping from the value of the merkle tree root to the timestamp at which it existed.
+    mapping(uint256 => uint128) internal rootHistory;
 
-    mapping(uint256 => uint256) public latestRoots;
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                                EVENTS                                  ///
-    //////////////////////////////////////////////////////////////////////////////
-
-    event MemberAdded(uint256 indexed groupId, uint256 leafIndex, uint256 identityCommitment, uint256 newRoot);
+    /// @notice The latest root of the merkle tree.
+    uint256 public latestRoot;
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                          GROUP MANAGEMENT LOGIC                        ///
-    //////////////////////////////////////////////////////////////////////////////
+    ///                          INTERNAL FUNCTIONALITY                         ///
+    ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Create a new identity group. Can only be called by the manager
-    /// @param groupId The id of the group
-    /// @param depth The depth of the tree
-    function createGroup(uint256 groupId, uint8 depth) public {
-        if (msg.sender != manager) revert Unauthorized();
+    /// @notice The verifier instance needed for operating within the semaphore protocol.
+    Verifier private semaphoreVerifier;
 
-        _createGroup(groupId, depth, EMPTY_LEAF);
-    }
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                          GROUP MANAGEMENT LOGIC                         ///
+    ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Add a new member to an existing group. Can only be called by the manager
-    /// @param groupId The id of the group
     /// @param identityCommitment The identity commitment for the new member
-    function addMember(uint256 groupId, uint256 identityCommitment) public {
-        if (msg.sender != manager) revert Unauthorized();
+    function addMember(uint256 identityCommitment) public {
+        // if (msg.sender != manager) revert Unauthorized();
 
-        if (identityCommitment == EMPTY_LEAF) revert InvalidCommitment();
+        // if (identityCommitment == EMPTY_LEAF) revert InvalidCommitment();
 
-        uint256 leafIndex = groups[groupId].insert(identityCommitment);
+        // uint256 leafIndex = groups[groupId].insert(identityCommitment);
 
-        uint256 root = getRoot(groupId);
-        rootHistory[root] = RootHistory({groupId: uint128(groupId), timestamp: uint128(block.timestamp)});
+        // uint256 root = getRoot(groupId);
+        // rootHistory[root] = RootHistory({groupId: uint128(groupId), timestamp: uint128(block.timestamp)});
 
-        latestRoots[groupId] = root;
+        // latestRoots[groupId] = root;
 
-        emit MemberAdded(groupId, leafIndex, identityCommitment, root);
-    }
-
-    /// @notice Remove a member from an existing group. Can only be called by the manager
-    /// @param groupId The id of the group
-    /// @param identityCommitment The identity commitment for the member that'll be removed
-    /// @param proofSiblings An array of the sibling nodes of the proof of membership
-    /// @param proofPathIndices The path of the proof of membership
-    function removeMember(
-        uint256 groupId,
-        uint256 identityCommitment,
-        uint256[] calldata proofSiblings,
-        uint8[] calldata proofPathIndices
-    ) public {
-        if (msg.sender != manager) revert Unauthorized();
-        if (getDepth(groupId) == 0) revert InvalidId();
-
-        groups[groupId].remove(identityCommitment, proofSiblings, proofPathIndices);
-
-        uint256 root = getRoot(groupId);
-        rootHistory[root] = RootHistory({groupId: uint128(groupId), timestamp: uint128(block.timestamp)});
-
-        latestRoots[groupId] = root;
-
-        emit MemberRemoved(groupId, identityCommitment, groups[groupId].root);
+        // emit MemberAdded(groupId, leafIndex, identityCommitment, root);
     }
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                          PROOF VALIDATION LOGIC                        ///
-    //////////////////////////////////////////////////////////////////////////////
+    ///                                MODIFIERS                                ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice A modifier that states that the annotated function must only be called by the owner of the contract.
+    /// @dev Will revert with `Unauthorized` if the caller is not the owner of this contract.
+    modifier mustBeCalledByOwner() virtual {
+        if (msg.sender != manager) {
+            revert Unauthorized();
+        }
+        _;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                    SEMAPHORE PROOF VALIDATION LOGIC                     ///
+    ///////////////////////////////////////////////////////////////////////////////
 
     /// A verifier for the semaphore protocol.
     ///
     /// @notice Reverts if the zero-knowledge proof is invalid.
     /// @param root The of the Merkle tree
-    /// @param groupId The id of the Semaphore group
     /// @param signalHash A keccak256 hash of the Semaphore signal
     /// @param nullifierHash The nullifier hash
     /// @param externalNullifierHash A keccak256 hash of the external nullifier
@@ -146,7 +113,6 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     /// @dev  Note that a double-signaling check is not included here, and should be carried by the caller.
     function verifyProof(
         uint256 root,
-        uint256 groupId, // Needs to not take this.
         uint256 signalHash,
         uint256 nullifierHash,
         uint256 externalNullifierHash,
@@ -154,41 +120,47 @@ contract Semaphore is IWorldID, SemaphoreCore, Verifier, SemaphoreGroups {
     ) public view {
         uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
 
-        if (checkValidRoot(groupId, root)) {
-            verifyProof(
-                [proof[0], proof[1]], [[proof[2], proof[3]], [proof[4], proof[5]]], [proof[6], proof[7]], publicSignals
+        if (checkValidRoot(root)) {
+            semaphoreVerifier.verifyProof(
+                [proof[0], proof[1]],
+                [[proof[2], proof[3]], [proof[4], proof[5]]],
+                [proof[6], proof[7]],
+                publicSignals
             );
         }
     }
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                               CONFIG LOGIC                              ///
+    ///                            CONFIGURATION LOGIC                          ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Transfer management access to a different address, or to 0x0 to renounce. Can only be called by the manager
+    /// @notice Transfer management access to a different address, or to 0x0 to renounce.
+    /// @dev Can only be called by the manager of the contract. Will revert if it is not.
     /// @param newManager The address of the new manager
-    function transferAccess(address newManager) public {
-        if (msg.sender != manager) revert Unauthorized();
-
+    function transferAccess(address newManager) public mustBeCalledByOwner {
         manager = newManager;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                          VIEW FUNCTIONS                                 ///
+    ///                              VIEW FUNCTIONS                             ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    // Remove the group id here.
-    /// @notice Checks if a given root value is valid and has been added to the root history
-    /// @param groupId The id of the group
-    /// @param root  The root of a given identity group
-    function checkValidRoot(uint256 groupId, uint256 root) public view returns (bool) {
-        if (root != latestRoots[groupId] || latestRoots[groupId] == EMPTY_LEAF) {
-            RootHistory memory rootData = rootHistory[root];
+    /// @notice Checks if a given root value is valid and has been added to the root history.
+    /// @dev Reverts with `ExpiredRoot` if the root has expired, and `NonExistentRoot` if the root is not in the root history.
+    /// @param root The root of a given identity group.
+    function checkValidRoot(uint256 root) public view returns (bool) {
+        if (root != latestRoot) {
+            uint128 rootTimestamp = rootHistory[root];
 
-            // Does it exist and is it recent.
-            if (block.timestamp - rootData.timestamp > ROOT_HISTORY_EXPIRY) revert ExpiredRoot();
+            // A root is no longer valid if it has expired.
+            if (block.timestamp - rootTimestamp > ROOT_HISTORY_EXPIRY) {
+                revert ExpiredRoot();
+            }
 
-            if (rootData.groupId == 0 && rootData.timestamp == 0) revert NonExistentRoot();
+            // A root does not exist if it has no associated timestamp.
+            if (rootTimestamp == 0) {
+                revert NonExistentRoot();
+            }
         }
 
         return true;

@@ -4,7 +4,7 @@
 src = 'src'
 out = 'out'
 libs = ['lib']
-ffi = true 
+ffi = true
 
 # Here we need some specific remappings.
 remappings = ['ds-test/=lib/ds-test/src/', '@zk-kit/=lib/zk-kit/packages/', '@openzeppelin/=lib/openzeppelin-contracts/']
@@ -12,10 +12,17 @@ remappings = ['ds-test/=lib/ds-test/src/', '@zk-kit/=lib/zk-kit/packages/', '@op
 # The default is to optimise, but let's be clear about it.
 optimizer = true
 
+# Make formatting consistent.
+[profile.default.fmt]
+line_length = 100               # The maximum length of lines.
+tab_width = 4                   # Indent by two spaces for each level.
+bracket_spacing = false         # Don't put spaces between brackets and content.
+int_types = "long"              # Specify full integer type names.
+
 # === Debug Profile ===========================================================
 
 [profile.debug]
-# Make things chattier when debugging in case of test failures, giving us more 
+# Make things chattier when debugging in case of test failures, giving us more
 # information with which to debug the issue. At this level, stack traces for all
 # tests are displayed, and setup traces for failing tests are displayed.
 verbosity = 4
