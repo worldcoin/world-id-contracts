@@ -14,10 +14,10 @@ import {Verifier as MerkleTreeVerifier} from "./TreeVerifier.sol";
 /// @title WorldID Identity Manager
 /// @author Worldcoin
 /// @notice An implementation of a batch-based identity manager for the WorldID protocol.
-/// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs.
+/// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs to perform the insertions.
 contract Semaphore is IWorldID, SemaphoreCore {
     ///////////////////////////////////////////////////////////////////////////////
-    ///                          CONFIGURATION STORAGE                          ///
+    ///                                CONSTANTS                                ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice The amount of time an outdated root for a group is considered as valid.
@@ -27,6 +27,10 @@ contract Semaphore is IWorldID, SemaphoreCore {
     /// @notice Represents the initial leaf in an empty merkle tree.
     /// @dev Prevents the empty leaf from being inserted into the root history.
     uint256 internal constant EMPTY_LEAF = uint256(0);
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                          CONFIGURATION STORAGE                          ///
+    ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice The address that manages this contract, which is allowed to update and create groups.
     address public manager = msg.sender;
@@ -51,21 +55,49 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///                          GROUP MANAGEMENT LOGIC                         ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Add a new member to an existing group. Can only be called by the manager
-    /// @param identityCommitment The identity commitment for the new member
-    function addMember(uint256 identityCommitment) public {
-        // if (msg.sender != manager) revert Unauthorized();
+    /// @notice Registers identities into the WorldID system. Can only be called by the manager.
+    /// @dev Registration is performed off-chain and verified on-chain via the merkleTreeInsertionProof. This saves gas.
+    ///
+    /// @param insertionProof The proof that given the conditions, insertion into the tree results in `postRoot`.
+    /// @param preRoot The value for the root of the tree before the `identityCommitments` have been inserted.
+    /// @param startIndex The position in the tree at which the insertions were made.
+    /// @param identityCommitments The identities that were inserted into the tree to give
+    ///
+    /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid.
+    /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
+    /// @custom:reverts ProofValidationFailure If `insertionProof` cannot be verified using the provided inputs.
+    function registerIdentities(
+        MerkleTreeVerifier.Proof calldata insertionProof,
+        uint256 preRoot,
+        uint32 startIndex,
+        uint256[] calldata identityCommitments,
+        uint256 postRoot
+    ) public mustBeCalledByManager {
+        // It is only valid to call `registerIdentities` to operate on the latest root and with valid commitments.
+        if (preRoot != latestRoot) {
+            revert NotLatestRoot(preRoot, latestRoot);
+        }
+        validateIdentityCommitments(identityCommitments);
 
-        // if (identityCommitment == EMPTY_LEAF) revert InvalidCommitment();
+        // Having validated the preconditions we can now check the proof itself.
+        bytes32 inputHash =
+            calculateTreeVerifierInputHash(startIndex, preRoot, postRoot, identityCommitments);
 
-        // uint256 leafIndex = groups[groupId].insert(identityCommitment);
+        bool verifierResult = merkleTreeVerifier.verifyProof(
+            [insertionProof.A.X, insertionProof.A.Y],
+            [insertionProof.B.X, insertionProof.B.Y],
+            [insertionProof.C.X, insertionProof.C.Y],
+            [uint256(inputHash)]
+        );
 
-        // uint256 root = getRoot(groupId);
-        // rootHistory[root] = RootHistory({groupId: uint128(groupId), timestamp: uint128(block.timestamp)});
+        // If the proof did not verify, we revert with a failure.
+        if (!verifierResult) {
+            revert ProofValidationFailure();
+        }
 
-        // latestRoots[groupId] = root;
-
-        // emit MemberAdded(groupId, leafIndex, identityCommitment, root);
+        // If it did verify, we need to update the contract's state.
+        latestRoot = postRoot;
+        rootHistory[postRoot] = uint128(block.timestamp);
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -74,6 +106,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
 
     /// @notice Calculates the input hash for the merkle tree verifier.
     /// @dev Implements the computation described below.
+    ///
     /// @param startIndex The index in the tree from which inserting started.
     /// @param preRoot The root value of the tree before these insertions were made.
     /// @param postRoot The root value of the tree after these insertsions were made.
@@ -96,6 +129,19 @@ contract Semaphore is IWorldID, SemaphoreCore {
         hash = keccak256(bytesToHash);
     }
 
+    /// @notice Validates an array of identity commitments, reverting if it finds an invalid one.
+    ///
+    /// @param identityCommitments The array of identity commitments to be validated.
+    ///
+    /// @custom:reverts Reverts with `InvalidCommitment` if one or more of the provided commitments is invalid.
+    function validateIdentityCommitments(uint256[] calldata identityCommitments) private pure {
+        for (uint256 i = 0; i < identityCommitments.length; ++i) {
+            if (identityCommitments[i] == EMPTY_LEAF) {
+                revert InvalidCommitment(identityCommitments[i]);
+            }
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                            CONFIGURATION LOGIC                          ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -103,7 +149,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     /// @notice Transfer management access to a different address, or to 0x0 to renounce.
     /// @dev Can only be called by the manager of the contract. Will revert if it is not.
     /// @param newManager The address of the new manager
-    function transferAccess(address newManager) public mustBeCalledByOwner {
+    function transferAccess(address newManager) public mustBeCalledByManager {
         manager = newManager;
     }
 
@@ -138,7 +184,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
 
     /// @notice A modifier that states that the annotated function must only be called by the owner of the contract.
     /// @dev Will revert with `Unauthorized` if the caller is not the owner of this contract.
-    modifier mustBeCalledByOwner() virtual {
+    modifier mustBeCalledByManager() virtual {
         if (msg.sender != manager) {
             revert Unauthorized();
         }
@@ -149,23 +195,23 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///                                  ERRORS                                 ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Thrown when trying to update or create groups without being the manager
+    /// @notice Thrown when trying to execute a privileged action without being the contract manager.
     error Unauthorized();
 
-    /// @notice Thrown when trying to create a group with id 0, since this can later cause issues with root history verification.
-    error InvalidId();
+    /// @notice Thrown when one or more of the identity commitments to be inserted is invalid.
+    error InvalidCommitment(uint256 commitment);
 
-    /// @notice Thrown when attempting to validate a root that doesn't belong to the specified group.
-    error InvalidRoot();
+    /// @notice Thrown when the provided proof cannot be verified for the accompanying inputs.
+    error ProofValidationFailure();
+
+    /// @notice Thrown when the provided root is not the very latest root.
+    error NotLatestRoot(uint256 providedRoot, uint256 latestRoot);
 
     /// @notice Thrown when attempting to validate a root that has expired.
     error ExpiredRoot();
 
     /// @notice Thrown when attempting to validate a root that has yet to be added to the root history.
     error NonExistentRoot();
-
-    /// @notice Thrown when trying to insert the initial leaf into a given group.
-    error InvalidCommitment();
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                    SEMAPHORE PROOF VALIDATION LOGIC                     ///
