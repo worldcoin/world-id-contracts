@@ -9,7 +9,9 @@ import {
     IncrementalBinaryTree,
     IncrementalTreeData
 } from "@zk-kit/incremental-merkle-tree.sol/contracts/IncrementalBinaryTree.sol";
-import {Verifier as MerkleTreeVerifier} from "./TreeVerifier.sol";
+import {Verifier as MerkleTreeVerifier, Pairing} from "./generated/TreeVerifier.sol";
+
+import 'forge-std/console.sol';
 
 /// @title WorldID Identity Manager
 /// @author Worldcoin
@@ -28,6 +30,17 @@ contract Semaphore is IWorldID, SemaphoreCore {
     /// @dev Prevents the empty leaf from being inserted into the root history.
     uint256 internal constant EMPTY_LEAF = uint256(0);
 
+    /// @notice The `r` for the finite field `Fr` under which arithmetic is done on the proof input.
+    /// @dev Used internally to ensure that the proof input is scaled to within the field `Fr`.
+    uint256 internal constant SNARK_SCALAR_FIELD =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617;
+
+    /// @notice A constant representing a root that doesn't exist.
+    /// @dev Can be checked against when querying for root data.
+    function NO_SUCH_ROOT() public pure returns (RootInfo memory rootInfo) {
+        return RootInfo(0x0, 0x0, false);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                          CONFIGURATION STORAGE                          ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -35,45 +48,73 @@ contract Semaphore is IWorldID, SemaphoreCore {
     /// @notice The address that manages this contract, which is allowed to update and create groups.
     address public manager = msg.sender;
 
+    /// @notice The latest root of the merkle tree.
+    uint256 public latestRoot;
+
     /// @notice A mapping from the value of the merkle tree root to the timestamp at which it existed.
     mapping(uint256 => uint128) internal rootHistory;
 
-    /// @notice The latest root of the merkle tree.
-    uint256 public latestRoot;
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                               PUBLIC TYPES                              ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice The proof data for verifying the merkle tree  proof.
+    /// @dev Corresponds to `MerkleTreeVerifier.Proof` but provides an external interface.
+    ///
+    /// @param ar Corresponds to `ar` in the proof or `A` in the internal proof.
+    /// @param bs Corresponds to `bs` in the proof or `B` in the internal proof.
+    /// @param krs Corresponds to `krs` in the proof or `C` in the internal proof.
+    struct MerkleTreeProof {
+        Pairing.G1Point ar;
+        Pairing.G2Point bs;
+        Pairing.G1Point krs;
+    }
+
+    /// @notice Provides information about a merkle tree root.
+    ///
+    /// @param root The value of the merkle tree root.
+    /// @param timestamp The timestamp at which the root was inserted into the history.
+    /// @param isValid Whether or not the root is valid (has not expired).
+    struct RootInfo {
+        uint256 root;
+        uint128 timestamp;
+        bool isValid;
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                          INTERNAL FUNCTIONALITY                         ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice The verifier instance needed for verifying batch identity insertions.
-    MerkleTreeVerifier private merkleTreeVerifier;
+    MerkleTreeVerifier private merkleTreeVerifier = new MerkleTreeVerifier();
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
-    SemaphoreVerifier private semaphoreVerifier;
+    SemaphoreVerifier private semaphoreVerifier = new SemaphoreVerifier();
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                          GROUP MANAGEMENT LOGIC                         ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Registers identities into the WorldID system. Can only be called by the manager.
-    /// @dev Registration is performed off-chain and verified on-chain via the merkleTreeInsertionProof. This saves gas.
+    /// @dev Registration is performed off-chain and verified on-chain via the `insertionProof`. This saves gas.
     ///
     /// @param insertionProof The proof that given the conditions, insertion into the tree results in `postRoot`.
     /// @param preRoot The value for the root of the tree before the `identityCommitments` have been inserted.
     /// @param startIndex The position in the tree at which the insertions were made.
     /// @param identityCommitments The identities that were inserted into the tree to give
     ///
+    /// @custom:reverts Unauthorized If the message sender is not authorised to add identities.
     /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid.
     /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
     /// @custom:reverts ProofValidationFailure If `insertionProof` cannot be verified using the provided inputs.
     function registerIdentities(
-        MerkleTreeVerifier.Proof calldata insertionProof,
+        MerkleTreeProof calldata insertionProof,
         uint256 preRoot,
         uint32 startIndex,
         uint256[] calldata identityCommitments,
         uint256 postRoot
     ) public mustBeCalledByManager {
-        // It is only valid to call `registerIdentities` to operate on the latest root and with valid commitments.
+        // `registerIdentities` can only operate on the latest root and with valid commitments.
         if (preRoot != latestRoot) {
             revert NotLatestRoot(preRoot, latestRoot);
         }
@@ -83,25 +124,31 @@ contract Semaphore is IWorldID, SemaphoreCore {
         bytes32 inputHash =
             calculateTreeVerifierInputHash(startIndex, preRoot, postRoot, identityCommitments);
 
-        bool verifierResult = merkleTreeVerifier.verifyProof(
-            [insertionProof.A.X, insertionProof.A.Y],
-            [insertionProof.B.X, insertionProof.B.Y],
-            [insertionProof.C.X, insertionProof.C.Y],
-            [uint256(inputHash)]
-        );
+        try merkleTreeVerifier.verifyProof(
+            [insertionProof.ar.X, insertionProof.ar.Y],
+            [insertionProof.bs.X, insertionProof.bs.Y],
+            [insertionProof.krs.X, insertionProof.krs.Y],
+            [reduceInputElementInSnarkScalarField(uint256(inputHash))]
+        ) returns (bool verifierResult) {
+            // If the proof did not verify, we revert with a failure.
+            if (!verifierResult) {
+                revert ProofValidationFailure();
+            }
 
-        // If the proof did not verify, we revert with a failure.
-        if (!verifierResult) {
+            // If it did verify, we need to update the contract's state.
+            latestRoot = postRoot;
+            rootHistory[postRoot] = uint128(block.timestamp);
+        } catch Error(string memory errString) {
+            /// This is not the revert we're looking for.
+            revert(errString);
+        } catch {
+            /// If we reach here we know it's the internal error.
             revert ProofValidationFailure();
         }
-
-        // If it did verify, we need to update the contract's state.
-        latestRoot = postRoot;
-        rootHistory[postRoot] = uint128(block.timestamp);
     }
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                            INTERNAL FUNCTIONS                           ///
+    ///                             UTILITY FUNCTIONS                           ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Calculates the input hash for the merkle tree verifier.
@@ -129,6 +176,26 @@ contract Semaphore is IWorldID, SemaphoreCore {
         hash = keccak256(bytesToHash);
     }
 
+    /// @notice Allows a caller to query the root history for information about a given root.
+    /// @dev Should be used sparingly as the query can be quite expensive.
+    ///
+    /// @param root The root for which you are querying information.
+    /// @return rootInfo The information about `root`, or `NO_SUCH_ROOT` if `root` does not exist.
+    function queryRoot(uint256 root) public view returns (RootInfo memory rootInfo) {
+        if (root == latestRoot) {
+            return RootInfo(latestRoot, rootHistory[latestRoot], true);
+        } else {
+            uint128 rootTimestamp = rootHistory[root];
+
+            if (rootTimestamp == 0) {
+                return NO_SUCH_ROOT();
+            }
+
+            bool isValid = !(block.timestamp - rootTimestamp > ROOT_HISTORY_EXPIRY);
+            return RootInfo(root, rootTimestamp, isValid);
+        }
+    }
+
     /// @notice Validates an array of identity commitments, reverting if it finds an invalid one.
     ///
     /// @param identityCommitments The array of identity commitments to be validated.
@@ -142,20 +209,18 @@ contract Semaphore is IWorldID, SemaphoreCore {
         }
     }
 
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                            CONFIGURATION LOGIC                          ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Transfer management access to a different address, or to 0x0 to renounce.
-    /// @dev Can only be called by the manager of the contract. Will revert if it is not.
-    /// @param newManager The address of the new manager
-    function transferAccess(address newManager) public mustBeCalledByManager {
-        manager = newManager;
+    /// @notice Reduces the `input` element in the finite field `Fr`.
+    /// @dev `r` in this case is given by `SNARK_SCALAR_FIELD`.
+    ///
+    /// @param input The element to reduce in `Fr`.
+    /// @return elem The reduction of `input` to fit within `Fr`.
+    function reduceInputElementInSnarkScalarField(uint256 input)
+        private
+        pure
+        returns (uint256 elem)
+    {
+        return input % SNARK_SCALAR_FIELD;
     }
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                              VIEW FUNCTIONS                             ///
-    ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Checks if a given root value is valid and has been added to the root history.
     /// @dev Reverts with `ExpiredRoot` if the root has expired, and `NonExistentRoot` if the root is not in the root history.
@@ -179,6 +244,29 @@ contract Semaphore is IWorldID, SemaphoreCore {
     }
 
     ///////////////////////////////////////////////////////////////////////////////
+    ///                            CONFIGURATION LOGIC                          ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Transfer management access to a different address, or to 0x0 to renounce.
+    /// @dev Can only be called by the manager of the contract. Will revert if it is not.
+    /// @param newManager The address of the new manager
+    function transferAccess(address newManager) public mustBeCalledByManager {
+        manager = newManager;
+    }
+
+    /// @notice Sets the current root if it is not already current.
+    ///
+    /// @param newRoot The new root to make the current root.
+    function setCurrentRoot(uint256 newRoot) public mustBeCalledByManager {
+        latestRoot = newRoot;
+
+        uint128 timestamp = rootHistory[newRoot];
+        if (timestamp == 0) {
+            rootHistory[newRoot] = uint128(block.timestamp);
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
     ///                                MODIFIERS                                ///
     ///////////////////////////////////////////////////////////////////////////////
 
@@ -186,7 +274,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     /// @dev Will revert with `Unauthorized` if the caller is not the owner of this contract.
     modifier mustBeCalledByManager() virtual {
         if (msg.sender != manager) {
-            revert Unauthorized();
+            revert Unauthorized(msg.sender);
         }
         _;
     }
@@ -196,7 +284,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Thrown when trying to execute a privileged action without being the contract manager.
-    error Unauthorized();
+    error Unauthorized(address user);
 
     /// @notice Thrown when one or more of the identity commitments to be inserted is invalid.
     error InvalidCommitment(uint256 commitment);

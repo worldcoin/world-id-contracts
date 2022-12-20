@@ -19,26 +19,7 @@ tab_width = 4                   # Indent by two spaces for each level.
 bracket_spacing = false         # Don't put spaces between brackets and content.
 int_types = "long"              # Specify full integer type names.
 
-# === Debug Profile ===========================================================
-
-[profile.debug]
-# Make things chattier when debugging in case of test failures, giving us more
-# information with which to debug the issue. At this level, stack traces for all
-# tests are displayed, and setup traces for failing tests are displayed.
-verbosity = 4
-
-# We can specify the contracts to track gas data for by tracing.
-gas_reports = ["Semaphore"]
-
-# === Production Profile ======================================================
-
-[profile.production]
-# We make the optimiser run a lot more for production, hoping to reduce our gas
-# costs.
-optimizer_runs = 20000
-
-# For production we want to optimise via the new optimiser backend for better
-# results.
+# We want to optimise via the new optimiser backend for better results.
 via_ir = true
 
 # We can have quite some control over the optimiser when using the new IR one.
@@ -54,3 +35,37 @@ yul = true                # Enables the new ABI optimiser.
 
 [profile.default.optimizer_details.yul_details]
 stack_allocation = true   # Improves allocation of stack slots for variables.
+
+# === Debug Profile ===========================================================
+
+[profile.debug]
+# Make things chattier when debugging in case of test failures, giving us more
+# information with which to debug the issue. At this level, stack traces for all
+# tests are displayed, and setup traces for failing tests are displayed.
+verbosity = 4
+
+# === Test All Profile ========================================================
+
+[profile.bench]
+# We make the optimiser run a lot more for production, hoping to reduce our gas
+# costs.
+optimizer_runs = 20000
+
+# Make things chattier when debugging in case of test failures, giving us more
+# information with which to debug the issue. At this level, stack traces for 
+# failing tests are displayed.
+verbosity = 3
+
+# We can specify the contracts to track gas data for by tracing.
+gas_reports = ["Semaphore", "Verifier"]
+
+# We don't want this one to run in order to bias the gas results as it fails and
+# consumes all the gas.
+test_pattern_inverse = "testCannotRegisterIfProofIncorrect"
+
+# === Production Profile ======================================================
+
+[profile.production]
+# We make the optimiser run a lot more for production, hoping to reduce our gas
+# costs.
+optimizer_runs = 20000
