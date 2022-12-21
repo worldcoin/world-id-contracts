@@ -82,7 +82,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///                       PRIVATE CONFIGURATION STORAGE                      ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice A mapping from the value of the merkle tree root to the timestamp at which it 
+    /// @notice A mapping from the value of the merkle tree root to the timestamp at which it
     ///         existed.
     mapping(uint256 => uint128) internal rootHistory;
 
@@ -91,7 +91,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice The amount of time an outdated root for a group is considered as valid.
-    /// @dev This prevents proofs getting invalidated in the mempool by another tx modifying the 
+    /// @dev This prevents proofs getting invalidated in the mempool by another tx modifying the
     ///      group.
     uint256 internal constant ROOT_HISTORY_EXPIRY = 1 hours;
 
@@ -119,10 +119,10 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Registers identities into the WorldID system. Can only be called by the manager.
-    /// @dev Registration is performed off-chain and verified on-chain via the `insertionProof`. 
+    /// @dev Registration is performed off-chain and verified on-chain via the `insertionProof`.
     ///      This saves gas and time over inserting identities one at a time.
     ///
-    /// @param insertionProof The proof that given the conditions (`preRoot`, `startIndex` and 
+    /// @param insertionProof The proof that given the conditions (`preRoot`, `startIndex` and
     ///        `identityCommitments`), insertion into the tree results in `postRoot`.
     /// @param preRoot The value for the root of the tree before the `identityCommitments` have been
     ////       inserted.
@@ -132,7 +132,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     /// @custom:reverts Unauthorized If the message sender is not authorised to add identities.
     /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid.
     /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
-    /// @custom:reverts ProofValidationFailure If `insertionProof` cannot be verified using the 
+    /// @custom:reverts ProofValidationFailure If `insertionProof` cannot be verified using the
     ///                 provided inputs.
     function registerIdentities(
         MerkleTreeProof calldata insertionProof,
@@ -255,9 +255,9 @@ contract Semaphore is IWorldID, SemaphoreCore {
     }
 
     /// @notice Checks if a given root value is valid and has been added to the root history.
-    /// @dev Reverts with `ExpiredRoot` if the root has expired, and `NonExistentRoot` if the root 
+    /// @dev Reverts with `ExpiredRoot` if the root has expired, and `NonExistentRoot` if the root
     ///      is not in the root history.
-    /// 
+    ///
     /// @param root The root of a given identity group.
     function checkValidRoot(uint256 root) public view returns (bool) {
         if (root != latestRoot) {
@@ -283,7 +283,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
 
     /// @notice Transfer management access to a different address, or to 0x0 to renounce.
     /// @dev Can only be called by the manager of the contract. Will revert if it is not.
-    /// 
+    ///
     /// @param newManager The address to become the new manager of the contract.
     function transferAccess(address newManager) public mustBeCalledByManager {
         manager = newManager;
@@ -305,7 +305,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///                                MODIFIERS                                ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice A modifier that states that the annotated function must only be called by the 
+    /// @notice A modifier that states that the annotated function must only be called by the
     ///         manager of the contract.
     ///
     /// @custom:reverts Reverts with `Unauthorised` if the caller is not the manager, with the
@@ -348,9 +348,9 @@ contract Semaphore is IWorldID, SemaphoreCore {
     /// A verifier for the semaphore protocol.
     ///
     /// @notice Reverts if the zero-knowledge proof is invalid.
-    /// @dev Note that a double-signaling check is not included here, and should be carried by the 
+    /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.
-    /// 
+    ///
     /// @param root The of the Merkle tree
     /// @param signalHash A keccak256 hash of the Semaphore signal
     /// @param nullifierHash The nullifier hash

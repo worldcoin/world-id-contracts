@@ -59,10 +59,6 @@ verbosity = 3
 # We can specify the contracts to track gas data for by tracing.
 gas_reports = ["Semaphore", "Verifier"]
 
-# We don't want this one to run in order to bias the gas results as it fails and
-# consumes all the gas.
-test_pattern_inverse = "testCannotRegisterIfProofIncorrect"
-
 # === Production Profile ======================================================
 
 [profile.production]
