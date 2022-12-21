@@ -14,7 +14,8 @@ contract SemaphoreTest is Test {
     Semaphore internal semaphore;
     Vm internal hevm = Vm(HEVM_ADDRESS);
 
-    // All hardcoded test data taken from `src/test/data/TestParams.json`
+    // All hardcoded test data taken from `src/test/data/TestParams.json`. This will be dynamically
+    // generated at some point in the future.
     bytes32 inputHash = 0x7d7f77c56064e1f8577de14bba99eff85599ab0e76d0caeadd1ad61674b8a9c3;
     uint32 startIndex = uint32(0);
     uint256 preRoot = 0x18f43331537ee2af2e3d758d50f72106467c6eea50371dd528d57eb2b856d238;
@@ -26,6 +27,8 @@ contract SemaphoreTest is Test {
     ///                                   SETUP                                 ///
     ///////////////////////////////////////////////////////////////////////////////
 
+    /// @notice The tests require some static data setup that can't be easily written inline. We use
+    /// the constructor for this.
     constructor() {
         // Make the identity commitments.
         identityCommitments = new uint256[](3);
@@ -55,6 +58,7 @@ contract SemaphoreTest is Test {
         proof = Semaphore.MerkleTreeProof(ar, bs, krs);
     }
 
+    /// @notice This runs before every test.
     function setUp() public {
         semaphore = new Semaphore();
         semaphore.setCurrentRoot(preRoot);
