@@ -9,9 +9,7 @@ import {
     IncrementalBinaryTree,
     IncrementalTreeData
 } from "@zk-kit/incremental-merkle-tree.sol/contracts/IncrementalBinaryTree.sol";
-import {Verifier as MerkleTreeVerifier, Pairing} from "./generated/TreeVerifier.sol";
-
-import 'forge-std/console.sol';
+import {Verifier as MerkleTreeVerifier} from "./generated/TreeVerifier.sol";
 
 /// @title WorldID Identity Manager
 /// @author Worldcoin
@@ -19,7 +17,75 @@ import 'forge-std/console.sol';
 /// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs to perform the insertions.
 contract Semaphore is IWorldID, SemaphoreCore {
     ///////////////////////////////////////////////////////////////////////////////
-    ///                                CONSTANTS                                ///
+    ///                       PUBLIC CONFIGURATION STORAGE                      ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice The address that manages this contract, which is allowed to update and create groups.
+    address public manager = msg.sender;
+
+    /// @notice The latest root of the merkle tree.
+    uint256 public latestRoot;
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                             EXTERNAL CONSTANTS                          ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice A constant representing a root that doesn't exist.
+    /// @dev Can be checked against when querying for root data.
+    function NO_SUCH_ROOT() public pure returns (RootInfo memory rootInfo) {
+        return RootInfo(0x0, 0x0, false);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                               PUBLIC TYPES                              ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice The proof data for verifying the merkle tree proof.
+    /// @dev Corresponds to `MerkleTreeVerifier.Proof` but provides an external interface.
+    ///
+    /// @param ar Corresponds to `ar` in the proof or `A` in the internal proof.
+    /// @param bs Corresponds to `bs` in the proof or `B` in the internal proof.
+    /// @param krs Corresponds to `krs` in the proof or `C` in the internal proof.
+    struct MerkleTreeProof {
+        G1Point ar;
+        G2Point bs;
+        G1Point krs;
+    }
+
+    /// @notice A structure representing a G1 point.
+    /// @dev Used for providing the merkle tree proof data.
+    struct G1Point {
+        uint256 x;
+        uint256 y;
+    }
+
+    /// @notice A structure representing a G2 point.
+    /// @dev Used for providing the merkle tree proof data.
+    struct G2Point {
+        uint256[2] x;
+        uint256[2] y;
+    }
+
+    /// @notice Provides information about a merkle tree root.
+    ///
+    /// @param root The value of the merkle tree root.
+    /// @param timestamp The timestamp at which the root was inserted into the history.
+    /// @param isValid Whether or not the root is valid (has not expired).
+    struct RootInfo {
+        uint256 root;
+        uint128 timestamp;
+        bool isValid;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                       PRIVATE CONFIGURATION STORAGE                      ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice A mapping from the value of the merkle tree root to the timestamp at which it existed.
+    mapping(uint256 => uint128) internal rootHistory;
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                             INTERNAL CONSTANTS                          ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice The amount of time an outdated root for a group is considered as valid.
@@ -35,52 +101,6 @@ contract Semaphore is IWorldID, SemaphoreCore {
     uint256 internal constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
-    /// @notice A constant representing a root that doesn't exist.
-    /// @dev Can be checked against when querying for root data.
-    function NO_SUCH_ROOT() public pure returns (RootInfo memory rootInfo) {
-        return RootInfo(0x0, 0x0, false);
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                          CONFIGURATION STORAGE                          ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// @notice The address that manages this contract, which is allowed to update and create groups.
-    address public manager = msg.sender;
-
-    /// @notice The latest root of the merkle tree.
-    uint256 public latestRoot;
-
-    /// @notice A mapping from the value of the merkle tree root to the timestamp at which it existed.
-    mapping(uint256 => uint128) internal rootHistory;
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                               PUBLIC TYPES                              ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// @notice The proof data for verifying the merkle tree  proof.
-    /// @dev Corresponds to `MerkleTreeVerifier.Proof` but provides an external interface.
-    ///
-    /// @param ar Corresponds to `ar` in the proof or `A` in the internal proof.
-    /// @param bs Corresponds to `bs` in the proof or `B` in the internal proof.
-    /// @param krs Corresponds to `krs` in the proof or `C` in the internal proof.
-    struct MerkleTreeProof {
-        Pairing.G1Point ar;
-        Pairing.G2Point bs;
-        Pairing.G1Point krs;
-    }
-
-    /// @notice Provides information about a merkle tree root.
-    ///
-    /// @param root The value of the merkle tree root.
-    /// @param timestamp The timestamp at which the root was inserted into the history.
-    /// @param isValid Whether or not the root is valid (has not expired).
-    struct RootInfo {
-        uint256 root;
-        uint128 timestamp;
-        bool isValid;
-    }
-
     ///////////////////////////////////////////////////////////////////////////////
     ///                          INTERNAL FUNCTIONALITY                         ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -92,7 +112,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     SemaphoreVerifier private semaphoreVerifier = new SemaphoreVerifier();
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                          GROUP MANAGEMENT LOGIC                         ///
+    ///                           IDENTITY MANAGEMENT                           ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Registers identities into the WorldID system. Can only be called by the manager.
@@ -124,11 +144,16 @@ contract Semaphore is IWorldID, SemaphoreCore {
         bytes32 inputHash =
             calculateTreeVerifierInputHash(startIndex, preRoot, postRoot, identityCommitments);
 
+        // No matter what, the inputs can result in a hash that is not an element of the scalar
+        // field in which we're operating. We reduce it into the field before handing it to the
+        // verifier.
+        uint256 reducedElement = reduceInputElementInSnarkScalarField(uint256(inputHash));
+
         try merkleTreeVerifier.verifyProof(
-            [insertionProof.ar.X, insertionProof.ar.Y],
-            [insertionProof.bs.X, insertionProof.bs.Y],
-            [insertionProof.krs.X, insertionProof.krs.Y],
-            [reduceInputElementInSnarkScalarField(uint256(inputHash))]
+            [insertionProof.ar.x, insertionProof.ar.y],
+            [insertionProof.bs.x, insertionProof.bs.y],
+            [insertionProof.krs.x, insertionProof.krs.y],
+            [reducedElement]
         ) returns (bool verifierResult) {
             // If the proof did not verify, we revert with a failure.
             if (!verifierResult) {
@@ -142,7 +167,8 @@ contract Semaphore is IWorldID, SemaphoreCore {
             /// This is not the revert we're looking for.
             revert(errString);
         } catch {
-            /// If we reach here we know it's the internal error.
+            // If we reach here we know it's the internal error, as the tree verifier only uses
+            // `require`s otherwise, which will be re-thrown above.
             revert ProofValidationFailure();
         }
     }
@@ -244,7 +270,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     }
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                            CONFIGURATION LOGIC                          ///
+    ///                     DEPLOYED CONTRACT CONFIGURATION                     ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Transfer management access to a different address, or to 0x0 to renounce.

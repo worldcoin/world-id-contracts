@@ -5,11 +5,8 @@ import {Vm} from "forge-std/Vm.sol";
 import {Test} from "forge-std/Test.sol";
 
 import {Semaphore} from "../Semaphore.sol";
-import {Pairing} from "../generated/TreeVerifier.sol";
 
 contract SemaphoreTest is Test {
-    using Pairing for *;
-
     ///////////////////////////////////////////////////////////////////////////////
     ///                                TEST DATA                                ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -37,11 +34,11 @@ contract SemaphoreTest is Test {
         identityCommitments[2] = 0x3;
 
         // Create the proof term.
-        Pairing.G1Point memory ar = Pairing.G1Point(
+        Semaphore.G1Point memory ar = Semaphore.G1Point(
             0x2a45bf326884bbf13c821a5e4f30690a391156cccf80a2922fb24250111dd7eb,
             0x23a7376a159513e6d0e22d43fcdca9d0c8a5c54a73b59fce6962a41e71355894
         );
-        Pairing.G2Point memory bs = Pairing.G2Point(
+        Semaphore.G2Point memory bs = Semaphore.G2Point(
             [
                 0x21b9fc7c2d1f76c2e1a972b00f18728a57a34d7e4ae040811bf1626132ff3658,
                 0x2a7c3c660190a33ab92cd84e4b2540e49ea80bdc766eb3aeec49806a78071c75
@@ -51,7 +48,7 @@ contract SemaphoreTest is Test {
                 0x110740f0b21fb329de682dffc95a5ede11c11c6328606fe254b6ba469b15f68
             ]
         );
-        Pairing.G1Point memory krs = Pairing.G1Point(
+        Semaphore.G1Point memory krs = Semaphore.G1Point(
             0x23115ff1573808639f19724479b195b7894a45c9868242ad2a416767359c6c78,
             0x23f3fa30273c7f38e360496e7f9790450096d4a9592e1fe6e0a996cb05b8fb28
         );
@@ -86,7 +83,7 @@ contract SemaphoreTest is Test {
         Semaphore.MerkleTreeProof memory badProof = Semaphore.MerkleTreeProof(
             proof.ar,
             proof.bs,
-            Pairing.G1Point(
+            Semaphore.G1Point(
                 0x23115ff1573808639f19724479b195b7894a45c9868242ad2a416767359c6c78,
                 0x23f3fa30273c7f38e360496e7f9790450096d4a9592e1fe6e0a996cb04b8fb28
             )
