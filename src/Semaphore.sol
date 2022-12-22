@@ -41,32 +41,6 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///                               PUBLIC TYPES                              ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice The proof data for verifying the merkle tree proof.
-    /// @dev Corresponds to `MerkleTreeVerifier.Proof` but provides an external interface.
-    ///
-    /// @param ar Corresponds to `ar` in the proof or `A` in the internal proof.
-    /// @param bs Corresponds to `bs` in the proof or `B` in the internal proof.
-    /// @param krs Corresponds to `krs` in the proof or `C` in the internal proof.
-    struct MerkleTreeProof {
-        G1Point ar;
-        G2Point bs;
-        G1Point krs;
-    }
-
-    /// @notice A structure representing a G1 point.
-    /// @dev Used for providing the merkle tree proof data.
-    struct G1Point {
-        uint256 x;
-        uint256 y;
-    }
-
-    /// @notice A structure representing a G2 point.
-    /// @dev Used for providing the merkle tree proof data.
-    struct G2Point {
-        uint256[2] x;
-        uint256[2] y;
-    }
-
     /// @notice Provides information about a merkle tree root.
     ///
     /// @param root The value of the merkle tree root.
