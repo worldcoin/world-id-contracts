@@ -154,7 +154,8 @@ contract SemaphoreTest is Test {
         localSemaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
     }
 
-    /// @notice Tests that it reverts if you try and register commitments containing an invalid identity.
+    /// @notice Tests that it reverts if you try and register commitments containing an invalid
+    ///         identity.
     function testCannotRegisterInvalidIdentities() public {
         // Setup
         uint256[] memory invalidCommitments = new uint256[](identityCommitments.length);
@@ -167,6 +168,63 @@ contract SemaphoreTest is Test {
 
         // Test
         semaphore.registerIdentities(proof, preRoot, startIndex, invalidCommitments, postRoot);
+    }
+
+    /// @notice Tests that it reverts if you try and register commitments that are not in reduced
+    ///         form.
+    function testCannotRegisterUnreducedIdentities(uint128 i, uint128 j, uint128 k) public {
+        // Setup
+        uint256[] memory unreducedCommitments = new uint256[](identityCommitments.length);
+        unreducedCommitments[0] = SNARK_SCALAR_FIELD + i;
+        unreducedCommitments[1] = SNARK_SCALAR_FIELD + j;
+        unreducedCommitments[2] = SNARK_SCALAR_FIELD + k;
+        bytes memory expectedError = abi.encodeWithSelector(
+            Semaphore.UnreducedElement.selector,
+            Semaphore.UnreducedElementType.IdentityCommitment,
+            SNARK_SCALAR_FIELD + i
+        );
+        vm.expectRevert(expectedError);
+
+        // Test
+        semaphore.registerIdentities(proof, preRoot, startIndex, unreducedCommitments, postRoot);
+    }
+
+    /// @notice Tests that it reverts if you try and register with a preRoot that is not in reduced
+    ///         form.
+    function testCannotRegisterUnreducedPreRoot(uint128 i) public {
+        // Setup
+        uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
+        bytes memory expectedError = abi.encodeWithSelector(
+            Semaphore.UnreducedElement.selector, Semaphore.UnreducedElementType.PreRoot, newPreRoot
+        );
+        vm.expectRevert(expectedError);
+
+        // Test
+        semaphore.registerIdentities(proof, newPreRoot, startIndex, identityCommitments, postRoot);
+    }
+
+    /// @notice Tests that it reverts if you try and register with a postRoot that is not in
+    ///         reduced form.
+    function testCannotRegisterUnreducedPostRoot(uint128 i) public {
+        // Setup
+        uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
+        bytes memory expectedError = abi.encodeWithSelector(
+            Semaphore.UnreducedElement.selector,
+            Semaphore.UnreducedElementType.PostRoot,
+            newPostRoot
+        );
+        vm.expectRevert(expectedError);
+
+        // Test
+        semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, newPostRoot);
+    }
+
+    /// @notice Tests that it reverts if you violate type safety and try to register with a
+    ///         startIndex that is not in reduced form.
+    function testCannotRegisterUnreducedStartIndex(uint256 i) public {
+        // Setup
+        vm.assume(i >= SNARK_SCALAR_FIELD);
+        address semaphoreAddress = address(semaphore);
     }
 
     // ===== Input Hash Calculation ===============================================
