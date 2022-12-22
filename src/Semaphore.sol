@@ -89,6 +89,18 @@ contract Semaphore is IWorldID, SemaphoreCore {
     SemaphoreVerifier private semaphoreVerifier = new SemaphoreVerifier();
 
     ///////////////////////////////////////////////////////////////////////////////
+    ///                              CONSTRUCTION                               ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Creates a new instance of the contract.
+    ///
+    /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
+    ///        this should be set to the root of an empty tree.
+    constructor(uint256 initialRoot) {
+        latestRoot = initialRoot;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
     ///                           IDENTITY MANAGEMENT                           ///
     ///////////////////////////////////////////////////////////////////////////////
 
@@ -265,18 +277,6 @@ contract Semaphore is IWorldID, SemaphoreCore {
     /// @param newManager The address to become the new manager of the contract.
     function transferAccess(address newManager) public onlyManager {
         manager = newManager;
-    }
-
-    /// @notice Sets the current root if it is not already current.
-    ///
-    /// @param newRoot The new root to make the current root.
-    function setCurrentRoot(uint256 newRoot) public onlyManager {
-        latestRoot = newRoot;
-
-        uint128 timestamp = rootHistory[newRoot];
-        if (timestamp == 0) {
-            rootHistory[newRoot] = uint128(block.timestamp);
-        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////

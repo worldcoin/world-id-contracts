@@ -51,8 +51,7 @@ contract SemaphoreTest is Test {
 
     /// @notice This runs before every test.
     function setUp() public {
-        semaphore = new Semaphore();
-        semaphore.setCurrentRoot(preRoot);
+        semaphore = new Semaphore(preRoot);
 
         hevm.label(address(this), "Sender");
         hevm.label(address(semaphore), "Semaphore");
@@ -141,13 +140,13 @@ contract SemaphoreTest is Test {
     /// @notice Tests that it reverts if you try and register identities based on an outdated root.
     function testCannotRegisterIdentitiesWithOutdatedRoot() public {
         // Setup
-        semaphore.setCurrentRoot(uint256(0));
+        Semaphore localSemaphore = new Semaphore(uint256(0));
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.NotLatestRoot.selector, preRoot, uint256(0));
         vm.expectRevert(expectedError);
 
         // Test
-        semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
+        localSemaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
     }
 
     /// @notice Tests that it reverts if you try and register commitments containing an invalid identity.
@@ -183,7 +182,7 @@ contract SemaphoreTest is Test {
         // Test
         Semaphore.RootInfo memory rootInfo = semaphore.queryRoot(preRoot);
         assertEq(rootInfo.root, preRoot);
-        assertEq(rootInfo.timestamp, block.timestamp);
+        assertEq(rootInfo.timestamp, 0);
         assert(rootInfo.isValid);
     }
 
@@ -195,28 +194,6 @@ contract SemaphoreTest is Test {
         assertEq(rootInfo.root, noSuchRoot.root);
         assertEq(rootInfo.timestamp, noSuchRoot.timestamp);
         assertEq(rootInfo.isValid, noSuchRoot.isValid);
-    }
-
-    // ===== Setting the Current Root =============================================
-
-    /// @notice Tests whether it is possible to set the current root.
-    function testSetCurrentRoot() public {
-        // Test
-        semaphore.setCurrentRoot(preRoot);
-        assertEq(semaphore.latestRoot(), preRoot);
-    }
-
-    /// @notice Tests whether it reverts if you try and set the root as a non-manager.
-    function testCannotSetCurrentRootAsNonManager() public {
-        // Setup
-        address prankAddress = address(0xBADD00D);
-        bytes memory expectedError =
-            abi.encodeWithSelector(Semaphore.Unauthorized.selector, prankAddress);
-        vm.expectRevert(expectedError);
-        vm.prank(prankAddress);
-
-        // Test
-        semaphore.setCurrentRoot(preRoot);
     }
 
     // ===== Access Control =======================================================
