@@ -1,8 +1,67 @@
-[default]
+# === Default Profile =========================================================
+
+[profile.default]
 src = 'src'
 out = 'out'
 libs = ['lib']
 ffi = true
+
+# Here we need some specific remappings.
 remappings = ['ds-test/=lib/ds-test/src/', '@zk-kit/=lib/zk-kit/packages/', '@openzeppelin/=lib/openzeppelin-contracts/']
 
-# See more config options https://github.com/gakonst/foundry/tree/master/config
+# The default is to optimise, but let's be clear about it.
+optimizer = true
+
+# Make formatting consistent.
+[profile.default.fmt]
+line_length = 100               # The maximum length of lines.
+tab_width = 4                   # Indent by two spaces for each level.
+bracket_spacing = false         # Don't put spaces between brackets and content.
+int_types = "long"              # Specify full integer type names.
+
+# We want to optimise via the new optimiser backend for better results.
+via_ir = true
+
+# We can have quite some control over the optimiser when using the new IR one.
+[profile.default.optimizer_details]
+peephole = true           # Enables the peephole optimisation.
+inliner = true            # Enables the inliner.
+jumpdest_remover = true   # Enables the elimination of jump destinations.
+order_literals = true     # Allows re-ordering literals in commutative ops.
+deduplicate = true        # Removes duplicate code blocks.
+cse = true                # Enables common subexpression elimination. Useful.
+constant_optimizer = true # Computes some constant expressions at compile time.
+yul = true                # Enables the new ABI optimiser.
+
+[profile.default.optimizer_details.yul_details]
+stack_allocation = true   # Improves allocation of stack slots for variables.
+
+# === Debug Profile ===========================================================
+
+[profile.debug]
+# Make things chattier when debugging in case of test failures, giving us more
+# information with which to debug the issue. At this level, stack traces for all
+# tests are displayed, and setup traces for failing tests are displayed.
+verbosity = 4
+
+# === Test All Profile ========================================================
+
+[profile.bench]
+# We make the optimiser run a lot more for production, hoping to reduce our gas
+# costs.
+optimizer_runs = 20000
+
+# Make things chattier when debugging in case of test failures, giving us more
+# information with which to debug the issue. At this level, stack traces for 
+# failing tests are displayed.
+verbosity = 3
+
+# We can specify the contracts to track gas data for by tracing.
+gas_reports = ["Semaphore", "Verifier"]
+
+# === Production Profile ======================================================
+
+[profile.production]
+# We make the optimiser run a lot more for production, hoping to reduce our gas
+# costs.
+optimizer_runs = 20000

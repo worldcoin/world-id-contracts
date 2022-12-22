@@ -28,8 +28,13 @@ jobs:
             - name: Install Dependencies
               run: make install
 
-            - name: Build contracts
+            - name: Build Contracts
               run: make build
 
-            - name: Run tests
+            - name: Run Tests
               run: make test
+
+            - name: Run Benchmarks
+              run: |
+                make bench
+                make snapshot
