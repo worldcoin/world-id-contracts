@@ -90,7 +90,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///                             INTERNAL CONSTANTS                          ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice The amount of time an outdated root for a group is considered as valid.
+    /// @notice The amount of time an outdated root is considered as valid.
     /// @dev This prevents proofs getting invalidated in the mempool by another tx modifying the
     ///      group.
     uint256 internal constant ROOT_HISTORY_EXPIRY = 1 hours;
@@ -123,7 +123,10 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///      This saves gas and time over inserting identities one at a time.
     ///
     /// @param insertionProof The proof that given the conditions (`preRoot`, `startIndex` and
-    ///        `identityCommitments`), insertion into the tree results in `postRoot`.
+    ///        `identityCommitments`), insertion into the tree results in `postRoot`. Elements 0 and
+    ///        1 are the `x` and `y` coordinates for `ar` respectively. Elements 2 and 3 are the `x`
+    ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
+    ///        and 7 are the `x` and `y` coordinates for `krs`.
     /// @param preRoot The value for the root of the tree before the `identityCommitments` have been
     ////       inserted.
     /// @param startIndex The position in the tree at which the insertions were made.
@@ -135,12 +138,13 @@ contract Semaphore is IWorldID, SemaphoreCore {
     /// @custom:reverts ProofValidationFailure If `insertionProof` cannot be verified using the
     ///                 provided inputs.
     function registerIdentities(
-        MerkleTreeProof calldata insertionProof,
+        // MerkleTreeProof calldata insertionProof,
+        uint256[8] calldata insertionProof,
         uint256 preRoot,
         uint32 startIndex,
         uint256[] calldata identityCommitments,
         uint256 postRoot
-    ) public mustBeCalledByManager {
+    ) public onlyManager {
         // `registerIdentities` can only operate on the latest root and with valid commitments.
         if (preRoot != latestRoot) {
             revert NotLatestRoot(preRoot, latestRoot);
@@ -157,9 +161,9 @@ contract Semaphore is IWorldID, SemaphoreCore {
         uint256 reducedElement = reduceInputElementInSnarkScalarField(uint256(inputHash));
 
         try merkleTreeVerifier.verifyProof(
-            [insertionProof.ar.x, insertionProof.ar.y],
-            [insertionProof.bs.x, insertionProof.bs.y],
-            [insertionProof.krs.x, insertionProof.krs.y],
+            [insertionProof[0], insertionProof[1]],
+            [[insertionProof[2], insertionProof[3]], [insertionProof[4], insertionProof[5]]],
+            [insertionProof[6], insertionProof[7]],
             [reducedElement]
         ) returns (bool verifierResult) {
             // If the proof did not verify, we revert with a failure.
@@ -285,14 +289,14 @@ contract Semaphore is IWorldID, SemaphoreCore {
     /// @dev Can only be called by the manager of the contract. Will revert if it is not.
     ///
     /// @param newManager The address to become the new manager of the contract.
-    function transferAccess(address newManager) public mustBeCalledByManager {
+    function transferAccess(address newManager) public onlyManager {
         manager = newManager;
     }
 
     /// @notice Sets the current root if it is not already current.
     ///
     /// @param newRoot The new root to make the current root.
-    function setCurrentRoot(uint256 newRoot) public mustBeCalledByManager {
+    function setCurrentRoot(uint256 newRoot) public onlyManager {
         latestRoot = newRoot;
 
         uint128 timestamp = rootHistory[newRoot];
@@ -310,7 +314,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///
     /// @custom:reverts Reverts with `Unauthorised` if the caller is not the manager, with the
     ///                 message sender as the payload of the error.
-    modifier mustBeCalledByManager() virtual {
+    modifier onlyManager() virtual {
         if (msg.sender != manager) {
             revert Unauthorized(msg.sender);
         }

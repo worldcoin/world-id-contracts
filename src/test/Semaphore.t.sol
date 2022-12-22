@@ -21,7 +21,7 @@ contract SemaphoreTest is Test {
     uint256 preRoot = 0x18f43331537ee2af2e3d758d50f72106467c6eea50371dd528d57eb2b856d238;
     uint256 postRoot = 0x5c1e52b41a571293b30efacd2afdb7173b20cfaf1f646c4ac9f96eb75848270;
     uint256[] identityCommitments;
-    Semaphore.MerkleTreeProof proof;
+    uint256[8] proof;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                   SETUP                                 ///
@@ -37,25 +37,16 @@ contract SemaphoreTest is Test {
         identityCommitments[2] = 0x3;
 
         // Create the proof term.
-        Semaphore.G1Point memory ar = Semaphore.G1Point(
+        proof = [
             0x2a45bf326884bbf13c821a5e4f30690a391156cccf80a2922fb24250111dd7eb,
-            0x23a7376a159513e6d0e22d43fcdca9d0c8a5c54a73b59fce6962a41e71355894
-        );
-        Semaphore.G2Point memory bs = Semaphore.G2Point(
-            [
-                0x21b9fc7c2d1f76c2e1a972b00f18728a57a34d7e4ae040811bf1626132ff3658,
-                0x2a7c3c660190a33ab92cd84e4b2540e49ea80bdc766eb3aeec49806a78071c75
-            ],
-            [
-                0x2fc9a52a7f4bcc29faab28a8d8ec126b4fe604a7b41e7d2b3efe92422951d706,
-                0x110740f0b21fb329de682dffc95a5ede11c11c6328606fe254b6ba469b15f68
-            ]
-        );
-        Semaphore.G1Point memory krs = Semaphore.G1Point(
+            0x23a7376a159513e6d0e22d43fcdca9d0c8a5c54a73b59fce6962a41e71355894,
+            0x21b9fc7c2d1f76c2e1a972b00f18728a57a34d7e4ae040811bf1626132ff3658,
+            0x2a7c3c660190a33ab92cd84e4b2540e49ea80bdc766eb3aeec49806a78071c75,
+            0x2fc9a52a7f4bcc29faab28a8d8ec126b4fe604a7b41e7d2b3efe92422951d706,
+            0x110740f0b21fb329de682dffc95a5ede11c11c6328606fe254b6ba469b15f68,
             0x23115ff1573808639f19724479b195b7894a45c9868242ad2a416767359c6c78,
             0x23f3fa30273c7f38e360496e7f9790450096d4a9592e1fe6e0a996cb05b8fb28
-        );
-        proof = Semaphore.MerkleTreeProof(ar, bs, krs);
+        ];
     }
 
     /// @notice This runs before every test.
@@ -84,14 +75,16 @@ contract SemaphoreTest is Test {
     /// @notice Checks that it reverts if the provided proof is incorrect for the public inputs.
     function testCannotRegisterIfProofIncorrect() public {
         // Setup
-        Semaphore.MerkleTreeProof memory badProof = Semaphore.MerkleTreeProof(
-            proof.ar,
-            proof.bs,
-            Semaphore.G1Point(
-                0x23115ff1573808639f19724479b195b7894a45c9868242ad2a416767359c6c78,
-                0x23f3fa30273c7f38e360496e7f9790450096d4a9592e1fe6e0a996cb04b8fb28
-            )
-        );
+        uint256[8] memory badProof = [
+            0x2a45bf326884bbf13c821a5e4f30690a391156cccf80a2922fb24250111dd7eb,
+            0x23a7376a159513e6d0e22d43fcdca9d0c8a5c54a73b59fce6962a41e71355894,
+            0x21b9fc7c2d1f76c2e1a972b00f18728a57a34d7e4ae040811bf1626132ff3658,
+            0x2a7c3c660190a33ab92cd84e4b2540e49ea80bdc766eb3aeec49806a78071c75,
+            0x2fc9a52a7f4bcc29faab28a8d8ec126b4fe604a7b41e7d2b3efe92422951d706,
+            0x110740f0b21fb329de682dffc95a5ede11c11c6328606fe254b6ba469b15f68,
+            0x23115ff1573808639f19724479b195b7894a45c9868242ad2a416767359c6c78,
+            0x23f3fa30273c7f38e360496e7f9790450096d4a9592e1fe6e0a996cb04b8fb28
+        ];
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
@@ -135,7 +128,7 @@ contract SemaphoreTest is Test {
     /// @notice Tests that it reverts if you try and register identities as a non manager.
     function testCannotRegisterIdentitiesAsNonManager() public {
         // Setup
-        address prankAddress = address(0);
+        address prankAddress = address(0xBADD00D);
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.Unauthorized.selector, prankAddress);
         vm.expectRevert(expectedError);
@@ -216,7 +209,7 @@ contract SemaphoreTest is Test {
     /// @notice Tests whether it reverts if you try and set the root as a non-manager.
     function testCannotSetCurrentRootAsNonManager() public {
         // Setup
-        address prankAddress = address(0);
+        address prankAddress = address(0xBADD00D);
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.Unauthorized.selector, prankAddress);
         vm.expectRevert(expectedError);
@@ -231,7 +224,7 @@ contract SemaphoreTest is Test {
     /// @notice Tests whether it is possible to transfer the contract's management.
     function testTransferAccess() public {
         // Setup
-        address targetAddress = address(0);
+        address targetAddress = address(0x900DD00D);
 
         // Test
         semaphore.transferAccess(targetAddress);
@@ -241,8 +234,8 @@ contract SemaphoreTest is Test {
     /// @notice Tests whether it reverts if you try and transfer access as a non-manager.
     function testCannotTransferAccessAsNonManager() public {
         // Setup
-        address targetAddress = address(0);
-        address prankAddress = address(1);
+        address targetAddress = address(0x900DD00D);
+        address prankAddress = address(0xBADD00D);
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.Unauthorized.selector, prankAddress);
         vm.expectRevert(expectedError);
