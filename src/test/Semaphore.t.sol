@@ -68,7 +68,8 @@ contract SemaphoreTest is Test {
         // Test
         semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
         assertEq(semaphore.latestRoot(), postRoot);
-        assertEq(semaphore.queryRoot(postRoot).timestamp, block.timestamp);
+        assertEq(semaphore.queryRoot(postRoot).supersededTimestamp, 0);
+        assert(semaphore.queryRoot(postRoot).isValid);
     }
 
     /// @notice Checks that it reverts if the provided proof is incorrect for the public inputs.
@@ -177,13 +178,42 @@ contract SemaphoreTest is Test {
 
     // ===== Root Querying ========================================================
 
-    /// @notice Tests whether it is possible to query accurate information about an existing root.
-    function testQueryRoot() public {
+    /// @notice Tests whether it is possible to query accurate information about the current root.
+    function testQueryCurrentRoot() public {
         // Test
         Semaphore.RootInfo memory rootInfo = semaphore.queryRoot(preRoot);
         assertEq(rootInfo.root, preRoot);
-        assertEq(rootInfo.timestamp, 0);
+        assertEq(rootInfo.supersededTimestamp, 0); // Never been inserted into the history.
         assert(rootInfo.isValid);
+    }
+
+    /// @notice Tests whether it is possible to query accurate information about a root.
+    function testQueryOlderRoot() public {
+        // Setup
+        semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
+
+        // Test
+        Semaphore.RootInfo memory rootInfo = semaphore.queryRoot(preRoot);
+        assertEq(rootInfo.root, preRoot);
+        assertEq(rootInfo.supersededTimestamp, block.timestamp);
+        assert(rootInfo.isValid);
+    }
+
+    /// @notice Tests whether it is possible to query accurate information about an expired root.
+    function testQueryExpiredRoot() public {
+        // Setup
+        uint256 originalTimestamp = block.timestamp;
+        semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
+        vm.warp(originalTimestamp + 2 hours); // Force preRoot to expire
+
+        // Test
+        Semaphore.RootInfo memory rootInfo = semaphore.queryRoot(preRoot);
+        assertEq(rootInfo.root, preRoot);
+        assertEq(rootInfo.supersededTimestamp, originalTimestamp);
+        assert(!rootInfo.isValid);
+
+        // Cleanup
+        vm.warp(originalTimestamp);
     }
 
     /// @notice Checks that we get `NO_SUCH_ROOT` back when we query an invalid root.
@@ -192,7 +222,7 @@ contract SemaphoreTest is Test {
         Semaphore.RootInfo memory rootInfo = semaphore.queryRoot(uint256(0xBADCAFE));
         Semaphore.RootInfo memory noSuchRoot = semaphore.NO_SUCH_ROOT();
         assertEq(rootInfo.root, noSuchRoot.root);
-        assertEq(rootInfo.timestamp, noSuchRoot.timestamp);
+        assertEq(rootInfo.supersededTimestamp, noSuchRoot.supersededTimestamp);
         assertEq(rootInfo.isValid, noSuchRoot.isValid);
     }
 

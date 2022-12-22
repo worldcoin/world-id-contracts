@@ -44,11 +44,13 @@ contract Semaphore is IWorldID, SemaphoreCore {
     /// @notice Provides information about a merkle tree root.
     ///
     /// @param root The value of the merkle tree root.
-    /// @param timestamp The timestamp at which the root was inserted into the history.
+    /// @param supersededTimestamp The timestamp at which the root was inserted into the history.
+    ///        This may be 0 if the requested root is the current root (which has not yet been
+    ///        inserted into the history).
     /// @param isValid Whether or not the root is valid (has not expired).
     struct RootInfo {
         uint256 root;
-        uint128 timestamp;
+        uint128 supersededTimestamp;
         bool isValid;
     }
 
@@ -56,8 +58,8 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///                       PRIVATE CONFIGURATION STORAGE                      ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice A mapping from the value of the merkle tree root to the timestamp at which it
-    ///         existed.
+    /// @notice A mapping from the value of the merkle tree root to the timestamp at which the root
+    ///         was superseded by a newer one.
     mapping(uint256 => uint128) internal rootHistory;
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -157,9 +159,13 @@ contract Semaphore is IWorldID, SemaphoreCore {
                 revert ProofValidationFailure();
             }
 
-            // If it did verify, we need to update the contract's state.
+            // If it did verify, we need to update the contract's state. We set the currently valid
+            // root to the root after the insertions.
             latestRoot = postRoot;
-            rootHistory[postRoot] = uint128(block.timestamp);
+
+            // We also need to add the previous root to the history, and set the timestamp at which
+            // it was expired.
+            rootHistory[preRoot] = uint128(block.timestamp);
         } catch Error(string memory errString) {
             /// This is not the revert we're looking for.
             revert(errString);
@@ -202,9 +208,11 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///
     /// @param root The root for which you are querying information.
     /// @return rootInfo The information about `root`, or `NO_SUCH_ROOT` if `root` does not exist.
+    ///                  Note that if the queried root is the current, the timestamp will be invalid
+    ///                  as the root has not been superseded.
     function queryRoot(uint256 root) public view returns (RootInfo memory rootInfo) {
         if (root == latestRoot) {
-            return RootInfo(latestRoot, rootHistory[latestRoot], true);
+            return RootInfo(latestRoot, 0, true);
         } else {
             uint128 rootTimestamp = rootHistory[root];
 
