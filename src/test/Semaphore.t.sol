@@ -6,6 +6,8 @@ import {Test} from "forge-std/Test.sol";
 
 import {Semaphore} from "../Semaphore.sol";
 
+import "forge-std/console.sol";
+
 contract SemaphoreTest is Test {
     ///////////////////////////////////////////////////////////////////////////////
     ///                                TEST DATA                                ///
@@ -107,7 +109,7 @@ contract SemaphoreTest is Test {
         semaphore.registerIdentities(proof, preRoot, startIndex + 1, identityCommitments, postRoot);
     }
 
-    /// @notice Checks that it reverts if you pass it an incorrect set of identities.
+    /// @notice Checks that it reverts if the provided set of identities is incorrect.
     function testCannotRegisterIfIdentitiesIncorrect() public {
         // Setup
         identityCommitments[2] = 0x7F;
@@ -119,7 +121,7 @@ contract SemaphoreTest is Test {
         semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
     }
 
-    /// @notice Checks that it reverts if you pass it the wrong post root.
+    /// @notice Checks that it reverts if the provided post root is incorrect.
     function testCannotRegisterIfPostRootIncorrect() public {
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
@@ -129,7 +131,7 @@ contract SemaphoreTest is Test {
         semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot + 1);
     }
 
-    /// @notice Tests that it reverts if you try and register identities as a non manager.
+    /// @notice Tests that it reverts if an attempt is made to register identities as a non-manager.
     function testCannotRegisterIdentitiesAsNonManager() public {
         // Setup
         address prankAddress = address(0xBADD00D);
@@ -142,7 +144,8 @@ contract SemaphoreTest is Test {
         semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
     }
 
-    /// @notice Tests that it reverts if you try and register identities based on an outdated root.
+    /// @notice Tests that it reverts if an attempt is made to register identities with an outdated
+    ///         root.
     function testCannotRegisterIdentitiesWithOutdatedRoot() public {
         // Setup
         Semaphore localSemaphore = new Semaphore(uint256(0));
@@ -154,8 +157,8 @@ contract SemaphoreTest is Test {
         localSemaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
     }
 
-    /// @notice Tests that it reverts if you try and register commitments containing an invalid
-    ///         identity.
+    /// @notice Tests that it reverts if an attempt is made to register identity commitments
+    ///         containing an invalid identity.
     function testCannotRegisterInvalidIdentities() public {
         // Setup
         uint256[] memory invalidCommitments = new uint256[](identityCommitments.length);
@@ -170,8 +173,8 @@ contract SemaphoreTest is Test {
         semaphore.registerIdentities(proof, preRoot, startIndex, invalidCommitments, postRoot);
     }
 
-    /// @notice Tests that it reverts if you try and register commitments that are not in reduced
-    ///         form.
+    /// @notice Tests that it reverts if an attempt is made to register identity commitments that
+    ///         are not in reduced form.
     function testCannotRegisterUnreducedIdentities(uint128 i, uint128 j, uint128 k) public {
         // Setup
         uint256[] memory unreducedCommitments = new uint256[](identityCommitments.length);
@@ -189,8 +192,8 @@ contract SemaphoreTest is Test {
         semaphore.registerIdentities(proof, preRoot, startIndex, unreducedCommitments, postRoot);
     }
 
-    /// @notice Tests that it reverts if you try and register with a preRoot that is not in reduced
-    ///         form.
+    /// @notice Tests that it reverts if an attempt is made to register new identities with a pre
+    ///         root that is not in reduced form.
     function testCannotRegisterUnreducedPreRoot(uint128 i) public {
         // Setup
         uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
@@ -203,8 +206,8 @@ contract SemaphoreTest is Test {
         semaphore.registerIdentities(proof, newPreRoot, startIndex, identityCommitments, postRoot);
     }
 
-    /// @notice Tests that it reverts if you try and register with a postRoot that is not in
-    ///         reduced form.
+    /// @notice Tests that it reverts if an attempt is made to register identities with a postRoot
+    ///         that is not in reduced form.
     function testCannotRegisterUnreducedPostRoot(uint128 i) public {
         // Setup
         uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
@@ -219,17 +222,28 @@ contract SemaphoreTest is Test {
         semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, newPostRoot);
     }
 
-    /// @notice Tests that it reverts if you violate type safety and try to register with a
-    ///         startIndex that is not in reduced form.
+    /// @notice Tests that it reverts if an attempt is made to violate type safety and register with
+    ///         a startIndex that is not type safe within the bounds of `type(uint32).max` and hence
+    ///         within `SNARK_SCALAR_FIELD`.
     function testCannotRegisterUnreducedStartIndex(uint256 i) public {
         // Setup
-        vm.assume(i >= SNARK_SCALAR_FIELD);
+        vm.assume(i > type(uint32).max);
         address semaphoreAddress = address(semaphore);
+        bytes4 functionSelector = Semaphore.registerIdentities.selector;
+        bytes memory callData = abi.encodeWithSelector(
+            functionSelector, proof, preRoot, i, identityCommitments, postRoot
+        );
+
+        // Test
+        (bool success, bytes memory returnValue) = semaphoreAddress.call(callData);
+        delete returnValue; // No data here as the type safety violation reverts in the EVM.
+        assert(!success);
     }
 
     // ===== Input Hash Calculation ===============================================
 
-    /// @notice Tests whether we can correctly calculate the `inputHash` to the merkle tree verifier.
+    /// @notice Tests whether it is possible to correctly calculate the `inputHash` to the merkle
+    ///         tree verifier.
     function testCalculateInputHashFromParameters() public {
         // Test
         bytes32 calculatedHash = semaphore.calculateTreeVerifierInputHash(
@@ -249,7 +263,7 @@ contract SemaphoreTest is Test {
         assert(rootInfo.isValid);
     }
 
-    /// @notice Tests whether it is possible to query accurate information about a root.
+    /// @notice Tests whether it is possible to query accurate information about an arbitrary root.
     function testQueryOlderRoot() public {
         // Setup
         semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
@@ -278,7 +292,8 @@ contract SemaphoreTest is Test {
         vm.warp(originalTimestamp);
     }
 
-    /// @notice Checks that we get `NO_SUCH_ROOT` back when we query an invalid root.
+    /// @notice Checks that we get `NO_SUCH_ROOT` back when we query for information about an
+    ///         invalid root.
     function testQueryInvalidRoot() public {
         // Test
         Semaphore.RootInfo memory rootInfo = semaphore.queryRoot(uint256(0xBADCAFE));
@@ -290,7 +305,8 @@ contract SemaphoreTest is Test {
 
     // ===== Access Control =======================================================
 
-    /// @notice Tests whether it is possible to transfer the contract's management.
+    /// @notice Tests whether it is possible to transfer the contract's management to another
+    ///         address.
     function testTransferAccess() public {
         // Setup
         address targetAddress = address(0x900DD00D);
@@ -300,7 +316,8 @@ contract SemaphoreTest is Test {
         assertEq(semaphore.manager(), targetAddress);
     }
 
-    /// @notice Tests whether it reverts if you try and transfer access as a non-manager.
+    /// @notice Tests whether the call reverts if an attempt is made to transfer access as a
+    ///         non-manager.
     function testCannotTransferAccessAsNonManager() public {
         // Setup
         address targetAddress = address(0x900DD00D);
@@ -316,7 +333,7 @@ contract SemaphoreTest is Test {
 
     // ===== Reduced Form Checking ================================================
 
-    /// @notice Tests whether we can successfully check whether values are in reduced form.
+    /// @notice Tests whether it is possible to check whether values are in reduced form.
     function testCanCheckValueIsInReducedForm(uint256 value) public {
         // Setup
         vm.assume(value < SNARK_SCALAR_FIELD);
@@ -325,7 +342,7 @@ contract SemaphoreTest is Test {
         assert(semaphore.isInputInReducedForm(value));
     }
 
-    /// @notice Tests whether we successfully detect un-reduced values.
+    /// @notice Tests whether it is possible to detect un-reduced values.
     function testCanCheckValueIsNotInReducedForm(uint256 value) public {
         // Setup
         vm.assume(value >= SNARK_SCALAR_FIELD);

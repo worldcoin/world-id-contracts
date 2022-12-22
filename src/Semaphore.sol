@@ -56,7 +56,6 @@ contract Semaphore is IWorldID, SemaphoreCore {
 
     /// @notice Represents the kind of element that has not been provided in reduced form.
     enum UnreducedElementType {
-        StartIndex,
         PreRoot,
         IdentityCommitment,
         PostRoot
@@ -124,15 +123,22 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
     ///        and 7 are the `x` and `y` coordinates for `krs`.
     /// @param preRoot The value for the root of the tree before the `identityCommitments` have been
-    ////       inserted.
+    ////       inserted. Must be an element of the field `Kr`.
     /// @param startIndex The position in the tree at which the insertions were made.
-    /// @param identityCommitments The identities that were inserted into the tree to give
+    /// @param identityCommitments The identities that were inserted into the tree starting at
+    ///        `startIndex` and `preRoot` to give `postRoot`. All of the commitments must be
+    ///        elements of the field `Kr`.
+    /// @param postRoot The root obtained after inserting all of `identityCommitments` into the tree
+    ///        described by `preRoot`. Must be an element of the field `Kr`.
     ///
     /// @custom:reverts Unauthorized If the message sender is not authorised to add identities.
     /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid.
     /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
     /// @custom:reverts ProofValidationFailure If `insertionProof` cannot be verified using the
     ///                 provided inputs.
+    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
+    ///                 `identityCommitments` is not an element of the field `Kr`. It describes the
+    ///                 type and value of the unreduced element.
     function registerIdentities(
         // MerkleTreeProof calldata insertionProof,
         uint256[8] calldata insertionProof,
@@ -149,11 +155,10 @@ contract Semaphore is IWorldID, SemaphoreCore {
             revert NotLatestRoot(preRoot, latestRoot);
         }
 
-        // While the types ensure that this is in reduced form, we have no guarantees that our
-        // caller has obeyed the type system.
-        if (!isInputInReducedForm(uint256(startIndex))) {
-            revert UnreducedElement(UnreducedElementType.StartIndex, uint256(startIndex));
-        }
+        // As the `startIndex` is restricted to a uint32, where
+        // `type(uint32).max <<< SNARK_SCALAR_FIELD`, we are safe not to check this. As verified in
+        // the tests, a revert happens if you pass a value larger than `type(uint32).max` when
+        // calling outside the type-checker.
 
         // We need the post root to be in reduced form.
         if (!isInputInReducedForm(postRoot)) {
