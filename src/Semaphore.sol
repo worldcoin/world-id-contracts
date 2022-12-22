@@ -239,6 +239,15 @@ contract Semaphore is IWorldID, SemaphoreCore {
         }
     }
 
+    /// @notice Checks if the provided `input` is in reduced form within the field `Fr`.
+    /// @dev `r` in this case is given by `SNARK_SCALAR_FIELD`.
+    /// 
+    /// @param input The input to check for being in reduced form.
+    /// @return isInReducedForm Returns `true` if `input` is in reduced form, `false` otherwise.
+    function isInputInReducedForm(uint256 input) public pure returns (bool isInReducedForm) {
+        return input < SNARK_SCALAR_FIELD;
+    }
+
     /// @notice Reduces the `input` element into the finite field `Fr` using the modulo operation.
     /// @dev `r` in this case is given by `SNARK_SCALAR_FIELD`.
     ///

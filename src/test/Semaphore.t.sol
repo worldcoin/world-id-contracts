@@ -23,6 +23,10 @@ contract SemaphoreTest is Test {
     uint256[] identityCommitments;
     uint256[8] proof;
 
+    // Needed for testing things.
+    uint256 constant SNARK_SCALAR_FIELD =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617;
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                   SETUP                                 ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -250,5 +254,25 @@ contract SemaphoreTest is Test {
 
         // Test
         semaphore.transferAccess(targetAddress);
+    }
+
+    // ===== Reduced Form Checking ================================================
+
+    /// @notice Tests whether we can successfully check whether values are in reduced form.
+    function testCanCheckValueIsInReducedForm(uint256 value) public {
+        // Setup
+        vm.assume(value < SNARK_SCALAR_FIELD);
+
+        // Test
+        assert(semaphore.isInputInReducedForm(value));
+    }
+
+    /// @notice Tests whether we successfully detect un-reduced values.
+    function testCanCheckValueIsNotInReducedForm(uint256 value) public {
+        // Setup
+        vm.assume(value >= SNARK_SCALAR_FIELD);
+
+        // Test
+        assert(!semaphore.isInputInReducedForm(value));
     }
 }
