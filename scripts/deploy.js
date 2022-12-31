@@ -1,64 +1,224 @@
 import ora from 'ora'
 import dotenv from 'dotenv'
 import readline from 'readline'
-import { Wallet } from '@ethersproject/wallet'
-import { poseidon_gencontract } from 'circomlibjs'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import fs from 'fs'
 import Semaphore from '../out/Semaphore.sol/Semaphore.json' assert { type: 'json' }
-import IncrementalBinaryTree from '../out/IncrementalBinaryTree.sol/IncrementalBinaryTree.json' assert { type: 'json' }
-dotenv.config()
+import { spawnSync } from 'child_process';
+import solc from 'solc';
+import { ContractFactory, Wallet, providers } from 'ethers';
 
-let validConfig = true
-if (process.env.RPC_URL === undefined) {
-    console.log('Missing RPC_URL')
-    validConfig = false
-}
-if (process.env.PRIVATE_KEY === undefined) {
-    console.log('Missing PRIVATE_KEY')
-    validConfig = false
-}
-if (!validConfig) process.exit(1)
+const { JsonRpcProvider } = providers;
 
-const provider = new JsonRpcProvider(process.env.RPC_URL)
-const wallet = new Wallet(process.env.PRIVATE_KEY, provider)
-
-const ask = async question => {
+function ask(question, type) {
     const rl = readline.createInterface({
         input: process.stdin,
         output: process.stdout,
     })
 
-    return new Promise(resolve => {
+    return new Promise((resolve, reject) => {
         rl.question(question, input => {
+            if (type === 'int' && input) {
+                input = parseInt(input)
+                if (isNaN(input)) {
+                    reject('Invalid input')
+                }
+            }
             resolve(input)
             rl.close()
         })
     })
 }
 
-async function deployPoseidon() {
-    const spinner = ora(`Deploying Poseidon library...`).start()
-    let tx = await wallet.sendTransaction({ data: poseidon_gencontract.createCode(2) })
-    spinner.text = `Waiting for Poseidon deploy transaction (tx: ${tx.hash})`
-    tx = await tx.wait()
-    spinner.succeed(`Deployed Poseidon library to ${tx.contractAddress}`)
-
-    return tx.contractAddress
+function newPlan() {
+    let self = {
+        items: [],
+        add: function (label, action) {
+            self.items.push({ label, action })
+        }
+    }
+    return self;
 }
 
-async function deployIBT(poseidonAddress) {
-    const spinner = ora(`Deploying IncrementalBinaryTree library...`).start()
-    let tx = await wallet.sendTransaction({
-        data: IncrementalBinaryTree.bytecode.object.replace(
-            /__\$\w*?\$__/g,
-            poseidonAddress.slice(2)
-        ),
-    })
-    spinner.text = `Waiting for IncrementalBinaryTree deploy transaction (tx: ${tx.hash})`
-    tx = await tx.wait()
-    spinner.succeed(`Deployed IncrementalBinaryTree library to ${tx.contractAddress}`)
+async function downloadSemaphoreMtbBinary(plan, config) {
+    config.mtbBinary = 'mtb/bin/mtb';
+    plan.add('Download Semaphore-MTB binary', async () => { });
+}
 
-    return tx.contractAddress
+async function ensureMtbBinary(plan, config) {
+    config.mtbBinary = process.env.MTB_BINARY;
+    if (!config.mtbBinary) {
+        if (fs.existsSync('mtb/bin/mtb')) {
+            config.mtbBinary = 'mtb/bin/mtb'
+            console.log('Using default Semaphore-MTB binary (mtb/bin/mtb)')
+        }
+    }
+    if (!config.mtbBinary) {
+        config.mtbBinary = await ask('Semaphore-MTB binary not found in the default location. Enter binary location, or leave empty to download it: ')
+    }
+    if (!config.mtbBinary) {
+        await downloadSemaphoreMtbBinary(plan, config);
+    }
+}
+
+async function generateKeys(plan, config) {
+    config.treeDepth = process.env.TREE_DEPTH;
+    if (!config.treeDepth) {
+        config.treeDepth = await ask('Enter tree depth: (32) ', 'int')
+    }
+    if (!config.treeDepth) {
+        config.treeDepth = 4;
+    }
+
+    config.batchSize = process.env.BATCH_SIZE;
+    if (!config.batchSize) {
+        config.batchSize = await ask('Enter batch size: (100) ', 'int')
+    }
+    if (!config.batchSize) {
+        config.batchSize = 4;
+    }
+    plan.add('Setup Semaphore-MTB keys', async (config) => {
+        const spinner = ora('Generating prover keys').start();
+        fs.mkdirSync('mtb', { recursive: true });
+        let result = spawnSync(config.mtbBinary, ['setup', '--tree-depth', config.treeDepth, '--batch-size', config.batchSize, '--output', config.keysFile], { stdio: 'inherit' });
+        if (result.status != 0) {
+            throw new Error('Failed to generate prover keys');
+        }
+        spinner.succeed('Prover keys generated');
+    });
+}
+
+async function ensureKeysFile(plan, config) {
+    config.keysFile = process.env.KEYS_FILE;
+    if (!config.keysFile) {
+        if (fs.existsSync('mtb/keys')) {
+            config.keysFile = 'mtb/keys'
+            console.log('Using default Semaphore-MTB keys file (mtb/keys)')
+        }
+    }
+    if (!config.keysFile) {
+        config.keysFile = await ask('Enter path to the prover/verifier keys file, or leave empty to set it up: ')
+    }
+    if (!config.keysFile) {
+        config.keysFile = 'mtb/keys';
+        await generateKeys(plan, config);
+    }
+}
+
+async function generateVerifierContract(plan, config) {
+    await ensureKeysFile(plan, config);
+    plan.add('Generate Semaphore-MTB verifier contract', async () => {
+        const spinner = ora('Generating verifier contract').start();
+        fs.mkdirSync('mtb/contracts', { recursive: true });
+        let result = spawnSync(config.mtbBinary, ['export-solidity', '--keys-file', config.keysFile, '--output', config.mtbVerifierContractFile], { stdio: 'inherit' });
+        if (result.status != 0) {
+            throw new Error('Failed to generate verifier contract');
+        }
+        spinner.succeed('Verifier contract generated');
+    });
+}
+
+async function ensureVerifierContractFile(plan, config) {
+    config.mtbVerifierContractFile = process.env.MTB_VERIFIER_CONTRACT_FILE;
+    if (!config.mtbVerifierContractFile) {
+        if (fs.existsSync('mtb/contracts/Verifier.sol')) {
+            config.mtbVerifierContractFile = 'mtb/contracts/Verifier.sol'
+            console.log('Using default Semaphore-MTB verifier contract file (mtb/contracts/Verifier.sol)')
+        }
+    }
+    if (!config.mtbVerifierContractFile) {
+        config.mtbVerifierContractFile = await ask('Enter path to the Semaphore-MTB verifier contract file, or leave empty to generate it: ')
+    }
+    if (!config.mtbVerifierContractFile) {
+        await ensureMtbBinary(plan, config);
+        config.mtbVerifierContractFile = 'mtb/contracts/Verifier.sol';
+        await generateVerifierContract(plan, config);
+    }
+}
+
+async function compileVerifierContract(plan, config) {
+    plan.add('Compile Semaphore-MTB verifier contract', async (config) => {
+        let input = {
+            language: 'Solidity',
+            sources: {
+                'Verifier.sol': {
+                    content: fs.readFileSync(config.mtbVerifierContractFile).toString()
+                }
+            },
+            settings: {
+                outputSelection: {
+                    'Verifier.sol': {
+                        'Verifier': ['evm.bytecode.object']
+                    }
+                }
+            }
+        };
+        let output = solc.compile(JSON.stringify(input));
+        fs.mkdirSync('mtb/contracts', { recursive: true });
+        fs.writeFileSync(config.mtbVerifierContractOutFile, output);
+    });
+}
+
+async function ensureVeirfierBytecode(plan, config) {
+    config.mtbVerifierContractOutFile = process.env.VERIFIER_BYTECODE_FILE;
+    if (!config.mtbVerifierContractOutFile) {
+        if (fs.existsSync('mtb/contracts/Verifier.json')) {
+            config.mtbVerifierContractOutFile = 'mtb/contracts/Verifier.json'
+            console.log('Using existing Semaphore-MTB bytecode file (mtb/contracts/Verifier.json)')
+        }
+    }
+    if (!config.mtbVerifierContractOutFile) {
+        await ensureVerifierContractFile(plan, config);
+        config.mtbVerifierContractOutFile = 'mtb/contracts/Verifier.json'
+        await compileVerifierContract(plan, config);
+    }
+}
+
+async function deployVerifierContract(plan, config) {
+    plan.add('Deploy Semaphore-MTB verifier contract', async () => {
+        const spinner = ora(`Deploying MTB Verifier contract...`).start();
+        let verifierBytecode = JSON.parse(fs.readFileSync(config.mtbVerifierContractOutFile).toString());
+        let factory = new ContractFactory([], verifierBytecode.contracts['Verifier.sol'].Verifier.evm.bytecode.object, config.wallet)
+        let contract = await factory.deploy();
+        spinner.text = `Waiting for MTB Verifier deploy transaction (address: ${contract.address})`;
+        await contract.deployTransaction.wait();
+        spinner.succeed(`Deployed MTB Verifier contract to ${contract.address}`);
+        config.verifierContractAddress = contract.address;
+    });
+}
+
+async function ensureVeirfierDeployment(plan, config) {
+    config.verifierContractAddress = process.env.VERIFIER_CONTRACT_ADDRESS;
+    if (!config.verifierContractAddress) {
+        config.verifierContractAddress = await ask('Enter batch insert verifier contract address, or leave empty to deploy it: ');
+    }
+    if (!config.verifierContractAddress) {
+        await ensureVeirfierBytecode(plan, config);
+        await deployVerifierContract(plan, config);
+    }
+}
+
+
+async function actionPlan(plan, config) {
+    dotenv.config();
+
+    config.privateKey = process.env.PRIVATE_KEY;
+    if (!config.privateKey) {
+        config.privateKey = await ask('Enter your private key: ')
+    }
+
+    config.rpcUrl = process.env.RPC_URL;
+    if (!config.rpcUrl) {
+        config.rpcUrl = await ask('Enter RPC URL: (localhost:8545) ')
+    }
+    if (!config.rpcUrl) {
+        config.rpcUrl = 'http://localhost:8545'
+    }
+
+    config.provider = new JsonRpcProvider(config.rpcUrl);
+    config.wallet = new Wallet(config.privateKey, config.provider);
+
+    await ensureVeirfierDeployment(plan, config);
+
 }
 
 async function deploySemaphore(ibtAddress) {
@@ -74,10 +234,17 @@ async function deploySemaphore(ibtAddress) {
 }
 
 async function main(poseidonAddress, ibtAddress) {
-    if (!poseidonAddress) poseidonAddress = await deployPoseidon()
-    if (!ibtAddress) poseidonAddress = await deployIBT(poseidonAddress)
+    let plan = newPlan();
+    let config = {};
+    await actionPlan(plan, config);
 
-    await deploySemaphore(ibtAddress)
+    for (const item of plan.items) {
+        console.log(item.label);
+        await item.action(config);
+    }
+
+
+    // await deploySemaphore(ibtAddress)
 }
 
 main(...process.argv.splice(2)).then(() => process.exit(0))
