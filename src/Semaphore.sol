@@ -1,15 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
-import {IWorldID} from "./interfaces/IWorldID.sol";
-import {SemaphoreCore} from "semaphore/base/SemaphoreCore.sol";
-import {SemaphoreGroups} from "semaphore/base/SemaphoreGroups.sol";
-import {
-    IncrementalBinaryTree,
-    IncrementalTreeData
-} from "@zk-kit/incremental-merkle-tree.sol/contracts/IncrementalBinaryTree.sol";
-import {Verifier as MerkleTreeVerifier} from "./generated/TreeVerifier.sol";
+import { Verifier as SemaphoreVerifier } from 'semaphore/base/Verifier.sol';
+import { IWorldID } from './interfaces/IWorldID.sol';
+import { ITreeVerifier } from './interfaces/ITreeVerifier.sol';
+import { SemaphoreCore } from 'semaphore/base/SemaphoreCore.sol';
+import { SemaphoreGroups } from 'semaphore/base/SemaphoreGroups.sol';
+
 
 /// @title WorldID Identity Manager
 /// @author Worldcoin
@@ -92,7 +89,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice The verifier instance needed for verifying batch identity insertions.
-    MerkleTreeVerifier private merkleTreeVerifier = new MerkleTreeVerifier();
+    ITreeVerifier private merkleTreeVerifier;
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
     SemaphoreVerifier private semaphoreVerifier = new SemaphoreVerifier();
@@ -105,8 +102,9 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of an empty tree.
-    constructor(uint256 initialRoot) {
+    constructor(uint256 initialRoot, ITreeVerifier merkleTreeVerifier_) {
         latestRoot = initialRoot;
+        merkleTreeVerifier = merkleTreeVerifier_;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -169,20 +167,26 @@ contract Semaphore is IWorldID, SemaphoreCore {
         validateIdentityCommitments(identityCommitments);
 
         // Having validated the preconditions we can now check the proof itself.
-        bytes32 inputHash =
-            calculateTreeVerifierInputHash(startIndex, preRoot, postRoot, identityCommitments);
+        bytes32 inputHash = calculateTreeVerifierInputHash(
+            startIndex,
+            preRoot,
+            postRoot,
+            identityCommitments
+        );
 
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
         // verifier.
         uint256 reducedElement = reduceInputElementInSnarkScalarField(uint256(inputHash));
 
-        try merkleTreeVerifier.verifyProof(
-            [insertionProof[0], insertionProof[1]],
-            [[insertionProof[2], insertionProof[3]], [insertionProof[4], insertionProof[5]]],
-            [insertionProof[6], insertionProof[7]],
-            [reducedElement]
-        ) returns (bool verifierResult) {
+        try
+            merkleTreeVerifier.verifyProof(
+                [insertionProof[0], insertionProof[1]],
+                [[insertionProof[2], insertionProof[3]], [insertionProof[4], insertionProof[5]]],
+                [insertionProof[6], insertionProof[7]],
+                [reducedElement]
+            )
+        returns (bool verifierResult) {
             // If the proof did not verify, we revert with a failure.
             if (!verifierResult) {
                 revert ProofValidationFailure();
@@ -226,8 +230,12 @@ contract Semaphore is IWorldID, SemaphoreCore {
         uint256 postRoot,
         uint256[] calldata identityCommitments
     ) public pure returns (bytes32 hash) {
-        bytes memory bytesToHash =
-            abi.encodePacked(startIndex, preRoot, postRoot, identityCommitments);
+        bytes memory bytesToHash = abi.encodePacked(
+            startIndex,
+            preRoot,
+            postRoot,
+            identityCommitments
+        );
 
         hash = keccak256(bytesToHash);
     }

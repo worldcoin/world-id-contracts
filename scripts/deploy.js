@@ -233,7 +233,7 @@ async function deploySemaphore(ibtAddress) {
     return tx.contractAddress
 }
 
-async function main(poseidonAddress, ibtAddress) {
+async function main() {
     let plan = newPlan();
     let config = {};
     await actionPlan(plan, config);
@@ -242,9 +242,6 @@ async function main(poseidonAddress, ibtAddress) {
         console.log(item.label);
         await item.action(config);
     }
-
-
-    // await deploySemaphore(ibtAddress)
 }
 
-main(...process.argv.splice(2)).then(() => process.exit(0))
+main().then(() => process.exit(0))
