@@ -6,8 +6,23 @@ import Semaphore from '../out/Semaphore.sol/Semaphore.json' assert { type: 'json
 import { spawnSync } from 'child_process';
 import solc from 'solc';
 import { ContractFactory, Wallet, providers } from 'ethers';
+import { poseidon } from 'circomlibjs';
+import https from 'https'
+
 
 const { JsonRpcProvider } = providers;
+
+const DEFAULT_RPC_URL = 'http://localhost:8545'
+const MTB_DIR = 'mtb'
+const KEYS_PATH = MTB_DIR + '/keys'
+const MTB_BIN_DIR = MTB_DIR + '/bin'
+const MTB_BIN_PATH = MTB_BIN_DIR + '/mtb'
+const MTB_CONTRACTS_DIR = MTB_DIR + '/contracts'
+const DEFAULT_TREE_DEPTH = 10
+const DEFAULT_BATCH_SIZE = 5
+const MTB_VERSION = '1.0.0'
+const VERIFIER_SOURCE_PATH = MTB_CONTRACTS_DIR + '/Verifier.sol'
+const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json'
 
 function ask(question, type) {
     const rl = readline.createInterface({
@@ -40,16 +55,56 @@ function newPlan() {
 }
 
 async function downloadSemaphoreMtbBinary(plan, config) {
-    config.mtbBinary = 'mtb/bin/mtb';
-    plan.add('Download Semaphore-MTB binary', async () => { });
+    config.mtbBinary = MTB_BIN_PATH;
+    if (process.platform == 'win32') {
+        if (process.arch != 'x64') {
+            throw new Error('Unsupported platform');
+        }
+        config.os = 'windows'
+        config.arch = 'amd64'
+    } else if (process.platform == 'linux') {
+        if (process.arch != 'x64') {
+            throw new Error('Unsupported platform');
+        }
+        config.os = 'linux'
+        config.arch = 'amd64'
+    } else if (process.platform == 'darwin') {
+        config.os = 'darwin'
+        config.arch = process.arch == 'arm64' ? 'arm64' : 'amd64'
+    }
+    plan.add('Download Semaphore-MTB binary', async (config) => {
+        fs.mkdirSync(MTB_BIN_DIR, { recursive: true });
+        const spinner = ora('Downloading Semaphore-MTB binary...').start();
+        const url = `https://github.com/worldcoin/semaphore-mtb/releases/download/${MTB_VERSION}/mtb-${config.os}-${config.arch}`;
+        const done = new Promise((resolve, reject) => {
+            const file = fs.createWriteStream(config.mtbBinary);
+            const request = https.get(url, function (response) {
+                response.pipe(file);
+
+                file.on("finish", () => {
+                    file.close();
+                    resolve();
+                });
+            });
+            request.on('error', (err) => {
+                fs.unlink(config.mtbBinary, () => reject(err));
+            });
+
+            file.on('error', (err) => {
+                fs.unlink(config.MTB_BINARY, () => reject(err));
+            });
+        });
+        await done;
+        spinner.succeed('Semaphore-MTB binary downloaded');
+    });
 }
 
 async function ensureMtbBinary(plan, config) {
     config.mtbBinary = process.env.MTB_BINARY;
     if (!config.mtbBinary) {
-        if (fs.existsSync('mtb/bin/mtb')) {
-            config.mtbBinary = 'mtb/bin/mtb'
-            console.log('Using default Semaphore-MTB binary (mtb/bin/mtb)')
+        if (fs.existsSync(MTB_BIN_PATH)) {
+            config.mtbBinary = MTB_BIN_PATH;
+            console.log(`Using default Semaphore-MTB binary ${MTB_BIN_PATH}`)
         }
     }
     if (!config.mtbBinary) {
@@ -60,25 +115,29 @@ async function ensureMtbBinary(plan, config) {
     }
 }
 
-async function generateKeys(plan, config) {
+async function ensureTreeDepth(plan, config) {
     config.treeDepth = process.env.TREE_DEPTH;
     if (!config.treeDepth) {
-        config.treeDepth = await ask('Enter tree depth: (32) ', 'int')
+        config.treeDepth = await ask(`Enter tree depth: (${DEFAULT_TREE_DEPTH}) `, 'int')
     }
     if (!config.treeDepth) {
-        config.treeDepth = 4;
+        config.treeDepth = DEFAULT_TREE_DEPTH;
     }
+}
+
+async function generateKeys(plan, config) {
+    await ensureTreeDepth(plan, config);
 
     config.batchSize = process.env.BATCH_SIZE;
     if (!config.batchSize) {
-        config.batchSize = await ask('Enter batch size: (100) ', 'int')
+        config.batchSize = await ask(`Enter batch size: (${DEFAULT_BATCH_SIZE}) `, 'int')
     }
     if (!config.batchSize) {
-        config.batchSize = 4;
+        config.batchSize = DEFAULT_BATCH_SIZE;
     }
     plan.add('Setup Semaphore-MTB keys', async (config) => {
         const spinner = ora('Generating prover keys').start();
-        fs.mkdirSync('mtb', { recursive: true });
+        fs.mkdirSync(MTB_DIR, { recursive: true });
         let result = spawnSync(config.mtbBinary, ['setup', '--tree-depth', config.treeDepth, '--batch-size', config.batchSize, '--output', config.keysFile], { stdio: 'inherit' });
         if (result.status != 0) {
             throw new Error('Failed to generate prover keys');
@@ -90,16 +149,16 @@ async function generateKeys(plan, config) {
 async function ensureKeysFile(plan, config) {
     config.keysFile = process.env.KEYS_FILE;
     if (!config.keysFile) {
-        if (fs.existsSync('mtb/keys')) {
-            config.keysFile = 'mtb/keys'
-            console.log('Using default Semaphore-MTB keys file (mtb/keys)')
+        if (fs.existsSync(KEYS_PATH)) {
+            config.keysFile = KEYS_PATH;
+            console.log(`Using default Semaphore-MTB keys file (${KEYS_PATH})`)
         }
     }
     if (!config.keysFile) {
         config.keysFile = await ask('Enter path to the prover/verifier keys file, or leave empty to set it up: ')
     }
     if (!config.keysFile) {
-        config.keysFile = 'mtb/keys';
+        config.keysFile = KEYS_PATH;
         await generateKeys(plan, config);
     }
 }
@@ -108,7 +167,7 @@ async function generateVerifierContract(plan, config) {
     await ensureKeysFile(plan, config);
     plan.add('Generate Semaphore-MTB verifier contract', async () => {
         const spinner = ora('Generating verifier contract').start();
-        fs.mkdirSync('mtb/contracts', { recursive: true });
+        fs.mkdirSync(MTB_CONTRACTS_DIR, { recursive: true });
         let result = spawnSync(config.mtbBinary, ['export-solidity', '--keys-file', config.keysFile, '--output', config.mtbVerifierContractFile], { stdio: 'inherit' });
         if (result.status != 0) {
             throw new Error('Failed to generate verifier contract');
@@ -120,9 +179,9 @@ async function generateVerifierContract(plan, config) {
 async function ensureVerifierContractFile(plan, config) {
     config.mtbVerifierContractFile = process.env.MTB_VERIFIER_CONTRACT_FILE;
     if (!config.mtbVerifierContractFile) {
-        if (fs.existsSync('mtb/contracts/Verifier.sol')) {
-            config.mtbVerifierContractFile = 'mtb/contracts/Verifier.sol'
-            console.log('Using default Semaphore-MTB verifier contract file (mtb/contracts/Verifier.sol)')
+        if (fs.existsSync(VERIFIER_SOURCE_PATH)) {
+            config.mtbVerifierContractFile = VERIFIER_SOURCE_PATH
+            console.log(`Using default Semaphore-MTB verifier contract file (${VERIFIER_SOURCE_PATH})`)
         }
     }
     if (!config.mtbVerifierContractFile) {
@@ -130,7 +189,7 @@ async function ensureVerifierContractFile(plan, config) {
     }
     if (!config.mtbVerifierContractFile) {
         await ensureMtbBinary(plan, config);
-        config.mtbVerifierContractFile = 'mtb/contracts/Verifier.sol';
+        config.mtbVerifierContractFile = VERIFIER_SOURCE_PATH;
         await generateVerifierContract(plan, config);
     }
 }
@@ -153,7 +212,7 @@ async function compileVerifierContract(plan, config) {
             }
         };
         let output = solc.compile(JSON.stringify(input));
-        fs.mkdirSync('mtb/contracts', { recursive: true });
+        fs.mkdirSync(MTB_CONTRACTS_DIR, { recursive: true });
         fs.writeFileSync(config.mtbVerifierContractOutFile, output);
     });
 }
@@ -161,14 +220,14 @@ async function compileVerifierContract(plan, config) {
 async function ensureVeirfierBytecode(plan, config) {
     config.mtbVerifierContractOutFile = process.env.VERIFIER_BYTECODE_FILE;
     if (!config.mtbVerifierContractOutFile) {
-        if (fs.existsSync('mtb/contracts/Verifier.json')) {
-            config.mtbVerifierContractOutFile = 'mtb/contracts/Verifier.json'
-            console.log('Using existing Semaphore-MTB bytecode file (mtb/contracts/Verifier.json)')
+        if (fs.existsSync(VERIFIER_ABI_PATH)) {
+            config.mtbVerifierContractOutFile = VERIFIER_ABI_PATH
+            console.log(`Using existing Semaphore-MTB bytecode file ${VERIFIER_ABI_PATH}}`)
         }
     }
     if (!config.mtbVerifierContractOutFile) {
         await ensureVerifierContractFile(plan, config);
-        config.mtbVerifierContractOutFile = 'mtb/contracts/Verifier.json'
+        config.mtbVerifierContractOutFile = VERIFIER_ABI_PATH;
         await compileVerifierContract(plan, config);
     }
 }
@@ -197,8 +256,40 @@ async function ensureVeirfierDeployment(plan, config) {
     }
 }
 
+function computeRoot(depth) {
+    let result = 0;
+    while (depth--) {
+        result = poseidon([result, result]);
+    }
 
-async function actionPlan(plan, config) {
+    return "0x" + result.toString(16);
+}
+
+async function ensureInitialRoot(plan, config) {
+    config.initialRoot = process.env.INITIAL_ROOT;
+    if (!config.initialRoot) {
+        config.initialRoot = await ask('Enter initial root, or leave empty to compute based on tree depth: ');
+    }
+    if (!config.initialRoot) {
+        if (!config.treeDepth) {
+            await ensureTreeDepth(plan, config);
+        }
+        config.initialRoot = computeRoot(config.treeDepth);
+    }
+}
+
+async function deploySemaphore(plan, config) {
+    plan.add('Deploy Semaphore contract', async () => {
+        const spinner = ora(`Deploying Semaphore contract...`).start()
+        let factory = new ContractFactory(Semaphore.abi, Semaphore.bytecode.object, config.wallet);
+        let contract = await factory.deploy(config.initialRoot, config.verifierContractAddress);
+        spinner.text = `Waiting for Semaphore deploy transaction (address: ${contract.address})`
+        await contract.deployTransaction.wait();
+        spinner.succeed(`Deployed Semaphore contract to ${contract.address}`)
+    });
+}
+
+async function buildActionPlan(plan, config) {
     dotenv.config();
 
     config.privateKey = process.env.PRIVATE_KEY;
@@ -208,35 +299,24 @@ async function actionPlan(plan, config) {
 
     config.rpcUrl = process.env.RPC_URL;
     if (!config.rpcUrl) {
-        config.rpcUrl = await ask('Enter RPC URL: (localhost:8545) ')
+        config.rpcUrl = await ask(`Enter RPC URL: (${DEFAULT_RPC_URL}) `)
     }
     if (!config.rpcUrl) {
-        config.rpcUrl = 'http://localhost:8545'
+        config.rpcUrl = DEFAULT_RPC_URL
     }
 
     config.provider = new JsonRpcProvider(config.rpcUrl);
     config.wallet = new Wallet(config.privateKey, config.provider);
 
     await ensureVeirfierDeployment(plan, config);
-
-}
-
-async function deploySemaphore(ibtAddress) {
-    const spinner = ora(`Deploying Semaphore contract...`).start()
-    let tx = await wallet.sendTransaction({
-        data: Semaphore.bytecode.object.replace(/__\$\w*?\$__/g, ibtAddress.slice(2)),
-    })
-    spinner.text = `Waiting for Semaphore deploy transaction (tx: ${tx.hash})`
-    tx = await tx.wait()
-    spinner.succeed(`Deployed Semaphore contract to ${tx.contractAddress}`)
-
-    return tx.contractAddress
+    await ensureInitialRoot(plan, config);
+    await deploySemaphore(plan, config);
 }
 
 async function main() {
     let plan = newPlan();
     let config = {};
-    await actionPlan(plan, config);
+    await buildActionPlan(plan, config);
 
     for (const item of plan.items) {
         console.log(item.label);
