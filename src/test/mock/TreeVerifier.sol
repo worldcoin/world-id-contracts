@@ -21,7 +21,7 @@
 
 pragma solidity ^0.8.10;
 
-import { ITreeVerifier } from '../../interfaces/ITreeVerifier.sol';
+import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 
 library Pairing {
     uint256 constant PRIME_Q =
@@ -66,12 +66,10 @@ library Pairing {
             success := staticcall(sub(gas(), 2000), 6, input, 0xc0, r, 0x60)
             // Use "invalid" to make gas estimation work
             switch success
-            case 0 {
-                invalid()
-            }
+            case 0 { invalid() }
         }
 
-        require(success, 'pairing-add-failed');
+        require(success, "pairing-add-failed");
     }
 
     /*
@@ -90,11 +88,9 @@ library Pairing {
             success := staticcall(sub(gas(), 2000), 7, input, 0x80, r, 0x60)
             // Use "invalid" to make gas estimation work
             switch success
-            case 0 {
-                invalid()
-            }
+            case 0 { invalid() }
         }
-        require(success, 'pairing-mul-failed');
+        require(success, "pairing-mul-failed");
     }
 
     /* @return The result of computing the pairing check
@@ -132,22 +128,14 @@ library Pairing {
 
         // solium-disable-next-line security/no-inline-assembly
         assembly {
-            success := staticcall(
-                sub(gas(), 2000),
-                8,
-                add(input, 0x20),
-                mul(inputSize, 0x20),
-                out,
-                0x20
-            )
+            success :=
+                staticcall(sub(gas(), 2000), 8, add(input, 0x20), mul(inputSize, 0x20), out, 0x20)
             // Use "invalid" to make gas estimation work
             switch success
-            case 0 {
-                invalid()
-            }
+            case 0 { invalid() }
         }
 
-        require(success, 'pairing-opcode-failed');
+        require(success, "pairing-opcode-failed");
 
         return out[0] != 0;
     }
@@ -182,56 +170,32 @@ contract Verifier is ITreeVerifier {
         );
         vk.beta2 = Pairing.G2Point(
             [
-                uint256(
-                    2089676812529243142469162728618839638435359905327620749498509643225358128912
-                ),
-                uint256(
-                    7904895411458501455966830052510986257464308709496849793787095953158487122304
-                )
+                uint256(2089676812529243142469162728618839638435359905327620749498509643225358128912),
+                uint256(7904895411458501455966830052510986257464308709496849793787095953158487122304)
             ],
             [
-                uint256(
-                    16797507473745040958844202637614442452840135422747682014230743717837892841028
-                ),
-                uint256(
-                    9473339184494274655577348453617870794049644188434434075522198845582264704106
-                )
+                uint256(16797507473745040958844202637614442452840135422747682014230743717837892841028),
+                uint256(9473339184494274655577348453617870794049644188434434075522198845582264704106)
             ]
         );
         vk.gamma2 = Pairing.G2Point(
             [
-                uint256(
-                    18857088877831991395879893788315426632011108011495870716514470189262586374610
-                ),
-                uint256(
-                    4389555201093468693636136029755231137723360019751348191879841133076369674917
-                )
+                uint256(18857088877831991395879893788315426632011108011495870716514470189262586374610),
+                uint256(4389555201093468693636136029755231137723360019751348191879841133076369674917)
             ],
             [
-                uint256(
-                    13362381349504071289893854895447856933068773897799959938583933929038383825378
-                ),
-                uint256(
-                    16986196626872063819265139926040651012192136018211263012697320066417863414017
-                )
+                uint256(13362381349504071289893854895447856933068773897799959938583933929038383825378),
+                uint256(16986196626872063819265139926040651012192136018211263012697320066417863414017)
             ]
         );
         vk.delta2 = Pairing.G2Point(
             [
-                uint256(
-                    12313730183775831354894919682887228076436409607715148516704569441139088930688
-                ),
-                uint256(
-                    2552231658739687496972790410151668919124141665121206694028316488936580642349
-                )
+                uint256(12313730183775831354894919682887228076436409607715148516704569441139088930688),
+                uint256(2552231658739687496972790410151668919124141665121206694028316488936580642349)
             ],
             [
-                uint256(
-                    2364937275864597293303184061344064915914201762511884649994290705518114506818
-                ),
-                uint256(
-                    14782994374673117770861880065787271579362240800510712289723727525292605454935
-                )
+                uint256(2364937275864597293303184061344064915914201762511884649994290705518114506818),
+                uint256(14782994374673117770861880065787271579362240800510712289723727525292605454935)
             ]
         );
         vk.IC[0] = Pairing.G1Point(
@@ -265,36 +229,35 @@ contract Verifier is ITreeVerifier {
         Pairing.G1Point memory vk_x = Pairing.G1Point(0, 0);
 
         // Make sure that proof.A, B, and C are each less than the prime q
-        require(proof.A.X < PRIME_Q, 'verifier-aX-gte-prime-q');
-        require(proof.A.Y < PRIME_Q, 'verifier-aY-gte-prime-q');
+        require(proof.A.X < PRIME_Q, "verifier-aX-gte-prime-q");
+        require(proof.A.Y < PRIME_Q, "verifier-aY-gte-prime-q");
 
-        require(proof.B.X[0] < PRIME_Q, 'verifier-bX0-gte-prime-q');
-        require(proof.B.Y[0] < PRIME_Q, 'verifier-bY0-gte-prime-q');
+        require(proof.B.X[0] < PRIME_Q, "verifier-bX0-gte-prime-q");
+        require(proof.B.Y[0] < PRIME_Q, "verifier-bY0-gte-prime-q");
 
-        require(proof.B.X[1] < PRIME_Q, 'verifier-bX1-gte-prime-q');
-        require(proof.B.Y[1] < PRIME_Q, 'verifier-bY1-gte-prime-q');
+        require(proof.B.X[1] < PRIME_Q, "verifier-bX1-gte-prime-q");
+        require(proof.B.Y[1] < PRIME_Q, "verifier-bY1-gte-prime-q");
 
-        require(proof.C.X < PRIME_Q, 'verifier-cX-gte-prime-q');
-        require(proof.C.Y < PRIME_Q, 'verifier-cY-gte-prime-q');
+        require(proof.C.X < PRIME_Q, "verifier-cX-gte-prime-q");
+        require(proof.C.Y < PRIME_Q, "verifier-cY-gte-prime-q");
 
         // Make sure that every input is less than the snark scalar field
         for (uint256 i = 0; i < input.length; i++) {
-            require(input[i] < SNARK_SCALAR_FIELD, 'verifier-gte-snark-scalar-field');
+            require(input[i] < SNARK_SCALAR_FIELD, "verifier-gte-snark-scalar-field");
             vk_x = Pairing.plus(vk_x, Pairing.scalar_mul(vk.IC[i + 1], input[i]));
         }
 
         vk_x = Pairing.plus(vk_x, vk.IC[0]);
 
-        return
-            Pairing.pairing(
-                Pairing.negate(proof.A),
-                proof.B,
-                vk.alfa1,
-                vk.beta2,
-                vk_x,
-                vk.gamma2,
-                proof.C,
-                vk.delta2
-            );
+        return Pairing.pairing(
+            Pairing.negate(proof.A),
+            proof.B,
+            vk.alfa1,
+            vk.beta2,
+            vk_x,
+            vk.gamma2,
+            proof.C,
+            vk.delta2
+        );
     }
 }

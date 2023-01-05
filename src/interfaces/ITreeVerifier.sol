@@ -7,5 +7,5 @@ interface ITreeVerifier {
         uint256[2][2] memory b,
         uint256[2] memory c,
         uint256[1] memory input
-    ) view external returns (bool);
+    ) external view returns (bool);
 }

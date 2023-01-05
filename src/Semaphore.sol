@@ -1,12 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import { Verifier as SemaphoreVerifier } from 'semaphore/base/Verifier.sol';
-import { IWorldID } from './interfaces/IWorldID.sol';
-import { ITreeVerifier } from './interfaces/ITreeVerifier.sol';
-import { SemaphoreCore } from 'semaphore/base/SemaphoreCore.sol';
-import { SemaphoreGroups } from 'semaphore/base/SemaphoreGroups.sol';
-
+import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
+import {IWorldID} from "./interfaces/IWorldID.sol";
+import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
+import {SemaphoreCore} from "semaphore/base/SemaphoreCore.sol";
+import {SemaphoreGroups} from "semaphore/base/SemaphoreGroups.sol";
 
 /// @title WorldID Identity Manager
 /// @author Worldcoin
@@ -167,26 +166,20 @@ contract Semaphore is IWorldID, SemaphoreCore {
         validateIdentityCommitments(identityCommitments);
 
         // Having validated the preconditions we can now check the proof itself.
-        bytes32 inputHash = calculateTreeVerifierInputHash(
-            startIndex,
-            preRoot,
-            postRoot,
-            identityCommitments
-        );
+        bytes32 inputHash =
+            calculateTreeVerifierInputHash(startIndex, preRoot, postRoot, identityCommitments);
 
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
         // verifier.
         uint256 reducedElement = reduceInputElementInSnarkScalarField(uint256(inputHash));
 
-        try
-            merkleTreeVerifier.verifyProof(
-                [insertionProof[0], insertionProof[1]],
-                [[insertionProof[2], insertionProof[3]], [insertionProof[4], insertionProof[5]]],
-                [insertionProof[6], insertionProof[7]],
-                [reducedElement]
-            )
-        returns (bool verifierResult) {
+        try merkleTreeVerifier.verifyProof(
+            [insertionProof[0], insertionProof[1]],
+            [[insertionProof[2], insertionProof[3]], [insertionProof[4], insertionProof[5]]],
+            [insertionProof[6], insertionProof[7]],
+            [reducedElement]
+        ) returns (bool verifierResult) {
             // If the proof did not verify, we revert with a failure.
             if (!verifierResult) {
                 revert ProofValidationFailure();
@@ -230,12 +223,8 @@ contract Semaphore is IWorldID, SemaphoreCore {
         uint256 postRoot,
         uint256[] calldata identityCommitments
     ) public pure returns (bytes32 hash) {
-        bytes memory bytesToHash = abi.encodePacked(
-            startIndex,
-            preRoot,
-            postRoot,
-            identityCommitments
-        );
+        bytes memory bytesToHash =
+            abi.encodePacked(startIndex, preRoot, postRoot, identityCommitments);
 
         hash = keccak256(bytesToHash);
     }

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import { Vm } from 'forge-std/Vm.sol';
-import { Test } from 'forge-std/Test.sol';
+import {Vm} from "forge-std/Vm.sol";
+import {Test} from "forge-std/Test.sol";
 
-import { Semaphore, ITreeVerifier } from '../Semaphore.sol';
-import { Verifier as TreeVerifier } from './mock/TreeVerifier.sol';
+import {Semaphore, ITreeVerifier} from "../Semaphore.sol";
+import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
 
 import "forge-std/console.sol";
 
@@ -61,8 +61,8 @@ contract SemaphoreTest is Test {
         TreeVerifier verifier = new TreeVerifier();
         semaphore = new Semaphore(preRoot, ITreeVerifier(address(verifier)));
 
-        hevm.label(address(this), 'Sender');
-        hevm.label(address(semaphore), 'Semaphore');
+        hevm.label(address(this), "Sender");
+        hevm.label(address(semaphore), "Semaphore");
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -93,9 +93,8 @@ contract SemaphoreTest is Test {
             0x23115ff1573808639f19724479b195b7894a45c9868242ad2a416767359c6c78,
             0x23f3fa30273c7f38e360496e7f9790450096d4a9592e1fe6e0a996cb04b8fb28
         ];
-        bytes memory expectedError = abi.encodeWithSelector(
-            Semaphore.ProofValidationFailure.selector
-        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
 
         // Test
@@ -104,9 +103,8 @@ contract SemaphoreTest is Test {
 
     /// @notice Checks that it reverts if the provided start index is incorrect.
     function testCannotRegisterIfStartIndexIncorrect() public {
-        bytes memory expectedError = abi.encodeWithSelector(
-            Semaphore.ProofValidationFailure.selector
-        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
 
         // Test
@@ -117,9 +115,8 @@ contract SemaphoreTest is Test {
     function testCannotRegisterIfIdentitiesIncorrect() public {
         // Setup
         identityCommitments[2] = 0x7F;
-        bytes memory expectedError = abi.encodeWithSelector(
-            Semaphore.ProofValidationFailure.selector
-        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
 
         // Test
@@ -128,9 +125,8 @@ contract SemaphoreTest is Test {
 
     /// @notice Checks that it reverts if the provided post root is incorrect.
     function testCannotRegisterIfPostRootIncorrect() public {
-        bytes memory expectedError = abi.encodeWithSelector(
-            Semaphore.ProofValidationFailure.selector
-        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
 
         // Test
@@ -141,10 +137,8 @@ contract SemaphoreTest is Test {
     function testCannotRegisterIdentitiesAsNonManager() public {
         // Setup
         address prankAddress = address(0xBADD00D);
-        bytes memory expectedError = abi.encodeWithSelector(
-            Semaphore.Unauthorized.selector,
-            prankAddress
-        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(Semaphore.Unauthorized.selector, prankAddress);
         vm.expectRevert(expectedError);
         vm.prank(prankAddress);
 
@@ -158,21 +152,12 @@ contract SemaphoreTest is Test {
         // Setup
         TreeVerifier verifier = new TreeVerifier();
         Semaphore localSemaphore = new Semaphore(uint256(0), ITreeVerifier((verifier)));
-        bytes memory expectedError = abi.encodeWithSelector(
-            Semaphore.NotLatestRoot.selector,
-            preRoot,
-            uint256(0)
-        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(Semaphore.NotLatestRoot.selector, preRoot, uint256(0));
         vm.expectRevert(expectedError);
 
         // Test
-        localSemaphore.registerIdentities(
-            proof,
-            preRoot,
-            startIndex,
-            identityCommitments,
-            postRoot
-        );
+        localSemaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
     }
 
     /// @notice Tests that it reverts if an attempt is made to register identity commitments
@@ -183,10 +168,8 @@ contract SemaphoreTest is Test {
         invalidCommitments[0] = 0x0;
         invalidCommitments[1] = 0x1;
         invalidCommitments[2] = 0x2;
-        bytes memory expectedError = abi.encodeWithSelector(
-            Semaphore.InvalidCommitment.selector,
-            uint256(0)
-        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(Semaphore.InvalidCommitment.selector, uint256(0));
         vm.expectRevert(expectedError);
 
         // Test
@@ -267,10 +250,7 @@ contract SemaphoreTest is Test {
     function testCalculateInputHashFromParameters() public {
         // Test
         bytes32 calculatedHash = semaphore.calculateTreeVerifierInputHash(
-            startIndex,
-            preRoot,
-            postRoot,
-            identityCommitments
+            startIndex, preRoot, postRoot, identityCommitments
         );
         assertEq(calculatedHash, inputHash);
     }
@@ -345,10 +325,8 @@ contract SemaphoreTest is Test {
         // Setup
         address targetAddress = address(0x900DD00D);
         address prankAddress = address(0xBADD00D);
-        bytes memory expectedError = abi.encodeWithSelector(
-            Semaphore.Unauthorized.selector,
-            prankAddress
-        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(Semaphore.Unauthorized.selector, prankAddress);
         vm.expectRevert(expectedError);
         vm.prank(prankAddress);
 
