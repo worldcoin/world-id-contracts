@@ -30,6 +30,9 @@ contract SemaphoreTest is Test {
     uint256 constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
+    // Slot counter.
+    uint256 slotCounter = 0;
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                   SETUP                                 ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -63,6 +66,27 @@ contract SemaphoreTest is Test {
 
         hevm.label(address(this), "Sender");
         hevm.label(address(semaphore), "Semaphore");
+    }
+
+    /// @notice Moves through the slots in the identity commitments array _without_ resetting
+    ///         between runs.
+    function rotateSlot() public returns (uint256) {
+        uint256 currentSlot = slotCounter;
+        slotCounter = (slotCounter + 1) % (identityCommitments.length - 1);
+        return currentSlot;
+    }
+
+    /// @notice Shallow clones an array.
+    ///
+    /// @param arr The array to clone.
+    ///
+    /// @return out The clone of `arr`.
+    function cloneArray(uint256[] memory arr) public pure returns (uint256[] memory out) {
+        out = new uint256[](arr.length);
+        for (uint256 i = 0; i < arr.length; ++i) {
+            out[i] = arr[i];
+        }
+        return out;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -102,45 +126,55 @@ contract SemaphoreTest is Test {
     }
 
     /// @notice Checks that it reverts if the provided start index is incorrect.
-    function testCannotRegisterIfStartIndexIncorrect() public {
+    function testCannotRegisterIfStartIndexIncorrect(uint32 newStartIndex) public {
+        // Setup
+        vm.assume(newStartIndex != startIndex);
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
 
         // Test
-        semaphore.registerIdentities(proof, preRoot, startIndex + 1, identityCommitments, postRoot);
+        semaphore.registerIdentities(proof, preRoot, newStartIndex, identityCommitments, postRoot);
     }
 
     /// @notice Checks that it reverts if the provided set of identities is incorrect.
-    function testCannotRegisterIfIdentitiesIncorrect() public {
+    function testCannotRegisterIfIdentitiesIncorrect(uint256 identity) public {
         // Setup
-        identityCommitments[2] = 0x7F;
+        uint256 invalidSlot = rotateSlot();
+        vm.assume(
+            identity != identityCommitments[invalidSlot] && identity < SNARK_SCALAR_FIELD
+                && identity != 0x0
+        );
+        uint256[] memory identities = cloneArray(identityCommitments);
+        identities[invalidSlot] = identity;
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
 
         // Test
-        semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
+        semaphore.registerIdentities(proof, preRoot, startIndex, identities, postRoot);
     }
 
     /// @notice Checks that it reverts if the provided post root is incorrect.
-    function testCannotRegisterIfPostRootIncorrect() public {
+    function testCannotRegisterIfPostRootIncorrect(uint256 newPostRoot) public {
+        // Setup
+        vm.assume(newPostRoot != postRoot && newPostRoot < SNARK_SCALAR_FIELD);
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
 
         // Test
-        semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot + 1);
+        semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, newPostRoot);
     }
 
     /// @notice Tests that it reverts if an attempt is made to register identities as a non-manager.
-    function testCannotRegisterIdentitiesAsNonManager() public {
+    function testCannotRegisterIdentitiesAsNonManager(address nonManager) public {
         // Setup
-        address prankAddress = address(0xBADD00D);
+        vm.assume(nonManager != address(this) && nonManager != address(0x0));
         bytes memory expectedError =
-            abi.encodeWithSelector(Semaphore.Unauthorized.selector, prankAddress);
+            abi.encodeWithSelector(Semaphore.Unauthorized.selector, nonManager);
         vm.expectRevert(expectedError);
-        vm.prank(prankAddress);
+        vm.prank(nonManager);
 
         // Test
         semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
@@ -148,12 +182,14 @@ contract SemaphoreTest is Test {
 
     /// @notice Tests that it reverts if an attempt is made to register identities with an outdated
     ///         root.
-    function testCannotRegisterIdentitiesWithOutdatedRoot() public {
+    function testCannotRegisterIdentitiesWithOutdatedRoot(uint256 currentPreRoot) public {
         // Setup
+        vm.assume(currentPreRoot != preRoot && currentPreRoot < SNARK_SCALAR_FIELD);
         TreeVerifier verifier = new TreeVerifier();
-        Semaphore localSemaphore = new Semaphore(uint256(0), ITreeVerifier((verifier)));
-        bytes memory expectedError =
-            abi.encodeWithSelector(Semaphore.NotLatestRoot.selector, preRoot, uint256(0));
+        Semaphore localSemaphore = new Semaphore(uint256(currentPreRoot), ITreeVerifier((verifier)));
+        bytes memory expectedError = abi.encodeWithSelector(
+            Semaphore.NotLatestRoot.selector, preRoot, uint256(currentPreRoot)
+        );
         vm.expectRevert(expectedError);
 
         // Test
@@ -162,12 +198,13 @@ contract SemaphoreTest is Test {
 
     /// @notice Tests that it reverts if an attempt is made to register identity commitments
     ///         containing an invalid identity.
-    function testCannotRegisterInvalidIdentities() public {
+    function testCannotRegisterInvalidIdentities(uint256 fuzz) public {
+        delete fuzz; // Not actually used, I just want it to run a few times
+
         // Setup
+        uint256 position = rotateSlot();
         uint256[] memory invalidCommitments = new uint256[](identityCommitments.length);
-        invalidCommitments[0] = 0x0;
-        invalidCommitments[1] = 0x1;
-        invalidCommitments[2] = 0x2;
+        invalidCommitments[position] = 0x0;
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.InvalidCommitment.selector, uint256(0));
         vm.expectRevert(expectedError);
@@ -178,12 +215,11 @@ contract SemaphoreTest is Test {
 
     /// @notice Tests that it reverts if an attempt is made to register identity commitments that
     ///         are not in reduced form.
-    function testCannotRegisterUnreducedIdentities(uint128 i, uint128 j, uint128 k) public {
+    function testCannotRegisterUnreducedIdentities(uint128 i) public {
         // Setup
+        uint256 position = rotateSlot();
         uint256[] memory unreducedCommitments = new uint256[](identityCommitments.length);
-        unreducedCommitments[0] = SNARK_SCALAR_FIELD + i;
-        unreducedCommitments[1] = SNARK_SCALAR_FIELD + j;
-        unreducedCommitments[2] = SNARK_SCALAR_FIELD + k;
+        unreducedCommitments[position] = SNARK_SCALAR_FIELD + i;
         bytes memory expectedError = abi.encodeWithSelector(
             Semaphore.UnreducedElement.selector,
             Semaphore.UnreducedElementType.IdentityCommitment,
@@ -310,10 +346,7 @@ contract SemaphoreTest is Test {
 
     /// @notice Tests whether it is possible to transfer the contract's management to another
     ///         address.
-    function testTransferAccess() public {
-        // Setup
-        address targetAddress = address(0x900DD00D);
-
+    function testTransferAccess(address targetAddress) public {
         // Test
         semaphore.transferAccess(targetAddress);
         assertEq(semaphore.manager(), targetAddress);
@@ -321,14 +354,14 @@ contract SemaphoreTest is Test {
 
     /// @notice Tests whether the call reverts if an attempt is made to transfer access as a
     ///         non-manager.
-    function testCannotTransferAccessAsNonManager() public {
+    function testCannotTransferAccessAsNonManager(address targetAddress, address nonManager)
+        public
+    {
         // Setup
-        address targetAddress = address(0x900DD00D);
-        address prankAddress = address(0xBADD00D);
         bytes memory expectedError =
-            abi.encodeWithSelector(Semaphore.Unauthorized.selector, prankAddress);
+            abi.encodeWithSelector(Semaphore.Unauthorized.selector, nonManager);
         vm.expectRevert(expectedError);
-        vm.prank(prankAddress);
+        vm.prank(nonManager);
 
         // Test
         semaphore.transferAccess(targetAddress);

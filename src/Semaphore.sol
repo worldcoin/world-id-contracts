@@ -7,6 +7,8 @@ import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {SemaphoreCore} from "semaphore/base/SemaphoreCore.sol";
 import {SemaphoreGroups} from "semaphore/base/SemaphoreGroups.sol";
 
+import "forge-std/Console.sol";
+
 /// @title WorldID Identity Manager
 /// @author Worldcoin
 /// @notice An implementation of a batch-based identity manager for the WorldID protocol.
