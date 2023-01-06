@@ -4,7 +4,8 @@ pragma solidity ^0.8.10;
 import {Vm} from "forge-std/Vm.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {Semaphore} from "../Semaphore.sol";
+import {Semaphore, ITreeVerifier} from "../Semaphore.sol";
+import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
 
 import "forge-std/console.sol";
 
@@ -57,7 +58,8 @@ contract SemaphoreTest is Test {
 
     /// @notice This runs before every test.
     function setUp() public {
-        semaphore = new Semaphore(preRoot);
+        TreeVerifier verifier = new TreeVerifier();
+        semaphore = new Semaphore(preRoot, ITreeVerifier(address(verifier)));
 
         hevm.label(address(this), "Sender");
         hevm.label(address(semaphore), "Semaphore");
@@ -148,7 +150,8 @@ contract SemaphoreTest is Test {
     ///         root.
     function testCannotRegisterIdentitiesWithOutdatedRoot() public {
         // Setup
-        Semaphore localSemaphore = new Semaphore(uint256(0));
+        TreeVerifier verifier = new TreeVerifier();
+        Semaphore localSemaphore = new Semaphore(uint256(0), ITreeVerifier((verifier)));
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.NotLatestRoot.selector, preRoot, uint256(0));
         vm.expectRevert(expectedError);
