@@ -6,6 +6,7 @@ import {Test} from "forge-std/Test.sol";
 
 import {Semaphore, ITreeVerifier} from "../Semaphore.sol";
 import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
+import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
 
 import "forge-std/console.sol";
 
@@ -89,6 +90,30 @@ contract SemaphoreTest is Test {
         return out;
     }
 
+    /// @notice Prepares a verifier test case.
+    /// @dev This is useful to make property-based fuzz testing work better by requiring less 
+    ///      constraints on the generated input.
+    /// 
+    /// @param idents The generated identity commitments to convert.
+    /// @param prf The generated proof terms to convert.
+    ///
+    /// @return preparedIdents The conversion of `idents` to the proper type.
+    /// @return actualProof The conversion of `pft` to the proper type.
+    function prepareVerifierTestCase(uint128[] memory idents, uint128[8] memory prf)
+        public
+        returns (uint256[] memory preparedIdents, uint256[8] memory actualProof)
+    {
+        for (uint256 i = 0; i < idents.length; ++i) {
+            vm.assume(idents[i] != 0x0);
+        }
+        preparedIdents = new uint256[](idents.length);
+        for (uint256 i = 0; i < idents.length; ++i) {
+            preparedIdents[i] = uint256(idents[i]);
+        }
+
+        actualProof = [uint256(prf[0]), prf[1], prf[2], prf[3], prf[4], prf[5], prf[6], prf[7]];
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                 THE TESTS                               ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -96,7 +121,7 @@ contract SemaphoreTest is Test {
     // ===== Identity Registration ================================================
 
     /// @notice Checks that the proof validates properly with the correct inputs.
-    function testRegisterValidIdentities() public {
+    function testRegisterCorrectInputsFromKnown() public {
         // Test
         semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
         assertEq(semaphore.latestRoot(), postRoot);
@@ -104,25 +129,49 @@ contract SemaphoreTest is Test {
         assert(semaphore.queryRoot(postRoot).isValid);
     }
 
-    /// @notice Checks that it reverts if the provided proof is incorrect for the public inputs.
-    function testCannotRegisterIfProofIncorrect() public {
+    /// @notice Checks that the proof validates properly with correct inputs.
+    function testRegisterCorrectInputs(
+        uint128[8] memory prf,
+        uint32 newStartIndex,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
         // Setup
-        uint256[8] memory badProof = [
-            0x2a45bf326884bbf13c821a5e4f30690a391156cccf80a2922fb24250111dd7eb,
-            0x23a7376a159513e6d0e22d43fcdca9d0c8a5c54a73b59fce6962a41e71355894,
-            0x21b9fc7c2d1f76c2e1a972b00f18728a57a34d7e4ae040811bf1626132ff3658,
-            0x2a7c3c660190a33ab92cd84e4b2540e49ea80bdc766eb3aeec49806a78071c75,
-            0x2fc9a52a7f4bcc29faab28a8d8ec126b4fe604a7b41e7d2b3efe92422951d706,
-            0x110740f0b21fb329de682dffc95a5ede11c11c6328606fe254b6ba469b15f68,
-            0x23115ff1573808639f19724479b195b7894a45c9868242ad2a416767359c6c78,
-            0x23f3fa30273c7f38e360496e7f9790450096d4a9592e1fe6e0a996cb04b8fb28
-        ];
+        vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        vm.assume(newPreRoot != newPostRoot);
+        Semaphore localSemaphore = new Semaphore(newPreRoot, new SimpleVerifier());
+        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareVerifierTestCase(identities, prf);
+
+        // Test
+        localSemaphore.registerIdentities(
+            actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot
+        );
+    }
+
+    /// @notice Checks that it reverts if the provided proof is incorrect for the public inputs.
+    function testCannotRegisterWithIncorrectInputs(
+        uint128[8] memory prf,
+        uint32 newStartIndex,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
+        // Setup
+        vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
+        vm.assume(newPreRoot != newPostRoot);
+        Semaphore localSemaphore = new Semaphore(newPreRoot, new SimpleVerifier());
+        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareVerifierTestCase(identities, prf);
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
 
         // Test
-        semaphore.registerIdentities(badProof, preRoot, startIndex, identityCommitments, postRoot);
+        localSemaphore.registerIdentities(
+            actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot
+        );
     }
 
     /// @notice Checks that it reverts if the provided start index is incorrect.
@@ -283,7 +332,7 @@ contract SemaphoreTest is Test {
 
     /// @notice Tests whether it is possible to correctly calculate the `inputHash` to the merkle
     ///         tree verifier.
-    function testCalculateInputHashFromParameters() public {
+    function testCalculateInputHashFromParametersOnKnownInput() public {
         // Test
         bytes32 calculatedHash = semaphore.calculateTreeVerifierInputHash(
             startIndex, preRoot, postRoot, identityCommitments
@@ -294,36 +343,63 @@ contract SemaphoreTest is Test {
     // ===== Root Querying ========================================================
 
     /// @notice Tests whether it is possible to query accurate information about the current root.
-    function testQueryCurrentRoot() public {
+    function testQueryCurrentRoot(uint128 newPreRoot) public {
+        // Setup
+        Semaphore localSemaphore = new Semaphore(newPreRoot, new SimpleVerifier());
+
         // Test
-        Semaphore.RootInfo memory rootInfo = semaphore.queryRoot(preRoot);
-        assertEq(rootInfo.root, preRoot);
+        Semaphore.RootInfo memory rootInfo = localSemaphore.queryRoot(newPreRoot);
+        assertEq(rootInfo.root, newPreRoot);
         assertEq(rootInfo.supersededTimestamp, 0); // Never been inserted into the history.
         assert(rootInfo.isValid);
     }
 
     /// @notice Tests whether it is possible to query accurate information about an arbitrary root.
-    function testQueryOlderRoot() public {
+    function testQueryOlderRoot(
+        uint128[8] memory prf,
+        uint32 newStartIndex,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
         // Setup
-        semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
+        vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        vm.assume(newPreRoot != newPostRoot);
+        Semaphore localSemaphore = new Semaphore(newPreRoot, new SimpleVerifier());
+        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareVerifierTestCase(identities, prf);
+        localSemaphore.registerIdentities(actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot);
 
         // Test
-        Semaphore.RootInfo memory rootInfo = semaphore.queryRoot(preRoot);
-        assertEq(rootInfo.root, preRoot);
+        Semaphore.RootInfo memory rootInfo = localSemaphore.queryRoot(newPreRoot);
+        assertEq(rootInfo.root, newPreRoot);
         assertEq(rootInfo.supersededTimestamp, block.timestamp);
         assert(rootInfo.isValid);
     }
 
     /// @notice Tests whether it is possible to query accurate information about an expired root.
-    function testQueryExpiredRoot() public {
+    function testQueryExpiredRoot(
+        uint128[8] memory prf,
+        uint32 newStartIndex,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
         // Setup
+        vm.assume(newPreRoot != newPostRoot);
+        vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        Semaphore localSemaphore = new Semaphore(newPreRoot, new SimpleVerifier());
+        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareVerifierTestCase(identities, prf);
         uint256 originalTimestamp = block.timestamp;
-        semaphore.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
+        console.log(block.timestamp);
+        localSemaphore.registerIdentities(actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot);
         vm.warp(originalTimestamp + 2 hours); // Force preRoot to expire
+        console.log(block.timestamp);
 
         // Test
-        Semaphore.RootInfo memory rootInfo = semaphore.queryRoot(preRoot);
-        assertEq(rootInfo.root, preRoot);
+        Semaphore.RootInfo memory rootInfo = localSemaphore.queryRoot(newPreRoot);
+        assertEq(rootInfo.root, newPreRoot);
         assertEq(rootInfo.supersededTimestamp, originalTimestamp);
         assert(!rootInfo.isValid);
 
@@ -333,7 +409,10 @@ contract SemaphoreTest is Test {
 
     /// @notice Checks that we get `NO_SUCH_ROOT` back when we query for information about an
     ///         invalid root.
-    function testQueryInvalidRoot() public {
+    function testQueryInvalidRoot(uint256 badRoot) public {
+        // Setup
+        vm.assume(badRoot != preRoot);
+
         // Test
         Semaphore.RootInfo memory rootInfo = semaphore.queryRoot(uint256(0xBADCAFE));
         Semaphore.RootInfo memory noSuchRoot = semaphore.NO_SUCH_ROOT();
@@ -358,6 +437,7 @@ contract SemaphoreTest is Test {
         public
     {
         // Setup
+        vm.assume(targetAddress != nonManager && nonManager != address(this));
         bytes memory expectedError =
             abi.encodeWithSelector(Semaphore.Unauthorized.selector, nonManager);
         vm.expectRevert(expectedError);
