@@ -1,4 +1,4 @@
-# WorldID Base Contracts
+# WorldID Semaphore Contracts
 
 > These are the underlying contracts that power World ID. If you're looking to integrate with World ID, you should use the [Foundry](https://github.com/worldcoin/world-id-starter) or [Hardhat](https://github.com/worldcoin/world-id-starter-hardhat) starter kits.
 
@@ -16,7 +16,21 @@ World ID is meant for on-chain web3 apps, traditional Cloud applications, and ev
 
 ## Deployment
 
-First, you'll need a contract that adheres to the [ISemaphore](./src/interfaces/ISemaphore.sol) interface to manage the zero-knowledge groups. If you don't have any special requirements, you can use [this one](./src/Semaphore.sol). Next, you'll need to create a Semaphore group (`Semaphore.createGroup(YOUR_GROUP_ID, 20, 0)` should do the trick). You'll also need an address that holds the tokens to be airdropped (remember to grant access to the airdrop contract after deployment by calling `ERC20.approve(AIRDROP_CONTRACT_ADDRESS, A_VERY_HIGH_NUMBER)`). Finally, deploy the `SemaphoreAirdrop` contract with the Semaphore contract address, the group id, the address of your ERC20 token, the address of the holder, and the amount of tokens to give to each claimer.
+Deploying the Semaphore contract will require generating a verifier contract for our batch insertion service. Calling `make deploy` will guide you through the process of downloading the relevant tools, initializing and creating the required contracts.
+
+## Testing
+
+The prover service comes with a way to generate test parameters – a mock insertion of a batch of consecutive commitments into the tree.
+Assuming you've already run `make deploy`, the prover serivce binary should have been downloaded. To generate a test batch, run
+```
+./mtb/bin/mtb gen-test-params --tree-depth=... --batch-size=...
+```
+where the paremeters MUST match the parameters passed for contract deployment.
+To transform these into a proof, run the `prove` command, passing the params on stdin:
+```
+./mtb/bin/mtb prove --keys-file=mtb/keys < GENERATED_PARAMS
+```
+The output of this, together with the relevant parts of the generated test params, should constitute a correct input to the `registerIdentities` method of the `Semaphore` contract, as long as it was deployed using the same keys file.
 
 ## Usage
 
@@ -34,4 +48,4 @@ See [the starter kit](https://github.com/worldcoin/world-id-starter#-usage-instr
 
 This repository uses the [Foundry](https://github.com/gakonst/foundry) smart contract toolkit. You can download the Foundry installer by running `curl -L https://foundry.paradigm.xyz | bash`, and then install the latest version by running `foundryup` on a new terminal window (additional instructions are available [on the Foundry repo](https://github.com/gakonst/foundry#installation)). You'll also need [Node.js](https://nodejs.org) if you're planning to run the automated tests.
 
-Once you have everything installed, you can run `make` from the base directory to install all dependencies, build the smart contracts, and configure the Poseidon Solidity library. If you experience spurious test failures after changing branches, rerun `make build` to regenerate the Poseidon library.
+Once you have everything installed, you can run `make` from the base directory to install all dependencies and build the smart contracts.
