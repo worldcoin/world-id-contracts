@@ -21,7 +21,9 @@
 
 pragma solidity ^0.8.10;
 
+// Worldcoin Modification Begin
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
+// Worldcoin Modification End
 
 library Pairing {
     uint256 constant PRIME_Q =
@@ -141,7 +143,9 @@ library Pairing {
     }
 }
 
+// Worldcoin Modification Begin
 contract Verifier is ITreeVerifier {
+    // Worldcoin Modification End
     using Pairing for *;
 
     uint256 constant SNARK_SCALAR_FIELD =
