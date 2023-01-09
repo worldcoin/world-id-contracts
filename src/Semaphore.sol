@@ -3,13 +3,9 @@ pragma solidity ^0.8.10;
 
 import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
+import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {SemaphoreCore} from "semaphore/base/SemaphoreCore.sol";
 import {SemaphoreGroups} from "semaphore/base/SemaphoreGroups.sol";
-import {
-    IncrementalBinaryTree,
-    IncrementalTreeData
-} from "@zk-kit/incremental-merkle-tree.sol/contracts/IncrementalBinaryTree.sol";
-import {Verifier as MerkleTreeVerifier} from "./generated/TreeVerifier.sol";
 
 /// @title WorldID Identity Manager
 /// @author Worldcoin
@@ -92,7 +88,7 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice The verifier instance needed for verifying batch identity insertions.
-    MerkleTreeVerifier private merkleTreeVerifier = new MerkleTreeVerifier();
+    ITreeVerifier private merkleTreeVerifier;
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
     SemaphoreVerifier private semaphoreVerifier = new SemaphoreVerifier();
@@ -105,8 +101,9 @@ contract Semaphore is IWorldID, SemaphoreCore {
     ///
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of an empty tree.
-    constructor(uint256 initialRoot) {
+    constructor(uint256 initialRoot, ITreeVerifier merkleTreeVerifier_) {
         latestRoot = initialRoot;
+        merkleTreeVerifier = merkleTreeVerifier_;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
