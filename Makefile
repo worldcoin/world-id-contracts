@@ -14,4 +14,4 @@ format:; forge fmt
 # Update forge dependencies.
 update:; forge update
 # Deploy contracts
-deploy:; node --no-warnings scripts/deploy.js
+deploy: install build; node --no-warnings scripts/deploy.js
