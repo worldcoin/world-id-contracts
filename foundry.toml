@@ -40,9 +40,9 @@ stack_allocation = true   # Improves allocation of stack slots for variables.
 
 [profile.debug]
 # Make things chattier when debugging in case of test failures, giving us more
-# information with which to debug the issue. At this level, stack traces for all
-# tests are displayed, and setup traces for failing tests are displayed.
-verbosity = 4
+# information with which to debug the issue. At this level, stack traces and 
+# setup traces for failing tests are displayed.
+verbosity = 3
 
 # === Test All Profile ========================================================
 
