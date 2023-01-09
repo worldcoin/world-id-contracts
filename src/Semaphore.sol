@@ -4,7 +4,6 @@ pragma solidity ^0.8.10;
 import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
-import {SemaphoreCore} from "semaphore/base/SemaphoreCore.sol";
 import {SemaphoreGroups} from "semaphore/base/SemaphoreGroups.sol";
 
 /// @title WorldID Identity Manager
@@ -12,7 +11,7 @@ import {SemaphoreGroups} from "semaphore/base/SemaphoreGroups.sol";
 /// @notice An implementation of a batch-based identity manager for the WorldID protocol.
 /// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs
 ///      to perform the insertions.
-contract Semaphore is IWorldID, SemaphoreCore {
+contract Semaphore is IWorldID {
     ///////////////////////////////////////////////////////////////////////////////
     ///                       PUBLIC CONFIGURATION STORAGE                      ///
     ///////////////////////////////////////////////////////////////////////////////

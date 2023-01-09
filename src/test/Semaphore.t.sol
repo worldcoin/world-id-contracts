@@ -91,9 +91,9 @@ contract SemaphoreTest is Test {
     }
 
     /// @notice Prepares a verifier test case.
-    /// @dev This is useful to make property-based fuzz testing work better by requiring less 
+    /// @dev This is useful to make property-based fuzz testing work better by requiring less
     ///      constraints on the generated input.
-    /// 
+    ///
     /// @param idents The generated identity commitments to convert.
     /// @param prf The generated proof terms to convert.
     ///
@@ -368,7 +368,9 @@ contract SemaphoreTest is Test {
         Semaphore localSemaphore = new Semaphore(newPreRoot, new SimpleVerifier());
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareVerifierTestCase(identities, prf);
-        localSemaphore.registerIdentities(actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot);
+        localSemaphore.registerIdentities(
+            actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot
+        );
 
         // Test
         Semaphore.RootInfo memory rootInfo = localSemaphore.queryRoot(newPreRoot);
@@ -393,7 +395,9 @@ contract SemaphoreTest is Test {
             prepareVerifierTestCase(identities, prf);
         uint256 originalTimestamp = block.timestamp;
         console.log(block.timestamp);
-        localSemaphore.registerIdentities(actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot);
+        localSemaphore.registerIdentities(
+            actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot
+        );
         vm.warp(originalTimestamp + 2 hours); // Force preRoot to expire
         console.log(block.timestamp);
 
