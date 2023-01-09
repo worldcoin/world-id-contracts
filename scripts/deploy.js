@@ -13,17 +13,26 @@ import https from 'https'
 const { JsonRpcProvider } = providers;
 
 const DEFAULT_RPC_URL = 'http://localhost:8545'
+const MTB_RELEASES_URL = 'https://github.com/worldcoin/semaphore-mtb/releases/download'
 const MTB_DIR = 'mtb'
 const KEYS_PATH = MTB_DIR + '/keys'
 const MTB_BIN_DIR = MTB_DIR + '/bin'
 const MTB_BIN_PATH = MTB_BIN_DIR + '/mtb'
 const MTB_CONTRACTS_DIR = MTB_DIR + '/contracts'
-const DEFAULT_TREE_DEPTH = 10
-const DEFAULT_BATCH_SIZE = 5
-const MTB_VERSION = '1.0.0'
+// These are an arbitrary choice just for ease of development.
+const DEFAULT_TREE_DEPTH = 32
+const DEFAULT_BATCH_SIZE = 3
+const MTB_VERSION = '1.0.2'
 const VERIFIER_SOURCE_PATH = MTB_CONTRACTS_DIR + '/Verifier.sol'
 const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json'
 
+/**
+ * Asks the user a question and returns the answer.
+ * 
+ * @param {string} question the question contents.
+ * @param {?string} type an optional type to parse the answer as. Currently only supports 'int' for decimal integers.
+ * @returns a promise resolving to user's response
+ */
 function ask(question, type) {
     const rl = readline.createInterface({
         input: process.stdin,
@@ -75,7 +84,7 @@ async function downloadSemaphoreMtbBinary(plan, config) {
     plan.add('Download Semaphore-MTB binary', async (config) => {
         fs.mkdirSync(MTB_BIN_DIR, { recursive: true });
         const spinner = ora('Downloading Semaphore-MTB binary...').start();
-        const url = `https://github.com/worldcoin/semaphore-mtb/releases/download/${MTB_VERSION}/mtb-${config.os}-${config.arch}`;
+        const url = `${MTB_RELEASES_URL}/${MTB_VERSION}/mtb-${config.os}-${config.arch}`;
         const done = new Promise((resolve, reject) => {
             const file = fs.createWriteStream(config.mtbBinary);
             const request = https.get(url, function (response) {
@@ -217,7 +226,7 @@ async function compileVerifierContract(plan, config) {
     });
 }
 
-async function ensureVeirfierBytecode(plan, config) {
+async function ensureVerifierBytecode(plan, config) {
     config.mtbVerifierContractOutFile = process.env.VERIFIER_BYTECODE_FILE;
     if (!config.mtbVerifierContractOutFile) {
         if (fs.existsSync(VERIFIER_ABI_PATH)) {
@@ -245,13 +254,13 @@ async function deployVerifierContract(plan, config) {
     });
 }
 
-async function ensureVeirfierDeployment(plan, config) {
+async function ensureVerifierDeployment(plan, config) {
     config.verifierContractAddress = process.env.VERIFIER_CONTRACT_ADDRESS;
     if (!config.verifierContractAddress) {
         config.verifierContractAddress = await ask('Enter batch insert verifier contract address, or leave empty to deploy it: ');
     }
     if (!config.verifierContractAddress) {
-        await ensureVeirfierBytecode(plan, config);
+        await ensureVerifierBytecode(plan, config);
         await deployVerifierContract(plan, config);
     }
 }
@@ -308,7 +317,7 @@ async function buildActionPlan(plan, config) {
     config.provider = new JsonRpcProvider(config.rpcUrl);
     config.wallet = new Wallet(config.privateKey, config.provider);
 
-    await ensureVeirfierDeployment(plan, config);
+    await ensureVerifierDeployment(plan, config);
     await ensureInitialRoot(plan, config);
     await deploySemaphore(plan, config);
 }

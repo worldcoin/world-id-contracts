@@ -16,7 +16,7 @@ World ID is meant for on-chain web3 apps, traditional Cloud applications, and ev
 
 ## Deployment
 
-Deploying the Semaphore contract will require generating a verifier contract for our batch insertion service. Calling `make build` will guide you through the process of downloading the relevant tools, initializing and creating the required contracts.
+Deploying the Semaphore contract will require generating a verifier contract for our batch insertion service. Calling `make deploy` will guide you through the process of downloading the relevant tools, initializing and creating the required contracts.
 
 ## Testing
 
