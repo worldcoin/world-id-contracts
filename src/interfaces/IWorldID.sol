@@ -1,6 +1,9 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
+/// @title WorldID Interface
+/// @author Worldcoin
+/// @notice The interface to the proof verification for WorldID.
 interface IWorldID {
     /// @notice Reverts if the zero-knowledge proof is invalid.
     /// @param root The of the Merkle tree

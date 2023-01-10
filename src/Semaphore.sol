@@ -4,7 +4,6 @@ pragma solidity ^0.8.10;
 import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
-import {SemaphoreGroups} from "semaphore/base/SemaphoreGroups.sol";
 
 /// @title WorldID Identity Manager
 /// @author Worldcoin

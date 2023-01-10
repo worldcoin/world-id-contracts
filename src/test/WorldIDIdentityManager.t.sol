@@ -4,8 +4,11 @@ pragma solidity ^0.8.10;
 import {Vm} from "forge-std/Vm.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {WorldIDIdentityManagerImplMock} from "./mock/WorldIDIdentityManagerImplMock.sol";
+import {Semaphore, ITreeVerifier} from "../Semaphore.sol";
+import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
+import {WorldIDIdentityManagerImplMock} from "./mock/WorldIDIdentityManagerImplMock.sol";
 
 import {WorldIDIdentityManager} from "../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1} from "../WorldIDIdentityManagerImplV1.sol";
@@ -23,6 +26,9 @@ contract WorldIDIdentityManagerTest is Test {
     WorldIDIdentityManager identityManager;
     WorldIDIdentityManagerImplV1 managerImpl;
 
+    ITreeVerifier verifier = new TreeVerifier();
+    uint256 initialRoot = 0x0;
+
     address identityManagerAddress = address(identityManager);
     address managerImplAddress = address(managerImpl);
 
@@ -34,7 +40,8 @@ contract WorldIDIdentityManagerTest is Test {
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
         managerImpl = new WorldIDIdentityManagerImplV1();
-        bytes memory callData = abi.encodeCall(WorldIDIdentityManagerImplV1.initialize, ());
+        bytes memory callData =
+            abi.encodeCall(WorldIDIdentityManagerImplV1.initialize, (initialRoot, verifier));
         identityManager = new WorldIDIdentityManager(address(managerImpl), callData);
 
         hevm.label(address(this), "Sender");
@@ -65,7 +72,8 @@ contract WorldIDIdentityManagerTest is Test {
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
         managerImpl = new WorldIDIdentityManagerImplV1();
-        bytes memory callData = abi.encodeCall(WorldIDIdentityManagerImplV1.initialize, ());
+        bytes memory callData =
+            abi.encodeCall(WorldIDIdentityManagerImplV1.initialize, (initialRoot, verifier));
 
         // Test
         identityManager = new WorldIDIdentityManager(address(managerImpl), callData);
@@ -92,7 +100,8 @@ contract WorldIDIdentityManagerTest is Test {
     function testCanUpgradeImplementationWithCall() public {
         // Setup
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
-        bytes memory initCall = abi.encodeCall(WorldIDIdentityManagerImplV1.initialize, ());
+        bytes memory initCall =
+            abi.encodeCall(WorldIDIdentityManagerImplV1.initialize, (initialRoot, verifier));
         bytes memory upgradeCall =
             abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(mockUpgrade), initCall));
 
@@ -107,7 +116,8 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(naughty != address(this) || naughty != address(0x0));
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
-        bytes memory initCall = abi.encodeCall(WorldIDIdentityManagerImplV1.initialize, ());
+        bytes memory initCall =
+            abi.encodeCall(WorldIDIdentityManagerImplV1.initialize, (initialRoot, verifier));
         bytes memory upgradeCall =
             abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(mockUpgrade), initCall));
         vm.prank(naughty);

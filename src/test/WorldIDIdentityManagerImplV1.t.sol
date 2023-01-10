@@ -4,6 +4,10 @@ pragma solidity ^0.8.10;
 import {Vm} from "forge-std/Vm.sol";
 import {Test} from "forge-std/Test.sol";
 
+import {Semaphore, ITreeVerifier} from "../Semaphore.sol";
+import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
+import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
+
 import {WorldIDIdentityManagerImplV1} from "../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Test.
@@ -18,6 +22,9 @@ contract WorldIDIdentityManagerImplV1Test is Test {
     address thisAddress;
     address nullAddress = address(0x0);
 
+    ITreeVerifier verifier = new TreeVerifier();
+    uint256 initialRoot = 0x0;
+
     WorldIDIdentityManagerImplV1 identityManager;
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -30,7 +37,7 @@ contract WorldIDIdentityManagerImplV1Test is Test {
         thisAddress = address(this);
 
         identityManager = new WorldIDIdentityManagerImplV1();
-        identityManager.initialize();
+        identityManager.initialize(initialRoot, verifier);
 
         hevm.label(address(this), "Sender");
         hevm.label(address(identityManager), "IdentityManager");
@@ -51,7 +58,7 @@ contract WorldIDIdentityManagerImplV1Test is Test {
         emit Initialized(1);
 
         // Test
-        identityManager.initialize();
+        identityManager.initialize(initialRoot, verifier);
     }
 
     /// @notice Checks that it is not possible to initialise the contract more than once.
@@ -60,7 +67,7 @@ contract WorldIDIdentityManagerImplV1Test is Test {
         vm.expectRevert("Initializable: contract is already initialized");
 
         // Test
-        identityManager.initialize();
+        identityManager.initialize(initialRoot, verifier);
     }
 
     ///////////////////////////////////////////////////////////////////////////////
