@@ -87,6 +87,45 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     }
 
     ///////////////////////////////////////////////////////////////////////////////
+    ///                                  ERRORS                                 ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Thrown when encountering an element that should be reduced as a member of `Fr` but
+    ///         is not.
+    /// @dev `r` in this case is given by `SNARK_SCALAR_FIELD`.
+    ///
+    /// @param elementType The kind of element that was encountered unreduced.
+    /// @param element The value of that element.
+    error UnreducedElement(UnreducedElementType elementType, uint256 element);
+
+    /// @notice Thrown when trying to execute a privileged action without being the contract
+    ///         manager.
+    ///
+    /// @param user The user that attempted the action that they were not authorised for.
+    error Unauthorized(address user);
+
+    /// @notice Thrown when one or more of the identity commitments to be inserted is invalid.
+    ///
+    /// @param commitment The invalid commitment.
+    error InvalidCommitment(uint256 commitment);
+
+    /// @notice Thrown when the provided proof cannot be verified for the accompanying inputs.
+    error ProofValidationFailure();
+
+    /// @notice Thrown when the provided root is not the very latest root.
+    ///
+    /// @param providedRoot The root that was provided as the `preRoot` for a transaction.
+    /// @param latestRoot The actual latest root at the time of the transaction.
+    error NotLatestRoot(uint256 providedRoot, uint256 latestRoot);
+
+    /// @notice Thrown when attempting to validate a root that has expired.
+    error ExpiredRoot();
+
+    /// @notice Thrown when attempting to validate a root that has yet to be added to the root
+    ///         history.
+    error NonExistentRoot();
+
+    ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
 
@@ -123,6 +162,218 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     }
 
     ///////////////////////////////////////////////////////////////////////////////
+    ///                           IDENTITY MANAGEMENT                           ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Registers identities into the WorldID system. Can only be called by the manager.
+    /// @dev Registration is performed off-chain and verified on-chain via the `insertionProof`.
+    ///      This saves gas and time over inserting identities one at a time.
+    ///
+    /// @param insertionProof The proof that given the conditions (`preRoot`, `startIndex` and
+    ///        `identityCommitments`), insertion into the tree results in `postRoot`. Elements 0 and
+    ///        1 are the `x` and `y` coordinates for `ar` respectively. Elements 2 and 3 are the `x`
+    ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
+    ///        and 7 are the `x` and `y` coordinates for `krs`.
+    /// @param preRoot The value for the root of the tree before the `identityCommitments` have been
+    ////       inserted. Must be an element of the field `Kr`.
+    /// @param startIndex The position in the tree at which the insertions were made.
+    /// @param identityCommitments The identities that were inserted into the tree starting at
+    ///        `startIndex` and `preRoot` to give `postRoot`. All of the commitments must be
+    ///        elements of the field `Kr`.
+    /// @param postRoot The root obtained after inserting all of `identityCommitments` into the tree
+    ///        described by `preRoot`. Must be an element of the field `Kr`.
+    ///
+    /// @custom:reverts Unauthorized If the message sender is not authorised to add identities.
+    /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid.
+    /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
+    /// @custom:reverts ProofValidationFailure If `insertionProof` cannot be verified using the
+    ///                 provided inputs.
+    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
+    ///                 `identityCommitments` is not an element of the field `Kr`. It describes the
+    ///                 type and value of the unreduced element.
+    function registerIdentities(
+        // MerkleTreeProof calldata insertionProof,
+        uint256[8] calldata insertionProof,
+        uint256 preRoot,
+        uint32 startIndex,
+        uint256[] calldata identityCommitments,
+        uint256 postRoot
+    ) public virtual onlyOwner {
+        // We can only operate on the latest root in reduced form.
+        if (!isInputInReducedForm(preRoot)) {
+            revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
+        }
+        if (preRoot != latestRoot) {
+            revert NotLatestRoot(preRoot, latestRoot);
+        }
+
+        // As the `startIndex` is restricted to a uint32, where
+        // `type(uint32).max <<< SNARK_SCALAR_FIELD`, we are safe not to check this. As verified in
+        // the tests, a revert happens if you pass a value larger than `type(uint32).max` when
+        // calling outside the type-checker.
+
+        // We need the post root to be in reduced form.
+        if (!isInputInReducedForm(postRoot)) {
+            revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
+        }
+
+        // We can only operate on identities that are valid and in reduced form.
+        validateIdentityCommitments(identityCommitments);
+
+        // Having validated the preconditions we can now check the proof itself.
+        bytes32 inputHash =
+            calculateTreeVerifierInputHash(startIndex, preRoot, postRoot, identityCommitments);
+
+        // No matter what, the inputs can result in a hash that is not an element of the scalar
+        // field in which we're operating. We reduce it into the field before handing it to the
+        // verifier.
+        uint256 reducedElement = reduceInputElementInSnarkScalarField(uint256(inputHash));
+
+        try merkleTreeVerifier.verifyProof(
+            [insertionProof[0], insertionProof[1]],
+            [[insertionProof[2], insertionProof[3]], [insertionProof[4], insertionProof[5]]],
+            [insertionProof[6], insertionProof[7]],
+            [reducedElement]
+        ) returns (bool verifierResult) {
+            // If the proof did not verify, we revert with a failure.
+            if (!verifierResult) {
+                revert ProofValidationFailure();
+            }
+
+            // If it did verify, we need to update the contract's state. We set the currently valid
+            // root to the root after the insertions.
+            latestRoot = postRoot;
+
+            // We also need to add the previous root to the history, and set the timestamp at which
+            // it was expired.
+            rootHistory[preRoot] = uint128(block.timestamp);
+        } catch Error(string memory errString) {
+            /// This is not the revert we're looking for.
+            revert(errString);
+        } catch {
+            // If we reach here we know it's the internal error, as the tree verifier only uses
+            // `require`s otherwise, which will be re-thrown above.
+            revert ProofValidationFailure();
+        }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                             UTILITY FUNCTIONS                           ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Calculates the input hash for the merkle tree verifier.
+    /// @dev Implements the computation described below.
+    ///
+    /// @param startIndex The index in the tree from which inserting started.
+    /// @param preRoot The root value of the tree before these insertions were made.
+    /// @param postRoot The root value of the tree after these insertsions were made.
+    /// @param identityCommitments The identities that were added to the tree to produce `postRoot`.
+    ///
+    /// We keccak hash all input to save verification gas. Inputs are arranged as follows:
+    /// StartIndex || PreRoot || PostRoot || IdComms[0] || IdComms[1] || ... || IdComms[batchSize-1]
+    ///     32	   ||   256   ||   256    ||    256     ||    256     || ... ||     256 bits
+    function calculateTreeVerifierInputHash(
+        uint32 startIndex,
+        uint256 preRoot,
+        uint256 postRoot,
+        uint256[] calldata identityCommitments
+    ) public virtual pure returns (bytes32 hash) {
+        bytes memory bytesToHash =
+            abi.encodePacked(startIndex, preRoot, postRoot, identityCommitments);
+
+        hash = keccak256(bytesToHash);
+    }
+
+    /// @notice Allows a caller to query the root history for information about a given root.
+    /// @dev Should be used sparingly as the query can be quite expensive.
+    ///
+    /// @param root The root for which you are querying information.
+    /// @return rootInfo The information about `root`, or `NO_SUCH_ROOT` if `root` does not exist.
+    ///                  Note that if the queried root is the current, the timestamp will be invalid
+    ///                  as the root has not been superseded.
+    function queryRoot(uint256 root) public virtual view returns (RootInfo memory rootInfo) {
+        if (root == latestRoot) {
+            return RootInfo(latestRoot, 0, true);
+        } else {
+            uint128 rootTimestamp = rootHistory[root];
+
+            if (rootTimestamp == 0) {
+                return NO_SUCH_ROOT();
+            }
+
+            bool isValid = !(block.timestamp - rootTimestamp > ROOT_HISTORY_EXPIRY);
+            return RootInfo(root, rootTimestamp, isValid);
+        }
+    }
+
+    /// @notice Validates an array of identity commitments, reverting if it finds one that is
+    ///         invalid or has not been reduced.
+    ///
+    /// @param identityCommitments The array of identity commitments to be validated.
+    ///
+    /// @custom:reverts Reverts with `InvalidCommitment` if one or more of the provided commitments
+    ///                 is invalid.
+    /// @custom:reverts Reverts with `UnreducedElement` if one or more of the provided commitments
+    ///                 is not in reduced form.
+    function validateIdentityCommitments(uint256[] calldata identityCommitments) internal virtual pure {
+        for (uint256 i = 0; i < identityCommitments.length; ++i) {
+            uint256 commitment = identityCommitments[i];
+            if (!isInputInReducedForm(commitment)) {
+                revert UnreducedElement(UnreducedElementType.IdentityCommitment, commitment);
+            }
+            if (commitment == EMPTY_LEAF) {
+                revert InvalidCommitment(identityCommitments[i]);
+            }
+        }
+    }
+
+    /// @notice Checks if the provided `input` is in reduced form within the field `Fr`.
+    /// @dev `r` in this case is given by `SNARK_SCALAR_FIELD`.
+    ///
+    /// @param input The input to check for being in reduced form.
+    /// @return isInReducedForm Returns `true` if `input` is in reduced form, `false` otherwise.
+    function isInputInReducedForm(uint256 input) public virtual pure returns (bool isInReducedForm) {
+        return input < SNARK_SCALAR_FIELD;
+    }
+
+    /// @notice Reduces the `input` element into the finite field `Fr` using the modulo operation.
+    /// @dev `r` in this case is given by `SNARK_SCALAR_FIELD`.
+    ///
+    /// @param input The number to reduce into `Fr`.
+    /// @return elem The value of `input` reduced to be an element of `Fr`.
+    function reduceInputElementInSnarkScalarField(uint256 input)
+        internal
+        virtual
+        pure
+        returns (uint256 elem)
+    {
+        return input % SNARK_SCALAR_FIELD;
+    }
+
+    /// @notice Checks if a given root value is valid and has been added to the root history.
+    /// @dev Reverts with `ExpiredRoot` if the root has expired, and `NonExistentRoot` if the root
+    ///      is not in the root history.
+    ///
+    /// @param root The root of a given identity group.
+    function checkValidRoot(uint256 root) public virtual view returns (bool) {
+        if (root != latestRoot) {
+            uint128 rootTimestamp = rootHistory[root];
+
+            // A root is no longer valid if it has expired.
+            if (block.timestamp - rootTimestamp > ROOT_HISTORY_EXPIRY) {
+                revert ExpiredRoot();
+            }
+
+            // A root does not exist if it has no associated timestamp.
+            if (rootTimestamp == 0) {
+                revert NonExistentRoot();
+            }
+        }
+
+        return true;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
     ///                             AUTHENTICATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
 
@@ -151,7 +402,16 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         uint256 nullifierHash,
         uint256 externalNullifierHash,
         uint256[8] calldata proof
-    ) public view virtual {
-        // TODO [Ara] Bring the impl back
+    ) public virtual view {
+        uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
+
+        if (checkValidRoot(root)) {
+            semaphoreVerifier.verifyProof(
+                [proof[0], proof[1]],
+                [[proof[2], proof[3]], [proof[4], proof[5]]],
+                [proof[6], proof[7]],
+                publicSignals
+            );
+        }
     }
 }
