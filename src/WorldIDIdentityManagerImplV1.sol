@@ -277,7 +277,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         uint256 preRoot,
         uint256 postRoot,
         uint256[] calldata identityCommitments
-    ) public virtual pure returns (bytes32 hash) {
+    ) public pure virtual returns (bytes32 hash) {
         bytes memory bytesToHash =
             abi.encodePacked(startIndex, preRoot, postRoot, identityCommitments);
 
@@ -291,7 +291,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @return rootInfo The information about `root`, or `NO_SUCH_ROOT` if `root` does not exist.
     ///                  Note that if the queried root is the current, the timestamp will be invalid
     ///                  as the root has not been superseded.
-    function queryRoot(uint256 root) public virtual view returns (RootInfo memory rootInfo) {
+    function queryRoot(uint256 root) public view virtual returns (RootInfo memory rootInfo) {
         if (root == latestRoot) {
             return RootInfo(latestRoot, 0, true);
         } else {
@@ -315,7 +315,11 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///                 is invalid.
     /// @custom:reverts Reverts with `UnreducedElement` if one or more of the provided commitments
     ///                 is not in reduced form.
-    function validateIdentityCommitments(uint256[] calldata identityCommitments) internal virtual pure {
+    function validateIdentityCommitments(uint256[] calldata identityCommitments)
+        internal
+        pure
+        virtual
+    {
         for (uint256 i = 0; i < identityCommitments.length; ++i) {
             uint256 commitment = identityCommitments[i];
             if (!isInputInReducedForm(commitment)) {
@@ -332,7 +336,12 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///
     /// @param input The input to check for being in reduced form.
     /// @return isInReducedForm Returns `true` if `input` is in reduced form, `false` otherwise.
-    function isInputInReducedForm(uint256 input) public virtual pure returns (bool isInReducedForm) {
+    function isInputInReducedForm(uint256 input)
+        public
+        pure
+        virtual
+        returns (bool isInReducedForm)
+    {
         return input < SNARK_SCALAR_FIELD;
     }
 
@@ -343,8 +352,8 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @return elem The value of `input` reduced to be an element of `Fr`.
     function reduceInputElementInSnarkScalarField(uint256 input)
         internal
-        virtual
         pure
+        virtual
         returns (uint256 elem)
     {
         return input % SNARK_SCALAR_FIELD;
@@ -355,7 +364,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///      is not in the root history.
     ///
     /// @param root The root of a given identity group.
-    function checkValidRoot(uint256 root) public virtual view returns (bool) {
+    function checkValidRoot(uint256 root) public view virtual returns (bool) {
         if (root != latestRoot) {
             uint128 rootTimestamp = rootHistory[root];
 
@@ -402,7 +411,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         uint256 nullifierHash,
         uint256 externalNullifierHash,
         uint256[8] calldata proof
-    ) public virtual view {
+    ) public view virtual {
         uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
 
         if (checkValidRoot(root)) {

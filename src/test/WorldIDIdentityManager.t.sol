@@ -133,5 +133,9 @@ contract WorldIDIdentityManagerTest is Test {
     ///                            FUNCTIONALITY TESTS                          ///
     ///////////////////////////////////////////////////////////////////////////////
 
+    // Note Comprehensive functionality tests are located in WorldIDIdentityManagerImplV1.sol. These
+    // tests are purely to ensure that we can call all of the necessary functions properly through
+    // the proxy.
+
     // TODO [Ara] `testCanCall*` tests
 }
