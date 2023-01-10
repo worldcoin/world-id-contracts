@@ -4,10 +4,9 @@ pragma solidity ^0.8.10;
 import {Vm} from "forge-std/Vm.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {Semaphore, ITreeVerifier} from "../Semaphore.sol";
+import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
 import {WorldIDIdentityManagerImplMock} from "./mock/WorldIDIdentityManagerImplMock.sol";
 
 import {WorldIDIdentityManager} from "../WorldIDIdentityManager.sol";
@@ -26,7 +25,7 @@ contract WorldIDIdentityManagerTest is Test {
     WorldIDIdentityManager identityManager;
     WorldIDIdentityManagerImplV1 managerImpl;
 
-    ITreeVerifier verifier = new TreeVerifier();
+    ITreeVerifier verifier = new SimpleVerifier();
     uint256 initialRoot = 0x0;
 
     address identityManagerAddress = address(identityManager);

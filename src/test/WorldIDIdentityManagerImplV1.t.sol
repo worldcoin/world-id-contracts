@@ -4,7 +4,7 @@ pragma solidity ^0.8.10;
 import {Vm} from "forge-std/Vm.sol";
 import {Test} from "forge-std/Test.sol";
 
-import {Semaphore, ITreeVerifier} from "../Semaphore.sol";
+import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
 import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
 
@@ -253,7 +253,7 @@ contract WorldIDIdentityManagerImplV1Test is Test {
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareVerifierTestCase(identities, prf);
         bytes memory expectedError =
-            abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
+            abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
 
         // Test
@@ -267,7 +267,7 @@ contract WorldIDIdentityManagerImplV1Test is Test {
         // Setup
         vm.assume(newStartIndex != startIndex);
         bytes memory expectedError =
-            abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
+            abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
 
         // Test
@@ -287,7 +287,7 @@ contract WorldIDIdentityManagerImplV1Test is Test {
         uint256[] memory identities = cloneArray(identityCommitments);
         identities[invalidSlot] = identity;
         bytes memory expectedError =
-            abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
+            abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
 
         // Test
@@ -299,7 +299,7 @@ contract WorldIDIdentityManagerImplV1Test is Test {
         // Setup
         vm.assume(newPostRoot != postRoot && newPostRoot < SNARK_SCALAR_FIELD);
         bytes memory expectedError =
-            abi.encodeWithSelector(Semaphore.ProofValidationFailure.selector);
+            abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
         vm.expectRevert(expectedError);
 
         // Test
@@ -319,5 +319,232 @@ contract WorldIDIdentityManagerImplV1Test is Test {
         identityManager.registerIdentities(
             proof, preRoot, startIndex, identityCommitments, postRoot
         );
+    }
+
+    /// @notice Tests that it reverts if an attempt is made to register identities with an outdated
+    ///         root.
+    function testCannotRegisterIdentitiesWithOutdatedRoot(uint256 currentPreRoot) public {
+        // Setup
+        vm.assume(currentPreRoot != preRoot && currentPreRoot < SNARK_SCALAR_FIELD);
+        ManagerImpl localManager = new ManagerImpl();
+        localManager.initialize(uint256(currentPreRoot), verifier);
+        bytes memory expectedError = abi.encodeWithSelector(
+            ManagerImpl.NotLatestRoot.selector, preRoot, uint256(currentPreRoot)
+        );
+        vm.expectRevert(expectedError);
+
+        // Test
+        localManager.registerIdentities(proof, preRoot, startIndex, identityCommitments, postRoot);
+    }
+
+    /// @notice Tests that it reverts if an attempt is made to register identity commitments
+    ///         containing an invalid identity.
+    function testCannotRegisterIdentitiesWithInvalidIdentities(uint256 fuzz) public {
+        delete fuzz; // Not actually used, I just want it to run a few times
+
+        // Setup
+        uint256 position = rotateSlot();
+        uint256[] memory invalidCommitments = new uint256[](identityCommitments.length);
+        invalidCommitments[position] = 0x0;
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.InvalidCommitment.selector, uint256(0));
+        vm.expectRevert(expectedError);
+
+        // Test
+        identityManager.registerIdentities(proof, preRoot, startIndex, invalidCommitments, postRoot);
+    }
+
+    /// @notice Tests that it reverts if an attempt is made to register identity commitments that
+    ///         are not in reduced form.
+    function testCannotRegisterIdentitiesWithUnreducedIdentities(uint128 i) public {
+        // Setup
+        uint256 position = rotateSlot();
+        uint256[] memory unreducedCommitments = new uint256[](identityCommitments.length);
+        unreducedCommitments[position] = SNARK_SCALAR_FIELD + i;
+        bytes memory expectedError = abi.encodeWithSelector(
+            ManagerImpl.UnreducedElement.selector,
+            ManagerImpl.UnreducedElementType.IdentityCommitment,
+            SNARK_SCALAR_FIELD + i
+        );
+        vm.expectRevert(expectedError);
+
+        // Test
+        identityManager.registerIdentities(
+            proof, preRoot, startIndex, unreducedCommitments, postRoot
+        );
+    }
+
+    /// @notice Tests that it reverts if an attempt is made to register new identities with a pre
+    ///         root that is not in reduced form.
+    function testCannotRegisterIdentitiesWithUnresducedPreRoot(uint128 i) public {
+        // Setup
+        uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
+        bytes memory expectedError = abi.encodeWithSelector(
+            ManagerImpl.UnreducedElement.selector,
+            ManagerImpl.UnreducedElementType.PreRoot,
+            newPreRoot
+        );
+        vm.expectRevert(expectedError);
+
+        // Test
+        identityManager.registerIdentities(
+            proof, newPreRoot, startIndex, identityCommitments, postRoot
+        );
+    }
+
+    /// @notice Tests that it reverts if an attempt is made to register identities with a postRoot
+    ///         that is not in reduced form.
+    function testCannotRegisterIdentitiesWithUnreducedPostRoot(uint128 i) public {
+        // Setup
+        uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
+        bytes memory expectedError = abi.encodeWithSelector(
+            ManagerImpl.UnreducedElement.selector,
+            ManagerImpl.UnreducedElementType.PostRoot,
+            newPostRoot
+        );
+        vm.expectRevert(expectedError);
+
+        // Test
+        identityManager.registerIdentities(
+            proof, preRoot, startIndex, identityCommitments, newPostRoot
+        );
+    }
+
+    /// @notice Tests that it reverts if an attempt is made to violate type safety and register with
+    ///         a startIndex that is not type safe within the bounds of `type(uint32).max` and hence
+    ///         within `SNARK_SCALAR_FIELD`.
+    function testCannotRegisterIdentitiesWithUnreducedStartIndex(uint256 i) public {
+        // Setup
+        vm.assume(i > type(uint32).max);
+        address managerAddress = address(identityManager);
+        bytes4 functionSelector = ManagerImpl.registerIdentities.selector;
+        bytes memory callData = abi.encodeWithSelector(
+            functionSelector, proof, preRoot, i, identityCommitments, postRoot
+        );
+
+        // Test
+        (bool success, bytes memory returnValue) = managerAddress.call(callData);
+        delete returnValue; // No data here as the type safety violation reverts in the EVM.
+        assert(!success);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                            DATA QUERYING TESTS                          ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Tests whether it is possible to query accurate information about the current root.
+    function testQueryCurrentRoot(uint128 newPreRoot) public {
+        // Setup
+        ManagerImpl localManager = new ManagerImpl();
+        localManager.initialize(newPreRoot, new SimpleVerifier());
+
+        // Test
+        ManagerImpl.RootInfo memory rootInfo = localManager.queryRoot(newPreRoot);
+        assertEq(rootInfo.root, newPreRoot);
+        assertEq(rootInfo.supersededTimestamp, 0); // Never been inserted into the history.
+        assert(rootInfo.isValid);
+    }
+
+    /// @notice Tests whether it is possible to query accurate information about an arbitrary root.
+    function testQueryOlderRoot(
+        uint128[8] memory prf,
+        uint32 newStartIndex,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
+        // Setup
+        vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        vm.assume(newPreRoot != newPostRoot);
+        ManagerImpl localManager = new ManagerImpl();
+        localManager.initialize(newPreRoot, new SimpleVerifier());
+        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareVerifierTestCase(identities, prf);
+        localManager.registerIdentities(
+            actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot
+        );
+
+        // Test
+        ManagerImpl.RootInfo memory rootInfo = localManager.queryRoot(newPreRoot);
+        assertEq(rootInfo.root, newPreRoot);
+        assertEq(rootInfo.supersededTimestamp, block.timestamp);
+        assert(rootInfo.isValid);
+    }
+
+    /// @notice Tests whether it is possible to query accurate information about an expired root.
+    function testQueryExpiredRoot(
+        uint128[8] memory prf,
+        uint32 newStartIndex,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
+        // Setup
+        vm.assume(newPreRoot != newPostRoot);
+        vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        ManagerImpl localManager = new ManagerImpl();
+        localManager.initialize(newPreRoot, new SimpleVerifier());
+        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareVerifierTestCase(identities, prf);
+        uint256 originalTimestamp = block.timestamp;
+        localManager.registerIdentities(
+            actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot
+        );
+        vm.warp(originalTimestamp + 2 hours); // Force preRoot to expire
+
+        // Test
+        ManagerImpl.RootInfo memory rootInfo = localManager.queryRoot(newPreRoot);
+        assertEq(rootInfo.root, newPreRoot);
+        assertEq(rootInfo.supersededTimestamp, originalTimestamp);
+        assert(!rootInfo.isValid);
+
+        // Cleanup
+        vm.warp(originalTimestamp);
+    }
+
+    /// @notice Checks that we get `NO_SUCH_ROOT` back when we query for information about an
+    ///         invalid root.
+    function testQueryInvalidRoot(uint256 badRoot) public {
+        // Setup
+        vm.assume(badRoot != preRoot);
+
+        // Test
+        ManagerImpl.RootInfo memory rootInfo = identityManager.queryRoot(uint256(0xBADCAFE));
+        ManagerImpl.RootInfo memory noSuchRoot = identityManager.NO_SUCH_ROOT();
+        assertEq(rootInfo.root, noSuchRoot.root);
+        assertEq(rootInfo.supersededTimestamp, noSuchRoot.supersededTimestamp);
+        assertEq(rootInfo.isValid, noSuchRoot.isValid);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                             CALCULATION TESTS                           ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Tests whether it is possible to correctly calculate the `inputHash` to the merkle
+    ///         tree verifier.
+    function testCalculateInputHashFromParametersOnKnownInput() public {
+        // Test
+        bytes32 calculatedHash = identityManager.calculateTreeVerifierInputHash(
+            startIndex, preRoot, postRoot, identityCommitments
+        );
+        assertEq(calculatedHash, inputHash);
+    }
+
+    /// @notice Tests whether it is possible to check whether values are in reduced form.
+    function testCanCheckValueIsInReducedForm(uint256 value) public {
+        // Setup
+        vm.assume(value < SNARK_SCALAR_FIELD);
+
+        // Test
+        assert(identityManager.isInputInReducedForm(value));
+    }
+
+    /// @notice Tests whether it is possible to detect un-reduced values.
+    function testCanCheckValueIsNotInReducedForm(uint256 value) public {
+        // Setup
+        vm.assume(value >= SNARK_SCALAR_FIELD);
+
+        // Test
+        assert(!identityManager.isInputInReducedForm(value));
     }
 }
