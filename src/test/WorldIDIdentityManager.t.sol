@@ -94,7 +94,7 @@ contract WorldIDIdentityManagerTest is Test {
 
     /// @notice Initialises a new identity manager using the provided information.
     /// @dev It is initialised in the globals.
-    /// 
+    ///
     /// @param actualPreRoot The pre-root to use.
     /// @param actualVerifier The verifier instance to use.
     function initNewIdentityManager(uint256 actualPreRoot, ITreeVerifier actualVerifier) public {
@@ -555,7 +555,259 @@ contract WorldIDIdentityManagerTest is Test {
         assertCallFailsOn(identityManagerAddress, callData, errorData);
     }
 
+    /// @notice Tests that it reverts if an attempt is made to register identities with an outdated
+    ///         root.
+    function testCannotRegisterIdentitiesWithOutdatedRoot(
+        uint256 currentPreRoot,
+        uint256 actualRoot
+    ) public {
+        // Setup
+        vm.assume(
+            currentPreRoot != actualRoot && currentPreRoot < SNARK_SCALAR_FIELD
+                && actualRoot < SNARK_SCALAR_FIELD
+        );
+        initNewIdentityManager(uint256(currentPreRoot), verifier);
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (proof, actualRoot, startIndex, identityCommitments, postRoot)
+        );
+        bytes memory expectedError = abi.encodeWithSelector(
+            ManagerImpl.NotLatestRoot.selector, actualRoot, uint256(currentPreRoot)
+        );
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Tests that it reverts if an attempt is made to register identity commitments
+    ///         containing an invalid identity.
+    function testCannotRegisterIdentitiesWithInvalidIdentities(uint256 fuzz) public {
+        delete fuzz; // Not actually used, I just want it to run a few times
+
+        // Setup
+        uint256 position = rotateSlot();
+        uint256[] memory invalidCommitments = new uint256[](identityCommitments.length);
+        invalidCommitments[position] = 0x0;
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (proof, initialRoot, startIndex, invalidCommitments, postRoot)
+        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.InvalidCommitment.selector, uint256(0));
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Tests that it reverts if an attempt is made to register identity commitments that
+    ///         are not in reduced form.
+    function testCannotRegisterIdentitiesWithUnreducedIdentities(uint128 i) public {
+        // Setup
+        uint256 position = rotateSlot();
+        uint256[] memory unreducedCommitments = new uint256[](identityCommitments.length);
+        unreducedCommitments[position] = SNARK_SCALAR_FIELD + i;
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (proof, initialRoot, startIndex, unreducedCommitments, postRoot)
+        );
+        bytes memory expectedError = abi.encodeWithSelector(
+            ManagerImpl.UnreducedElement.selector,
+            ManagerImpl.UnreducedElementType.IdentityCommitment,
+            SNARK_SCALAR_FIELD + i
+        );
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Tests that it reverts if an attempt is made to register new identities with a pre
+    ///         root that is not in reduced form.
+    function testCannotRegisterIdentitiesWithUnreducedPreRoot(uint128 i) public {
+        // Setup
+        uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (proof, newPreRoot, startIndex, identityCommitments, postRoot)
+        );
+        bytes memory expectedError = abi.encodeWithSelector(
+            ManagerImpl.UnreducedElement.selector,
+            ManagerImpl.UnreducedElementType.PreRoot,
+            newPreRoot
+        );
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Tests that it reverts if an attempt is made to register identities with a postRoot
+    ///         that is not in reduced form.
+    function testCannotRegisterIdentitiesWithUnreducedPostRoot(uint128 i) public {
+        // Setup
+        uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (proof, initialRoot, startIndex, identityCommitments, newPostRoot)
+        );
+        bytes memory expectedError = abi.encodeWithSelector(
+            ManagerImpl.UnreducedElement.selector,
+            ManagerImpl.UnreducedElementType.PostRoot,
+            newPostRoot
+        );
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Tests that it reverts if an attempt is made to violate type safety and register with
+    ///         a startIndex that is not type safe within the bounds of `type(uint32).max` and hence
+    ///         within `SNARK_SCALAR_FIELD`.
+    function testCannotRegisterIdentitiesWithUnreducedStartIndex(uint256 i) public {
+        // Setup
+        vm.assume(i > type(uint32).max);
+        bytes4 functionSelector = ManagerImpl.registerIdentities.selector;
+        // Have to encode with selector as otherwise it's typechecked.
+        bytes memory callData = abi.encodeWithSelector(
+            functionSelector, proof, preRoot, i, identityCommitments, postRoot
+        );
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData);
+    }
+
     // TODO [Ara] testCannotRegisterIdentitiesIfNotViaProxy
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                            DATA QUERYING TESTS                          ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Tests whether it is possible to query accurate information about the current root.
+    function testQueryCurrentRoot(uint128 newPreRoot) public {
+        // Setup
+        initNewIdentityManager(newPreRoot, verifier);
+        bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, newPreRoot);
+        bytes memory returnData = abi.encode(ManagerImpl.RootInfo(newPreRoot, 0, true));
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, returnData);
+    }
+
+    /// @notice Tests whether it is possible to query accurate information about an arbitrary root.
+    function testQueryOlderRoot(
+        uint128[8] memory prf,
+        uint32 newStartIndex,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
+        // Setup
+        vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        vm.assume(newPreRoot != newPostRoot);
+        initNewIdentityManager(newPreRoot, verifier);
+        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareVerifierTestCase(identities, prf);
+        bytes memory registerCallData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+        );
+        assertCallSucceedsOn(identityManagerAddress, registerCallData);
+        bytes memory queryCallData = abi.encodeCall(ManagerImpl.queryRoot, (newPreRoot));
+        bytes memory returnData =
+            abi.encode(ManagerImpl.RootInfo(newPreRoot, uint128(block.timestamp), true));
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, queryCallData, returnData);
+    }
+
+    /// @notice Tests whether it is possible to query accurate information about an expired root.
+    function testQueryExpiredRoot(
+        uint128[8] memory prf,
+        uint32 newStartIndex,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
+        // Setup
+        vm.assume(newPreRoot != newPostRoot);
+        vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        initNewIdentityManager(newPreRoot, verifier);
+        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareVerifierTestCase(identities, prf);
+        uint256 originalTimestamp = block.timestamp;
+        bytes memory registerCallData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+        );
+        assertCallSucceedsOn(identityManagerAddress, registerCallData);
+        bytes memory queryCallData = abi.encodeCall(ManagerImpl.queryRoot, (newPreRoot));
+        bytes memory returnData =
+            abi.encode(ManagerImpl.RootInfo(newPreRoot, uint128(originalTimestamp), false));
+        vm.warp(originalTimestamp + 2 hours); // Force preRoot to expire
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, queryCallData, returnData);
+
+        // Cleanup
+        vm.warp(originalTimestamp);
+    }
+
+    /// @notice Checks that we get `NO_SUCH_ROOT` back when we query for information about an
+    ///         invalid root.
+    function testQueryInvalidRoot(uint256 badRoot) public {
+        // Setup
+        vm.assume(badRoot != initialRoot);
+        bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, badRoot);
+        bytes memory returnData = abi.encode(managerImpl.NO_SUCH_ROOT());
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, returnData);
+    }
+
+    // TODO [Ara] testCannotQueryRootIfNotViaProxy
+    // TODO [Ara] Check for missing tests
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                             CALCULATION TESTS                           ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Tests whether it is possible to correctly calculate the `inputHash` to the merkle
+    ///         tree verifier.
+    function testCalculateInputHashFromParametersOnKnownInput() public {
+        // Setup
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.calculateTreeVerifierInputHash,
+            (startIndex, preRoot, postRoot, identityCommitments)
+        );
+        bytes memory returnData = abi.encode(inputHash);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, returnData);
+    }
+
+    // TODO [Ara] testCanCalculateInputHashOnlyIfViaProxy
+
+    /// @notice Tests whether it is possible to check whether values are in reduced form.
+    function testCanCheckValueIsInReducedForm(uint256 value) public {
+        // Setup
+        vm.assume(value < SNARK_SCALAR_FIELD);
+        bytes memory callData = abi.encodeCall(ManagerImpl.isInputInReducedForm, (value));
+        bytes memory returnData = abi.encode(true);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, returnData);
+    }
+
+    /// @notice Tests whether it is possible to detect un-reduced values.
+    function testCanCheckValueIsNotInReducedForm(uint256 value) public {
+        // Setup
+        vm.assume(value >= SNARK_SCALAR_FIELD);
+        bytes memory callData = abi.encodeCall(ManagerImpl.isInputInReducedForm, (value));
+        bytes memory returnData = abi.encode(false);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, returnData);
+    }
+
+    // TODO [Ara] testCanCheckValueForReducedFormOnlyIfViaProxy
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             CALLABILITY TESTS                           ///

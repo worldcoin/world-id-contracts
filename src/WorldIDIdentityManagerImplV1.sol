@@ -8,6 +8,8 @@ import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+import "forge-std/console.sol";
+
 /// @title WorldID Identity Manager Implementation Version 1
 /// @author Worldcoin
 /// @notice An implementation of a batch-based identity manager for the WorldID protocol.
@@ -198,7 +200,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         uint32 startIndex,
         uint256[] calldata identityCommitments,
         uint256 postRoot
-    ) public virtual onlyOwner {
+    ) public virtual onlyOwner onlyProxy {
         // We can only operate on the latest root in reduced form.
         if (!isInputInReducedForm(preRoot)) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
@@ -287,7 +289,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @notice Allows a caller to query the latest root.
     ///
     /// @return root The value of the latest tree root.
-    function latestRoot() public view virtual returns (uint256 root) {
+    function latestRoot() public view virtual onlyProxy returns (uint256 root) {
         return _latestRoot;
     }
 
@@ -298,7 +300,13 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @return rootInfo The information about `root`, or `NO_SUCH_ROOT` if `root` does not exist.
     ///                  Note that if the queried root is the current, the timestamp will be invalid
     ///                  as the root has not been superseded.
-    function queryRoot(uint256 root) public view virtual returns (RootInfo memory rootInfo) {
+    function queryRoot(uint256 root)
+        public
+        view
+        virtual
+        onlyProxy
+        returns (RootInfo memory rootInfo)
+    {
         if (root == _latestRoot) {
             return RootInfo(_latestRoot, 0, true);
         } else {
