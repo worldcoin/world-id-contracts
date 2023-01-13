@@ -35,6 +35,21 @@ contract WorldIDIdentityManagerTest is Test {
     address identityManagerAddress;
     address managerImplAddress;
 
+    uint256 slotCounter = 0;
+
+    // All hardcoded test data taken from `src/test/data/TestParams.json`. This will be dynamically
+    // generated at some point in the future.
+    bytes32 constant inputHash = 0x7d7f77c56064e1f8577de14bba99eff85599ab0e76d0caeadd1ad61674b8a9c3;
+    uint32 constant startIndex = 0;
+    uint256 constant preRoot = 0x18f43331537ee2af2e3d758d50f72106467c6eea50371dd528d57eb2b856d238;
+    uint256 constant postRoot = 0x5c1e52b41a571293b30efacd2afdb7173b20cfaf1f646c4ac9f96eb75848270;
+    uint256[] identityCommitments;
+    uint256[8] proof;
+
+    // Needed for testing things.
+    uint256 constant SNARK_SCALAR_FIELD =
+        21888242871839275222246405745257275088548364400416034343698204186575808495617;
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -117,6 +132,51 @@ contract WorldIDIdentityManagerTest is Test {
         return abi.encodeWithSignature("Error(string)", reason);
     }
 
+    /// @notice Moves through the slots in the identity commitments array _without_ resetting
+    ///         between runs.
+    function rotateSlot() public returns (uint256) {
+        uint256 currentSlot = slotCounter;
+        slotCounter = (slotCounter + 1) % (identityCommitments.length - 1);
+        return currentSlot;
+    }
+
+    /// @notice Shallow clones an array.
+    ///
+    /// @param arr The array to clone.
+    ///
+    /// @return out The clone of `arr`.
+    function cloneArray(uint256[] memory arr) public pure returns (uint256[] memory out) {
+        out = new uint256[](arr.length);
+        for (uint256 i = 0; i < arr.length; ++i) {
+            out[i] = arr[i];
+        }
+        return out;
+    }
+
+    /// @notice Prepares a verifier test case.
+    /// @dev This is useful to make property-based fuzz testing work better by requiring less
+    ///      constraints on the generated input.
+    ///
+    /// @param idents The generated identity commitments to convert.
+    /// @param prf The generated proof terms to convert.
+    ///
+    /// @return preparedIdents The conversion of `idents` to the proper type.
+    /// @return actualProof The conversion of `pft` to the proper type.
+    function prepareVerifierTestCase(uint128[] memory idents, uint128[8] memory prf)
+        public
+        returns (uint256[] memory preparedIdents, uint256[8] memory actualProof)
+    {
+        for (uint256 i = 0; i < idents.length; ++i) {
+            vm.assume(idents[i] != 0x0);
+        }
+        preparedIdents = new uint256[](idents.length);
+        for (uint256 i = 0; i < idents.length; ++i) {
+            preparedIdents[i] = uint256(idents[i]);
+        }
+
+        actualProof = [uint256(prf[0]), prf[1], prf[2], prf[3], prf[4], prf[5], prf[6], prf[7]];
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                            CONSTRUCTION TESTS                           ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -153,13 +213,18 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Checks that it is possible to initialise the contract.
     function testInitialisation() public {
         // Setup
-        // identityManager = new IdentityManager();
-        // managerImpl = new ManagerImpl();
-        // vm.expectEmit(true, true, true, true);
-        // emit Initialized(1);
+        delete identityManager;
+        delete managerImpl;
+
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (initialRoot, verifier));
+
+        vm.expectEmit(true, true, true, true);
+        emit Initialized(1);
 
         // Test
-        // identityManager.initialize(initialRoot, verifier);
+        identityManager = new IdentityManager(managerImplAddress, callData);
     }
 
     /// @notice Checks that it is not possible to initialise the contract more than once.
@@ -268,19 +333,19 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Checks that it is possible to call `registerIdentities`.
     function testCanCallRegisterIdentities() public {
         // Setup
-        uint32 startIndex = 0;
-        uint256 preRoot = 0;
-        uint256 postRoot = 1;
-        uint256[] memory identityCommitments;
-        identityCommitments = new uint256[](3);
-        identityCommitments[0] = 0x1;
-        identityCommitments[1] = 0x2;
-        identityCommitments[2] = 0x3;
-        uint256[8] memory proof = [uint256(0x2), 0x4, 0x6, 0x8, 0x10, 0x1, 0x3, 0x5];
+        uint32 newStartIndex = 0;
+        uint256 newPreRoot = 0;
+        uint256 newPostRoot = 1;
+        uint256[] memory identities;
+        identities = new uint256[](3);
+        identities[0] = 0x1;
+        identities[1] = 0x2;
+        identities[2] = 0x3;
+        uint256[8] memory newProof = [uint256(0x2), 0x4, 0x6, 0x8, 0x10, 0x1, 0x3, 0x5];
 
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (proof, preRoot, startIndex, identityCommitments, postRoot)
+            (newProof, newPreRoot, newStartIndex, identities, newPostRoot)
         );
 
         // Test
@@ -290,18 +355,18 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Checks that it is possible to call `calculateTreeVerifierInputHash`.
     function testCanCallCalculateTreeVerifierInputHash() public {
         // Setup
-        uint32 startIndex = 0;
-        uint256 preRoot = 0;
-        uint256 postRoot = 1;
-        uint256[] memory identityCommitments;
-        identityCommitments = new uint256[](3);
-        identityCommitments[0] = 0x1;
-        identityCommitments[1] = 0x2;
-        identityCommitments[2] = 0x3;
+        uint32 newStartIndex = 0;
+        uint256 newPreRoot = 0;
+        uint256 newPostRoot = 1;
+        uint256[] memory identities;
+        identities = new uint256[](3);
+        identities[0] = 0x1;
+        identities[1] = 0x2;
+        identities[2] = 0x3;
 
         bytes memory callData = abi.encodeCall(
             ManagerImpl.calculateTreeVerifierInputHash,
-            (startIndex, preRoot, postRoot, identityCommitments)
+            (newStartIndex, newPreRoot, newPostRoot, identities)
         );
 
         // Test

@@ -131,33 +131,6 @@ contract WorldIDIdentityManagerImplV1Test is Test {
     }
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                           INITIALIZATION TESTS                          ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Taken from Initializable.sol
-    event Initialized(uint8 version);
-
-    /// @notice Checks that it is possible to initialise the contract.
-    function testInitialisation() public {
-        // Setup
-        identityManager = new ManagerImpl();
-        vm.expectEmit(true, true, true, true);
-        emit Initialized(1);
-
-        // Test
-        identityManager.initialize(initialRoot, verifier);
-    }
-
-    /// @notice Checks that it is not possible to initialise the contract more than once.
-    // function testInitializationOnlyOnce() public {
-    //     // Setup
-    //     vm.expectRevert("Initializable: contract is already initialized");
-
-    //     // Test
-    //     identityManager.initialize(initialRoot, verifier);
-    // }
-
-    ///////////////////////////////////////////////////////////////////////////////
     ///                        OWNERSHIP MANAGEMENT TESTS                       ///
     ///////////////////////////////////////////////////////////////////////////////
 
