@@ -29,7 +29,7 @@ contract WorldIDIdentityManagerTest is Test {
     IdentityManager identityManager;
     ManagerImpl managerImpl;
 
-    ITreeVerifier verifier = new SimpleVerifier();
+    ITreeVerifier verifier;
     uint256 initialRoot = 0x0;
 
     address identityManagerAddress;
@@ -80,13 +80,8 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice This function runs before every single test.
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
-
-        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (initialRoot, verifier));
-
-        identityManager = new IdentityManager(managerImplAddress, callData);
-        identityManagerAddress = address(identityManager);
+        verifier = new SimpleVerifier();
+        initNewIdentityManager(initialRoot, verifier);
 
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
@@ -96,6 +91,22 @@ contract WorldIDIdentityManagerTest is Test {
     ///////////////////////////////////////////////////////////////////////////////
     ///                              TEST UTILITIES                             ///
     ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Initialises a new identity manager using the provided information.
+    /// @dev It is initialised in the globals.
+    /// 
+    /// @param actualPreRoot The pre-root to use.
+    /// @param actualVerifier The verifier instance to use.
+    function initNewIdentityManager(uint256 actualPreRoot, ITreeVerifier actualVerifier) public {
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+
+        bytes memory initCallData =
+            abi.encodeCall(ManagerImpl.initialize, (actualPreRoot, actualVerifier));
+
+        identityManager = new IdentityManager(managerImplAddress, initCallData);
+        identityManagerAddress = address(identityManager);
+    }
 
     /// @notice Asserts that making the external call using `callData` on `identityManager`
     ///         succeeds.
@@ -400,14 +411,8 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Checks that the proof validates properly with the correct inputs.
     function testRegisterIdentitiesWithCorrectInputsFromKnown() public {
         // Setup
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
         ITreeVerifier actualVerifier = new TreeVerifier();
-
-        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (preRoot, actualVerifier));
-
-        identityManager = new IdentityManager(managerImplAddress, callData);
-        identityManagerAddress = address(identityManager);
+        initNewIdentityManager(preRoot, actualVerifier);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (proof, preRoot, startIndex, identityCommitments, postRoot)
@@ -436,9 +441,7 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        ManagerImpl localManagerImpl = new ManagerImpl();
-        bytes memory initCall = abi.encodeCall(ManagerImpl.initialize, (newPreRoot, verifier));
-        IdentityManager localManager = new IdentityManager(address(localManagerImpl), initCall);
+        initNewIdentityManager(newPreRoot, verifier);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareVerifierTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
@@ -447,7 +450,7 @@ contract WorldIDIdentityManagerTest is Test {
         );
 
         // Test
-        assertCallSucceedsOn(address(localManager), callData);
+        assertCallSucceedsOn(identityManagerAddress, callData);
     }
 
     /// @notice Checks that it reverts if the provided proof is incorrect for the public inputs.
@@ -461,9 +464,7 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        ManagerImpl localManagerImpl = new ManagerImpl();
-        bytes memory initCall = abi.encodeCall(ManagerImpl.initialize, (newPreRoot, verifier));
-        IdentityManager localManager = new IdentityManager(address(localManagerImpl), initCall);
+        initNewIdentityManager(newPreRoot, verifier);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareVerifierTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
@@ -474,21 +475,15 @@ contract WorldIDIdentityManagerTest is Test {
             abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
 
         // Test
-        assertCallFailsOn(address(localManager), callData, expectedError);
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
     /// @notice Checks that it reverts if the provided start index is incorrect.
     function testCannotRegisterIdentitiesIfStartIndexIncorrect(uint32 newStartIndex) public {
         // Setup
         vm.assume(newStartIndex != startIndex);
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
         ITreeVerifier actualVerifier = new TreeVerifier();
-
-        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (preRoot, actualVerifier));
-
-        identityManager = new IdentityManager(managerImplAddress, callData);
-        identityManagerAddress = address(identityManager);
+        initNewIdentityManager(preRoot, actualVerifier);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (proof, preRoot, newStartIndex, identityCommitments, postRoot)
@@ -510,14 +505,8 @@ contract WorldIDIdentityManagerTest is Test {
         );
         uint256[] memory identities = cloneArray(identityCommitments);
         identities[invalidSlot] = identity;
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
         ITreeVerifier actualVerifier = new TreeVerifier();
-
-        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (preRoot, actualVerifier));
-
-        identityManager = new IdentityManager(managerImplAddress, callData);
-        identityManagerAddress = address(identityManager);
+        initNewIdentityManager(preRoot, actualVerifier);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities, (proof, preRoot, startIndex, identities, postRoot)
         );
@@ -549,6 +538,21 @@ contract WorldIDIdentityManagerTest is Test {
 
         // Test
         assertCallFailsOn(identityManagerAddress, registerCallData, expectedError);
+    }
+
+    /// @notice Tests that it reverts if an attempt is made to register identities as a non-manager.
+    function testCannotRegisterIdentitiesAsNonManager(address nonManager) public {
+        // Setup
+        vm.assume(nonManager != address(this) && nonManager != address(0x0));
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (proof, preRoot, startIndex, identityCommitments, postRoot)
+        );
+        bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
+        vm.prank(nonManager);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, errorData);
     }
 
     // TODO [Ara] testCannotRegisterIdentitiesIfNotViaProxy

@@ -134,51 +134,6 @@ contract WorldIDIdentityManagerImplV1Test is Test {
     ///                         IDENTITY MANAGEMENT TESTS                       ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Checks that it reverts if the provided set of identities is incorrect.
-    function testCannotRegisterIdentitiesIfIdentitiesIncorrect(uint256 identity) public {
-        // Setup
-        uint256 invalidSlot = rotateSlot();
-        vm.assume(
-            identity != identityCommitments[invalidSlot] && identity < SNARK_SCALAR_FIELD
-                && identity != 0x0
-        );
-        uint256[] memory identities = cloneArray(identityCommitments);
-        identities[invalidSlot] = identity;
-        bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
-        vm.expectRevert(expectedError);
-
-        // Test
-        identityManager.registerIdentities(proof, preRoot, startIndex, identities, postRoot);
-    }
-
-    /// @notice Checks that it reverts if the provided post root is incorrect.
-    function testCannotRegisterIdentitiesIfPostRootIncorrect(uint256 newPostRoot) public {
-        // Setup
-        vm.assume(newPostRoot != postRoot && newPostRoot < SNARK_SCALAR_FIELD);
-        bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
-        vm.expectRevert(expectedError);
-
-        // Test
-        identityManager.registerIdentities(
-            proof, preRoot, startIndex, identityCommitments, newPostRoot
-        );
-    }
-
-    /// @notice Tests that it reverts if an attempt is made to register identities as a non-manager.
-    function testCannotRegisterIdentitiesAsNonManager(address nonManager) public {
-        // Setup
-        vm.assume(nonManager != address(this) && nonManager != address(0x0));
-        vm.expectRevert("Ownable: caller is not the owner");
-        vm.prank(nonManager);
-
-        // Test
-        identityManager.registerIdentities(
-            proof, preRoot, startIndex, identityCommitments, postRoot
-        );
-    }
-
     /// @notice Tests that it reverts if an attempt is made to register identities with an outdated
     ///         root.
     function testCannotRegisterIdentitiesWithOutdatedRoot(uint256 currentPreRoot) public {
