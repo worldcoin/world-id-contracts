@@ -8,8 +8,6 @@ import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
-import "forge-std/console.sol";
-
 /// @title WorldID Identity Manager Implementation Version 1
 /// @author Worldcoin
 /// @notice An implementation of a batch-based identity manager for the WorldID protocol.
@@ -28,7 +26,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     // memory safety error).
 
     /// @notice The latest root of the identity merkle tree.
-    uint256 public latestRoot;
+    uint256 internal _latestRoot;
 
     /// @notice A mapping from the value of the merkle tree root to the timestamp at which the root
     ///         was superseded by a newer one.
@@ -148,7 +146,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         __delegate_init();
 
         // Now perform the implementation's init logic.
-        latestRoot = initialRoot;
+        _latestRoot = initialRoot;
         merkleTreeVerifier = merkleTreeVerifier_;
     }
 
@@ -205,8 +203,8 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         if (!isInputInReducedForm(preRoot)) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
         }
-        if (preRoot != latestRoot) {
-            revert NotLatestRoot(preRoot, latestRoot);
+        if (preRoot != _latestRoot) {
+            revert NotLatestRoot(preRoot, _latestRoot);
         }
 
         // As the `startIndex` is restricted to a uint32, where
@@ -244,7 +242,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
 
             // If it did verify, we need to update the contract's state. We set the currently valid
             // root to the root after the insertions.
-            latestRoot = postRoot;
+            _latestRoot = postRoot;
 
             // We also need to add the previous root to the history, and set the timestamp at which
             // it was expired.
@@ -286,6 +284,13 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         hash = keccak256(bytesToHash);
     }
 
+    /// @notice Allows a caller to query the latest root.
+    ///
+    /// @return root The value of the latest tree root.
+    function latestRoot() public view virtual returns (uint256 root) {
+        return _latestRoot;
+    }
+
     /// @notice Allows a caller to query the root history for information about a given root.
     /// @dev Should be used sparingly as the query can be quite expensive.
     ///
@@ -294,8 +299,8 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///                  Note that if the queried root is the current, the timestamp will be invalid
     ///                  as the root has not been superseded.
     function queryRoot(uint256 root) public view virtual returns (RootInfo memory rootInfo) {
-        if (root == latestRoot) {
-            return RootInfo(latestRoot, 0, true);
+        if (root == _latestRoot) {
+            return RootInfo(_latestRoot, 0, true);
         } else {
             uint128 rootTimestamp = rootHistory[root];
 
@@ -367,7 +372,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///
     /// @param root The root of a given identity group.
     function checkValidRoot(uint256 root) public view virtual returns (bool) {
-        if (root != latestRoot) {
+        if (root != _latestRoot) {
             uint128 rootTimestamp = rootHistory[root];
 
             // A root is no longer valid if it has expired.

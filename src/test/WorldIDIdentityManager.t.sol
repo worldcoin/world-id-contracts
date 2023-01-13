@@ -9,7 +9,7 @@ import "forge-std/console.sol";
 import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
-import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {WorldIDIdentityManagerImplMock} from "./mock/WorldIDIdentityManagerImplMock.sol";
 
@@ -37,6 +37,9 @@ contract WorldIDIdentityManagerTest is Test {
 
     uint256 slotCounter = 0;
 
+    address nullAddress = address(0x0);
+    address thisAddress = address(this);
+
     // All hardcoded test data taken from `src/test/data/TestParams.json`. This will be dynamically
     // generated at some point in the future.
     bytes32 constant inputHash = 0x7d7f77c56064e1f8577de14bba99eff85599ab0e76d0caeadd1ad61674b8a9c3;
@@ -53,6 +56,26 @@ contract WorldIDIdentityManagerTest is Test {
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
+
+    constructor() {
+        // Make the identity commitments.
+        identityCommitments = new uint256[](3);
+        identityCommitments[0] = 0x1;
+        identityCommitments[1] = 0x2;
+        identityCommitments[2] = 0x3;
+
+        // Create the proof term.
+        proof = [
+            0x2a45bf326884bbf13c821a5e4f30690a391156cccf80a2922fb24250111dd7eb,
+            0x23a7376a159513e6d0e22d43fcdca9d0c8a5c54a73b59fce6962a41e71355894,
+            0x21b9fc7c2d1f76c2e1a972b00f18728a57a34d7e4ae040811bf1626132ff3658,
+            0x2a7c3c660190a33ab92cd84e4b2540e49ea80bdc766eb3aeec49806a78071c75,
+            0x2fc9a52a7f4bcc29faab28a8d8ec126b4fe604a7b41e7d2b3efe92422951d706,
+            0x110740f0b21fb329de682dffc95a5ede11c11c6328606fe254b6ba469b15f68,
+            0x23115ff1573808639f19724479b195b7894a45c9868242ad2a416767359c6c78,
+            0x23f3fa30273c7f38e360496e7f9790450096d4a9592e1fe6e0a996cb05b8fb28
+        ];
+    }
 
     /// @notice This function runs before every single test.
     /// @dev It is run before every single iteration of a property-based fuzzing test.
@@ -77,23 +100,25 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Asserts that making the external call using `callData` on `identityManager`
     ///         succeeds.
     ///
+    /// @param target The target at which to make the call.
     /// @param callData The ABI-encoded call to a function.
-    function assertCallSucceedsOnIdentityManager(bytes memory callData) public {
-        (bool status, bytes memory returnData) = identityManagerAddress.call(callData);
+    function assertCallSucceedsOn(address target, bytes memory callData) public {
+        (bool status,) = target.call(callData);
         assert(status);
-        delete returnData;
     }
 
     /// @notice Asserts that making the external call using `callData` on `identityManager`
     ///         succeeds.
     ///
+    /// @param target The target at which to make the call.
     /// @param callData The ABI-encoded call to a function.
     /// @param expectedReturnData The expected return data from the function.
-    function assertCallSucceedsOnIdentityManager(
+    function assertCallSucceedsOn(
+        address target,
         bytes memory callData,
         bytes memory expectedReturnData
     ) public {
-        (bool status, bytes memory returnData) = identityManagerAddress.call(callData);
+        (bool status, bytes memory returnData) = target.call(callData);
         assert(status);
         assertEq(expectedReturnData, returnData);
     }
@@ -101,23 +126,25 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Asserts that making the external call using `callData` on `identityManager`
     ///         fails.
     ///
+    /// @param target The target at which to make the call.
     /// @param callData The ABI-encoded call to a function.
-    function assertCallFailsOnIdentityManager(bytes memory callData) public {
-        (bool status, bytes memory returnData) = identityManagerAddress.call(callData);
+    function assertCallFailsOn(address target, bytes memory callData) public {
+        (bool status,) = target.call(callData);
         assert(!status);
-        delete returnData;
     }
 
     /// @notice Asserts that making the external call using `callData` on `identityManager`
     ///         fails.
     ///
+    /// @param target The target at which to make the call.
     /// @param callData The ABI-encoded call to a function.
     /// @param expectedReturnData The expected return data from the function.
-    function assertCallFailsOnIdentityManager(
+    function assertCallFailsOn(
+        address target,
         bytes memory callData,
         bytes memory expectedReturnData
     ) public {
-        (bool status, bytes memory returnData) = identityManagerAddress.call(callData);
+        (bool status, bytes memory returnData) = target.call(callData);
         assert(!status);
         assertEq(expectedReturnData, returnData);
     }
@@ -235,8 +262,10 @@ contract WorldIDIdentityManagerTest is Test {
             encodeStringRevert("Initializable: contract is already initialized");
 
         // Test
-        assertCallFailsOnIdentityManager(callData, expectedReturn);
+        assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
     }
+
+    // TODO [Ara] testCanOnlyInitializeIfViaProxy
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                               UPGRADE TESTS                             ///
@@ -249,7 +278,7 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory upgradeCall = abi.encodeCall(UUPSUpgradeable.upgradeTo, (address(mockUpgrade)));
 
         // Test
-        assertCallSucceedsOnIdentityManager(upgradeCall, new bytes(0x0));
+        assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
     }
 
     /// @notice Tests that it is possible to upgrade to a new implementation and call a function on
@@ -262,7 +291,7 @@ contract WorldIDIdentityManagerTest is Test {
             abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(mockUpgrade), initCall));
 
         // Test
-        assertCallSucceedsOnIdentityManager(upgradeCall, new bytes(0x0));
+        assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
     }
 
     /// @notice Tests that an upgrade cannot be performed by anybody other than the manager.
@@ -270,28 +299,265 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(naughty != address(this) || naughty != address(0x0));
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
-        bytes memory initCall = abi.encodeCall(ManagerImpl.initialize, (initialRoot, verifier));
+        bytes memory initCall = abi.encodeCall(WorldIDIdentityManagerImplMock.initializeV2, (320));
         bytes memory upgradeCall =
             abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(mockUpgrade), initCall));
         vm.prank(naughty);
 
         // Test
-        assertCallFailsOnIdentityManager(
-            upgradeCall, encodeStringRevert("Ownable: caller is not the owner")
+        assertCallFailsOn(
+            identityManagerAddress,
+            upgradeCall,
+            encodeStringRevert("Ownable: caller is not the owner")
         );
     }
 
-    // TODO [Ara] testCannotUpgradeWithoutProxy
+    /// @notice Tests that an upgrade cannot be performed unless done through the proxy.
+    function testCannotUpgradeWithoutProxy() public {
+        // Setup
+        WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
+        address mockUpgradeAddress = address(mockUpgrade);
+        bytes memory initCall = abi.encodeCall(ManagerImpl.initialize, (initialRoot, verifier));
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.upgradeToAndCall(mockUpgradeAddress, initCall);
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                            FUNCTIONALITY TESTS                          ///
+    ///                        OWNERSHIP MANAGEMENT TESTS                       ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    // Note Comprehensive functionality tests are located in WorldIDIdentityManagerImplV1.sol. These
-    // tests are purely to ensure that we can call all of the necessary functions properly through
-    // the proxy, and to act as documentation for how to encode calls to said functions.
+    /// @notice Taken from OwnableUpgradable.sol
+    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
-    // TODO [Ara] `testCanCall*` tests
+    /// @notice Checks that it is possible to get the owner, and that the owner is correctly
+    ///         initialised.
+    function testHasOwner() public {
+        // Setup
+        bytes memory callData = abi.encodeCall(OwnableUpgradeable.owner, ());
+        bytes memory expectedReturn = abi.encode(address(this));
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, expectedReturn);
+    }
+
+    /// @notice Tests that it is possible to transfer ownership of the contract.
+    function testTransferOwner(address newOwner) public {
+        // Setup
+        vm.assume(newOwner != nullAddress);
+        bytes memory transferCallData =
+            abi.encodeCall(OwnableUpgradeable.transferOwnership, (newOwner));
+        bytes memory ownerCallData = abi.encodeCall(OwnableUpgradeable.owner, ());
+        vm.expectEmit(true, true, true, true);
+        emit OwnershipTransferred(thisAddress, newOwner);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, transferCallData, new bytes(0x0));
+        assertCallSucceedsOn(identityManagerAddress, ownerCallData, abi.encode(newOwner));
+    }
+
+    /// @notice Ensures that it is impossible to transfer ownership without being the owner.
+    function testCannotTransferOwnerIfNotOwner(address naughty, address newOwner) public {
+        // Setup
+        vm.assume(naughty != thisAddress);
+        vm.assume(newOwner != nullAddress);
+        bytes memory callData = abi.encodeCall(OwnableUpgradeable.transferOwnership, (newOwner));
+        bytes memory expectedReturn = encodeStringRevert("Ownable: caller is not the owner");
+        vm.prank(naughty);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
+    }
+
+    /// @notice Tests that it is possible to renounce ownership.
+    function testRenounceOwnership() public {
+        // Setup
+        bytes memory renounceData = abi.encodeCall(OwnableUpgradeable.renounceOwnership, ());
+        bytes memory ownerData = abi.encodeCall(OwnableUpgradeable.owner, ());
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, renounceData);
+        assertCallSucceedsOn(identityManagerAddress, ownerData, abi.encode(nullAddress));
+    }
+
+    /// @notice Ensures that ownership cannot be renounced by anybody other than the owner.
+    function testCannotRenounceOwnershipIfNotOwner(address naughty) public {
+        // Setup
+        vm.assume(naughty != thisAddress && naughty != nullAddress);
+        bytes memory callData = abi.encodeCall(OwnableUpgradeable.renounceOwnership, ());
+        bytes memory returnData = encodeStringRevert("Ownable: caller is not the owner");
+        vm.prank(naughty);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, returnData);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                         IDENTITY MANAGEMENT TESTS                       ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Checks that the proof validates properly with the correct inputs.
+    function testRegisterIdentitiesWithCorrectInputsFromKnown() public {
+        // Setup
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+        ITreeVerifier actualVerifier = new TreeVerifier();
+
+        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (preRoot, actualVerifier));
+
+        identityManager = new IdentityManager(managerImplAddress, callData);
+        identityManagerAddress = address(identityManager);
+        bytes memory registerCallData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (proof, preRoot, startIndex, identityCommitments, postRoot)
+        );
+        bytes memory latestRootCallData = abi.encodeCall(ManagerImpl.latestRoot, ());
+        bytes memory queryRootCallData = abi.encodeCall(ManagerImpl.queryRoot, (postRoot));
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, registerCallData);
+        assertCallSucceedsOn(identityManagerAddress, latestRootCallData, abi.encode(postRoot));
+        assertCallSucceedsOn(
+            identityManagerAddress,
+            queryRootCallData,
+            abi.encode(ManagerImpl.RootInfo(postRoot, 0, true))
+        );
+    }
+
+    /// @notice Checks that the proof validates properly with correct inputs.
+    function testRegisterIdentitiesWithCorrectInputs(
+        uint128[8] memory prf,
+        uint32 newStartIndex,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
+        // Setup
+        vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        vm.assume(newPreRoot != newPostRoot);
+        ManagerImpl localManagerImpl = new ManagerImpl();
+        bytes memory initCall = abi.encodeCall(ManagerImpl.initialize, (newPreRoot, verifier));
+        IdentityManager localManager = new IdentityManager(address(localManagerImpl), initCall);
+        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareVerifierTestCase(identities, prf);
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+        );
+
+        // Test
+        assertCallSucceedsOn(address(localManager), callData);
+    }
+
+    /// @notice Checks that it reverts if the provided proof is incorrect for the public inputs.
+    function testCannotRegisterIdentitiesWithIncorrectInputs(
+        uint128[8] memory prf,
+        uint32 newStartIndex,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
+        // Setup
+        vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
+        vm.assume(newPreRoot != newPostRoot);
+        ManagerImpl localManagerImpl = new ManagerImpl();
+        bytes memory initCall = abi.encodeCall(ManagerImpl.initialize, (newPreRoot, verifier));
+        IdentityManager localManager = new IdentityManager(address(localManagerImpl), initCall);
+        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareVerifierTestCase(identities, prf);
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
+
+        // Test
+        assertCallFailsOn(address(localManager), callData, expectedError);
+    }
+
+    /// @notice Checks that it reverts if the provided start index is incorrect.
+    function testCannotRegisterIdentitiesIfStartIndexIncorrect(uint32 newStartIndex) public {
+        // Setup
+        vm.assume(newStartIndex != startIndex);
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+        ITreeVerifier actualVerifier = new TreeVerifier();
+
+        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (preRoot, actualVerifier));
+
+        identityManager = new IdentityManager(managerImplAddress, callData);
+        identityManagerAddress = address(identityManager);
+        bytes memory registerCallData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (proof, preRoot, newStartIndex, identityCommitments, postRoot)
+        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, registerCallData, expectedError);
+    }
+
+    /// @notice Checks that it reverts if the provided set of identities is incorrect.
+    function testCannotRegisterIdentitiesIfIdentitiesIncorrect(uint256 identity) public {
+        // Setup
+        uint256 invalidSlot = rotateSlot();
+        vm.assume(
+            identity != identityCommitments[invalidSlot] && identity < SNARK_SCALAR_FIELD
+                && identity != 0x0
+        );
+        uint256[] memory identities = cloneArray(identityCommitments);
+        identities[invalidSlot] = identity;
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+        ITreeVerifier actualVerifier = new TreeVerifier();
+
+        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (preRoot, actualVerifier));
+
+        identityManager = new IdentityManager(managerImplAddress, callData);
+        identityManagerAddress = address(identityManager);
+        bytes memory registerCallData = abi.encodeCall(
+            ManagerImpl.registerIdentities, (proof, preRoot, startIndex, identities, postRoot)
+        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, registerCallData, expectedError);
+    }
+
+    /// @notice Checks that it reverts if the provided post root is incorrect.
+    function testCannotRegisterIdentitiesIfPostRootIncorrect(uint256 newPostRoot) public {
+        // Setup
+        vm.assume(newPostRoot != postRoot && newPostRoot < SNARK_SCALAR_FIELD);
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+        ITreeVerifier actualVerifier = new TreeVerifier();
+
+        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (preRoot, actualVerifier));
+
+        identityManager = new IdentityManager(managerImplAddress, callData);
+        identityManagerAddress = address(identityManager);
+        bytes memory registerCallData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (proof, preRoot, startIndex, identityCommitments, newPostRoot)
+        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, registerCallData, expectedError);
+    }
+
+    // TODO [Ara] testCannotRegisterIdentitiesIfNotViaProxy
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                             CALLABILITY TESTS                           ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    // TODO [Ara] Delete these. They're now superseded.
 
     /// @notice Checks that it is possible to call `owner()`.
     function testCanCallOwner() public {
@@ -299,7 +565,7 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory callData = abi.encodeCall(OwnableUpgradeable.owner, ());
 
         // Test
-        assertCallSucceedsOnIdentityManager(callData);
+        assertCallSucceedsOn(identityManagerAddress, callData);
     }
 
     /// @notice Checks that it is possible to call `transferOwnership()`.
@@ -309,7 +575,7 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory callData = abi.encodeCall(OwnableUpgradeable.transferOwnership, (newOwner));
 
         // Test
-        assertCallSucceedsOnIdentityManager(callData);
+        assertCallSucceedsOn(identityManagerAddress, callData);
     }
 
     /// @notice Checks that it is possible to call `renounceOwnership`.
@@ -318,7 +584,7 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory callData = abi.encodeCall(OwnableUpgradeable.renounceOwnership, ());
 
         // Test
-        assertCallSucceedsOnIdentityManager(callData);
+        assertCallSucceedsOn(identityManagerAddress, callData);
     }
 
     /// @notice Checks that it is possible to call `NO_SUCH_ROOT`.
@@ -327,7 +593,7 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory callData = abi.encodeCall(ManagerImpl.NO_SUCH_ROOT, ());
 
         // Test
-        assertCallSucceedsOnIdentityManager(callData);
+        assertCallSucceedsOn(identityManagerAddress, callData);
     }
 
     /// @notice Checks that it is possible to call `registerIdentities`.
@@ -349,7 +615,7 @@ contract WorldIDIdentityManagerTest is Test {
         );
 
         // Test
-        assertCallSucceedsOnIdentityManager(callData);
+        assertCallSucceedsOn(identityManagerAddress, callData);
     }
 
     /// @notice Checks that it is possible to call `calculateTreeVerifierInputHash`.
@@ -370,7 +636,7 @@ contract WorldIDIdentityManagerTest is Test {
         );
 
         // Test
-        assertCallSucceedsOnIdentityManager(callData);
+        assertCallSucceedsOn(identityManagerAddress, callData);
     }
 
     /// @notice Checks that it is possible to call `queryRoot`.
@@ -380,7 +646,7 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, (root));
 
         // Test
-        assertCallSucceedsOnIdentityManager(callData);
+        assertCallSucceedsOn(identityManagerAddress, callData);
     }
 
     /// @notice Checks that it is possible to call `isInputInReducedForm`.
@@ -390,7 +656,7 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory callData = abi.encodeCall(ManagerImpl.isInputInReducedForm, (inputNumber));
 
         // Test
-        assertCallSucceedsOnIdentityManager(callData);
+        assertCallSucceedsOn(identityManagerAddress, callData);
     }
 
     /// @notice Checks that it is possible to call `checkValidRoot`.
@@ -399,6 +665,6 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory callData = abi.encodeCall(ManagerImpl.checkValidRoot, (initialRoot));
 
         // Test
-        assertCallSucceedsOnIdentityManager(callData);
+        assertCallSucceedsOn(identityManagerAddress, callData);
     }
 }
