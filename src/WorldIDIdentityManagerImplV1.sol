@@ -158,7 +158,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///      is accounted for here.
     ///
     /// @custom:reverts string If called more than once.
-    function __delegate_init() internal virtual {
+    function __delegate_init() internal virtual onlyInitializing {
         __Ownable_init();
         __UUPSUpgradeable_init();
     }
@@ -279,7 +279,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         uint256 preRoot,
         uint256 postRoot,
         uint256[] calldata identityCommitments
-    ) public pure virtual returns (bytes32 hash) {
+    ) public view virtual onlyProxy returns (bytes32 hash) {
         bytes memory bytesToHash =
             abi.encodePacked(startIndex, preRoot, postRoot, identityCommitments);
 
@@ -332,7 +332,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///                 is not in reduced form.
     function validateIdentityCommitments(uint256[] calldata identityCommitments)
         internal
-        pure
+        view
         virtual
     {
         for (uint256 i = 0; i < identityCommitments.length; ++i) {
@@ -353,8 +353,9 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @return isInReducedForm Returns `true` if `input` is in reduced form, `false` otherwise.
     function isInputInReducedForm(uint256 input)
         public
-        pure
+        view
         virtual
+        onlyProxy
         returns (bool isInReducedForm)
     {
         return input < SNARK_SCALAR_FIELD;
@@ -379,7 +380,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///      is not in the root history.
     ///
     /// @param root The root of a given identity group.
-    function checkValidRoot(uint256 root) public view virtual returns (bool) {
+    function checkValidRoot(uint256 root) public view virtual onlyProxy returns (bool) {
         if (root != _latestRoot) {
             uint128 rootTimestamp = rootHistory[root];
 
@@ -401,7 +402,13 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///                             AUTHENTICATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {
+    function _authorizeUpgrade(address newImplementation)
+        internal
+        virtual
+        override
+        onlyOwner
+        onlyProxy
+    {
         // No body needed as `onlyOwner` handles it.
     }
 
@@ -426,7 +433,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         uint256 nullifierHash,
         uint256 externalNullifierHash,
         uint256[8] calldata proof
-    ) public view virtual {
+    ) public view virtual onlyProxy {
         uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
 
         if (checkValidRoot(root)) {

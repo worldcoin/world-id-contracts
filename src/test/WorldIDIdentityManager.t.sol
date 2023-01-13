@@ -763,7 +763,16 @@ contract WorldIDIdentityManagerTest is Test {
     }
 
     // TODO [Ara] testCannotQueryRootIfNotViaProxy
-    // TODO [Ara] Check for missing tests
+
+    function testCanGetLatestRoot(uint256 actualRoot) public {
+        // Setup
+        initNewIdentityManager(actualRoot, verifier);
+        bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
+        bytes memory returnData = abi.encode(actualRoot);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, returnData);
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             CALCULATION TESTS                           ///
@@ -808,119 +817,4 @@ contract WorldIDIdentityManagerTest is Test {
     }
 
     // TODO [Ara] testCanCheckValueForReducedFormOnlyIfViaProxy
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                             CALLABILITY TESTS                           ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    // TODO [Ara] Delete these. They're now superseded.
-
-    /// @notice Checks that it is possible to call `owner()`.
-    function testCanCallOwner() public {
-        // Setup
-        bytes memory callData = abi.encodeCall(OwnableUpgradeable.owner, ());
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
-    }
-
-    /// @notice Checks that it is possible to call `transferOwnership()`.
-    function testCanCallTransferOwnership() public {
-        // Setup
-        address newOwner = address(0x0ddba11);
-        bytes memory callData = abi.encodeCall(OwnableUpgradeable.transferOwnership, (newOwner));
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
-    }
-
-    /// @notice Checks that it is possible to call `renounceOwnership`.
-    function testCanCallRenounceOwnership() public {
-        // Setup
-        bytes memory callData = abi.encodeCall(OwnableUpgradeable.renounceOwnership, ());
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
-    }
-
-    /// @notice Checks that it is possible to call `NO_SUCH_ROOT`.
-    function testCanCallNoSuchRoot() public {
-        // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.NO_SUCH_ROOT, ());
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
-    }
-
-    /// @notice Checks that it is possible to call `registerIdentities`.
-    function testCanCallRegisterIdentities() public {
-        // Setup
-        uint32 newStartIndex = 0;
-        uint256 newPreRoot = 0;
-        uint256 newPostRoot = 1;
-        uint256[] memory identities;
-        identities = new uint256[](3);
-        identities[0] = 0x1;
-        identities[1] = 0x2;
-        identities[2] = 0x3;
-        uint256[8] memory newProof = [uint256(0x2), 0x4, 0x6, 0x8, 0x10, 0x1, 0x3, 0x5];
-
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.registerIdentities,
-            (newProof, newPreRoot, newStartIndex, identities, newPostRoot)
-        );
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
-    }
-
-    /// @notice Checks that it is possible to call `calculateTreeVerifierInputHash`.
-    function testCanCallCalculateTreeVerifierInputHash() public {
-        // Setup
-        uint32 newStartIndex = 0;
-        uint256 newPreRoot = 0;
-        uint256 newPostRoot = 1;
-        uint256[] memory identities;
-        identities = new uint256[](3);
-        identities[0] = 0x1;
-        identities[1] = 0x2;
-        identities[2] = 0x3;
-
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.calculateTreeVerifierInputHash,
-            (newStartIndex, newPreRoot, newPostRoot, identities)
-        );
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
-    }
-
-    /// @notice Checks that it is possible to call `queryRoot`.
-    function testCanCallQueryRoot() public {
-        // Setup
-        uint256 root = 0xc0ffee;
-        bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, (root));
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
-    }
-
-    /// @notice Checks that it is possible to call `isInputInReducedForm`.
-    function testIsInputInReducedForm() public {
-        // Setup
-        uint256 inputNumber = 0xc0ffee;
-        bytes memory callData = abi.encodeCall(ManagerImpl.isInputInReducedForm, (inputNumber));
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
-    }
-
-    /// @notice Checks that it is possible to call `checkValidRoot`.
-    function testCanCallCheckValidRoot() public {
-        // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.checkValidRoot, (initialRoot));
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
-    }
 }
