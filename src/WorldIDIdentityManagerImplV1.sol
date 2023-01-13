@@ -8,6 +8,8 @@ import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
+import "forge-std/console.sol";
+
 /// @title WorldID Identity Manager Implementation Version 1
 /// @author Worldcoin
 /// @notice An implementation of a batch-based identity manager for the WorldID protocol.
@@ -15,7 +17,7 @@ import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable
 ///      to perform the insertions.
 /// @dev This is the implementation delegated to by a proxy. All updates to the implementation
 ///      should inherit from the latest version of the implementation. To this end, all functions
-///      here should be marked virtual to enable updating logic.
+///      here (except the initialiser) should be marked virtual to enable updating logic.
 contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IWorldID {
     ///////////////////////////////////////////////////////////////////////////////
     ///                    !!!!! DATA: DO NOT REORDER !!!!!                     ///
@@ -139,9 +141,9 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @custom:reverts string If called more than once.
     function initialize(uint256 initialRoot, ITreeVerifier merkleTreeVerifier_)
         public
-        virtual
-        initializer
+        reinitializer(1)
     {
+        // TODO [Ara] Does this need to be `onlyProxy`?
         // First, ensure that all of the children are initialised.
         __delegate_init();
 

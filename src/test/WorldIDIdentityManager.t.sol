@@ -4,6 +4,8 @@ pragma solidity ^0.8.10;
 import {Vm} from "forge-std/Vm.sol";
 import {Test} from "forge-std/Test.sol";
 
+import "forge-std/console.sol";
+
 import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
@@ -11,7 +13,7 @@ import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {WorldIDIdentityManagerImplMock} from "./mock/WorldIDIdentityManagerImplMock.sol";
 
-import {WorldIDIdentityManager} from "../WorldIDIdentityManager.sol";
+import {WorldIDIdentityManager as IdentityManager} from "../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Test.
@@ -24,14 +26,14 @@ contract WorldIDIdentityManagerTest is Test {
 
     Vm internal hevm = Vm(HEVM_ADDRESS);
 
-    WorldIDIdentityManager identityManager;
+    IdentityManager identityManager;
     ManagerImpl managerImpl;
 
     ITreeVerifier verifier = new SimpleVerifier();
     uint256 initialRoot = 0x0;
 
-    address identityManagerAddress = address(identityManager);
-    address managerImplAddress = address(managerImpl);
+    address identityManagerAddress;
+    address managerImplAddress;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
@@ -41,8 +43,12 @@ contract WorldIDIdentityManagerTest is Test {
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
         managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+
         bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (initialRoot, verifier));
-        identityManager = new WorldIDIdentityManager(address(managerImpl), callData);
+
+        identityManager = new IdentityManager(managerImplAddress, callData);
+        identityManagerAddress = address(identityManager);
 
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
@@ -63,6 +69,54 @@ contract WorldIDIdentityManagerTest is Test {
         delete returnData;
     }
 
+    /// @notice Asserts that making the external call using `callData` on `identityManager`
+    ///         succeeds.
+    ///
+    /// @param callData The ABI-encoded call to a function.
+    /// @param expectedReturnData The expected return data from the function.
+    function assertCallSucceedsOnIdentityManager(
+        bytes memory callData,
+        bytes memory expectedReturnData
+    ) public {
+        (bool status, bytes memory returnData) = identityManagerAddress.call(callData);
+        assert(status);
+        assertEq(expectedReturnData, returnData);
+    }
+
+    /// @notice Asserts that making the external call using `callData` on `identityManager`
+    ///         fails.
+    ///
+    /// @param callData The ABI-encoded call to a function.
+    function assertCallFailsOnIdentityManager(bytes memory callData) public {
+        (bool status, bytes memory returnData) = identityManagerAddress.call(callData);
+        assert(!status);
+        delete returnData;
+    }
+
+    /// @notice Asserts that making the external call using `callData` on `identityManager`
+    ///         fails.
+    ///
+    /// @param callData The ABI-encoded call to a function.
+    /// @param expectedReturnData The expected return data from the function.
+    function assertCallFailsOnIdentityManager(
+        bytes memory callData,
+        bytes memory expectedReturnData
+    ) public {
+        (bool status, bytes memory returnData) = identityManagerAddress.call(callData);
+        assert(!status);
+        assertEq(expectedReturnData, returnData);
+    }
+
+    /// @notice Performs the low-level encoding of the `revert(string)` call's return data.
+    /// @dev Equivalent to `abi.encodeWithSignature("Error(string)", reason)`.
+    ///
+    /// @param reason The string reason for the revert.
+    ///
+    /// @return data The ABI encoding of the revert.
+    function encodeStringRevert(string memory reason) public pure returns (bytes memory data) {
+        return abi.encodeWithSignature("Error(string)", reason);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                            CONSTRUCTION TESTS                           ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -77,7 +131,7 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory data = new bytes(0x0);
 
         // Test
-        identityManager = new WorldIDIdentityManager(dummy, data);
+        identityManager = new IdentityManager(dummy, data);
     }
 
     /// @notice Tests that it is possible to properly construct and initialise
@@ -89,7 +143,34 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (initialRoot, verifier));
 
         // Test
-        identityManager = new WorldIDIdentityManager(address(managerImpl), callData);
+        identityManager = new IdentityManager(address(managerImpl), callData);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                           INITIALIZATION TESTS                          ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Checks that it is possible to initialise the contract.
+    function testInitialisation() public {
+        // Setup
+        // identityManager = new IdentityManager();
+        // managerImpl = new ManagerImpl();
+        // vm.expectEmit(true, true, true, true);
+        // emit Initialized(1);
+
+        // Test
+        // identityManager.initialize(initialRoot, verifier);
+    }
+
+    /// @notice Checks that it is not possible to initialise the contract more than once.
+    function testInitializationOnlyOnce() public {
+        // Setup
+        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (initialRoot, verifier));
+        bytes memory expectedReturn =
+            encodeStringRevert("Initializable: contract is already initialized");
+
+        // Test
+        assertCallFailsOnIdentityManager(callData, expectedReturn);
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -103,9 +184,7 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory upgradeCall = abi.encodeCall(UUPSUpgradeable.upgradeTo, (address(mockUpgrade)));
 
         // Test
-        (bool success, bytes memory returnData) = identityManagerAddress.call(upgradeCall);
-        assert(success);
-        assertEq(returnData, new bytes(0x0));
+        assertCallSucceedsOnIdentityManager(upgradeCall, new bytes(0x0));
     }
 
     /// @notice Tests that it is possible to upgrade to a new implementation and call a function on
@@ -113,14 +192,12 @@ contract WorldIDIdentityManagerTest is Test {
     function testCanUpgradeImplementationWithCall() public {
         // Setup
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
-        bytes memory initCall = abi.encodeCall(ManagerImpl.initialize, (initialRoot, verifier));
+        bytes memory initCall = abi.encodeCall(WorldIDIdentityManagerImplMock.initializeV2, (320));
         bytes memory upgradeCall =
             abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(mockUpgrade), initCall));
 
         // Test
-        (bool success, bytes memory returnData) = identityManagerAddress.call(upgradeCall);
-        assert(success);
-        assertEq(returnData, new bytes(0x0));
+        assertCallSucceedsOnIdentityManager(upgradeCall, new bytes(0x0));
     }
 
     /// @notice Tests that an upgrade cannot be performed by anybody other than the manager.
@@ -132,13 +209,14 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory upgradeCall =
             abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(mockUpgrade), initCall));
         vm.prank(naughty);
-        vm.expectRevert("Ownable: caller is not the owner");
 
         // Test
-        (bool success, bytes memory returnData) = identityManagerAddress.call(upgradeCall);
-        assert(!success);
-        delete returnData;
+        assertCallFailsOnIdentityManager(
+            upgradeCall, encodeStringRevert("Ownable: caller is not the owner")
+        );
     }
+
+    // TODO [Ara] testCannotUpgradeWithoutProxy
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                            FUNCTIONALITY TESTS                          ///
@@ -253,8 +331,7 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Checks that it is possible to call `checkValidRoot`.
     function testCanCallCheckValidRoot() public {
         // Setup
-        uint256 root = 0xb0075;
-        bytes memory callData = abi.encodeCall(ManagerImpl.checkValidRoot, (root));
+        bytes memory callData = abi.encodeCall(ManagerImpl.checkValidRoot, (initialRoot));
 
         // Test
         assertCallSucceedsOnIdentityManager(callData);

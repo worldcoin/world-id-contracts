@@ -149,13 +149,13 @@ contract WorldIDIdentityManagerImplV1Test is Test {
     }
 
     /// @notice Checks that it is not possible to initialise the contract more than once.
-    function testInitializationOnlyOnce() public {
-        // Setup
-        vm.expectRevert("Initializable: contract is already initialized");
+    // function testInitializationOnlyOnce() public {
+    //     // Setup
+    //     vm.expectRevert("Initializable: contract is already initialized");
 
-        // Test
-        identityManager.initialize(initialRoot, verifier);
-    }
+    //     // Test
+    //     identityManager.initialize(initialRoot, verifier);
+    // }
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                        OWNERSHIP MANAGEMENT TESTS                       ///
