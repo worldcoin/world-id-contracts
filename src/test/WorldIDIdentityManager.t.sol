@@ -19,6 +19,8 @@ import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityMan
 /// @title World ID Identity Manager Test.
 /// @notice Contains tests for the WorldID identity manager.
 /// @author Worldcoin
+/// @dev This test suite tests both the proxy and the functionality of the underlying implementation
+///      so as to test everything in the context of how it will be deployed.
 contract WorldIDIdentityManagerTest is Test {
     ///////////////////////////////////////////////////////////////////////////////
     ///                                TEST DATA                                ///
@@ -275,8 +277,6 @@ contract WorldIDIdentityManagerTest is Test {
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
     }
-
-    // TODO [Ara] testCanOnlyInitializeIfViaProxy
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                               UPGRADE TESTS                             ///
@@ -674,7 +674,18 @@ contract WorldIDIdentityManagerTest is Test {
         assertCallFailsOn(identityManagerAddress, callData);
     }
 
-    // TODO [Ara] testCannotRegisterIdentitiesIfNotViaProxy
+    /// @notice Tests that identities can only be registered through the proxy.
+    function testCannotRegisterIdentitiesIfNotViaProxy() public {
+        // Setup
+        address expectedOwner = managerImpl.owner();
+        vm.expectRevert("Function must be called through delegatecall");
+        vm.prank(expectedOwner);
+
+        // Test
+        managerImpl.registerIdentities(
+            proof, initialRoot, startIndex, identityCommitments, postRoot
+        );
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                            DATA QUERYING TESTS                          ///
@@ -762,8 +773,16 @@ contract WorldIDIdentityManagerTest is Test {
         assertCallSucceedsOn(identityManagerAddress, callData, returnData);
     }
 
-    // TODO [Ara] testCannotQueryRootIfNotViaProxy
+    /// @notice Checks that the root can only be queried if behind the proxy.
+    function testCannotQueryRootIfNotViaProxy() public {
+        // Setup
+        vm.expectRevert("Function must be called through delegatecall");
 
+        // Test
+        managerImpl.queryRoot(initialRoot);
+    }
+
+    /// @notice Checks that it is possible to get the latest root from the contract.
     function testCanGetLatestRoot(uint256 actualRoot) public {
         // Setup
         initNewIdentityManager(actualRoot, verifier);
@@ -772,6 +791,15 @@ contract WorldIDIdentityManagerTest is Test {
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, returnData);
+    }
+
+    /// @notice Checks that the latest root can only be obtained if behind the proxy.
+    function testCannotGetLatestRootIfNotViaProxy() public {
+        // Setup
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.latestRoot();
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -792,7 +820,16 @@ contract WorldIDIdentityManagerTest is Test {
         assertCallSucceedsOn(identityManagerAddress, callData, returnData);
     }
 
-    // TODO [Ara] testCanCalculateInputHashOnlyIfViaProxy
+    /// @notice Checks that the input hash can only be calculated if behind the proxy.
+    function testCannotCalculateInputHashIfNotViaProxy() public {
+        // Setup
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.calculateTreeVerifierInputHash(
+            startIndex, preRoot, postRoot, identityCommitments
+        );
+    }
 
     /// @notice Tests whether it is possible to check whether values are in reduced form.
     function testCanCheckValueIsInReducedForm(uint256 value) public {
@@ -816,5 +853,26 @@ contract WorldIDIdentityManagerTest is Test {
         assertCallSucceedsOn(identityManagerAddress, callData, returnData);
     }
 
-    // TODO [Ara] testCanCheckValueForReducedFormOnlyIfViaProxy
+    /// @notice Checks that reduced form checking can only be done from behind a proxy.
+    function testCannotCheckValidIsInReducedFormIfNotViaProxy() public {
+        // Setup
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.isInputInReducedForm(preRoot);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                UNINIT TEST                              ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    function testShouldNotCallWhileUninit() public {
+        // Setup
+        ManagerImpl localImpl = new ManagerImpl();
+        IdentityManager localManager = new IdentityManager(address(localImpl), new bytes(0x0));
+        bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
+
+        // Test
+        assertCallFailsOn(address(localManager), callData);
+    }
 }

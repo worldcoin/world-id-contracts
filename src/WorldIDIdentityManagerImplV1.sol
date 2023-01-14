@@ -15,10 +15,34 @@ import "forge-std/console.sol";
 /// @notice An implementation of a batch-based identity manager for the WorldID protocol.
 /// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs
 ///      to perform the insertions.
-/// @dev This is the implementation delegated to by a proxy. All updates to the implementation
-///      should inherit from the latest version of the implementation. To this end, all functions
-///      here (except the initialiser) should be marked virtual to enable updating logic.
+/// @dev This is the implementation delegated to by a proxy.
 contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IWorldID {
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    // This contract is designed explicitly to operate from behind a proxy contract. As a result,
+    // there are a few important implementation considerations:
+    //
+    // - All updates made after deploying a given version of the implementation should inherit from
+    //   the latest version of the implementation. This prevents storage clashes.
+    // - All functions that are less access-restricted than `private` should be marked `virtual` in
+    //   order to enable the fixing of bugs in the existing interface.
+    // - Any function that reads from or modifies state (i.e. is not marked `pure`) must be
+    //   annotated with the `onlyProxy` modifier. This ensures that it can only be called when it
+    //   has access to the data in the proxy, otherwise results are likely to be nonsensical.
+    // - This contract deals with important data for the WorldID system. Ensure that all newly-added
+    //   functionality is carefully access controlled using `onlyOwner`, or a more granular access
+    //   mechanism.
+    //
+    // Additionally, the following notes apply:
+    //
+    // - Initialisation and ownership management are not protected behind `onlyProxy` intentionally.
+    //   This ensures that the contract can safely be disposed of after it is no longer used.
+    // - Carefully consider what data recovery options are presented as new functionality is added.
+    //   Care must be taken to ensure that a migration plan can exist for cases where upgrades
+    //   cannot recover from an issue or vulnerability.
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                    !!!!! DATA: DO NOT REORDER !!!!!                     ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -131,26 +155,39 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
 
+    /// @notice Constructs the contract.
+    constructor() {
+        // When called in the constructor, this is called in the context of the implementation and
+        // not the proxy. Calling this thereby ensures that the contract cannot be spuriously
+        // initialized on its own.
+        _disableInitializers();
+    }
+
     /// @notice Initializes the contract.
     /// @dev Must be called exactly once.
+    /// @dev This is marked `reinitializer()` to allow for updated initialisation steps when working
+    ///      with upgrades based upon this contract. Be aware that there are only 256 (zero-indexed)
+    ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
+    ///      replaced by use of setters.
     ///
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of the empty tree.
     /// @param merkleTreeVerifier_ The initial tree verifier to use.
     ///
-    /// @custom:reverts string If called more than once.
+    /// @custom:reverts string If called more than once at the same initalisation number.
     function initialize(uint256 initialRoot, ITreeVerifier merkleTreeVerifier_)
         public
         reinitializer(1)
     {
-        // TODO [Ara] Does this need to be `onlyProxy`?
-        // First, ensure that all of the children are initialised.
+        // First, ensure that all of the parent contracts are initialised.
         __delegate_init();
 
-        // Now perform the implementation's init logic.
+        // Now perform the init logic for this contract.
         _latestRoot = initialRoot;
         merkleTreeVerifier = merkleTreeVerifier_;
     }
+
+    // Todo [Ara] Work out if we should guard functionality on being inited.
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
     /// @dev Must be called exactly once.
@@ -380,6 +417,8 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///      is not in the root history.
     ///
     /// @param root The root of a given identity group.
+    /// @custom:reverts ExpiredRoot If the root is not valid due to being expired.
+    /// @custom:reverts NonExistentRoot If the root does not exist.
     function checkValidRoot(uint256 root) public view virtual onlyProxy returns (bool) {
         if (root != _latestRoot) {
             uint128 rootTimestamp = rootHistory[root];
@@ -402,6 +441,11 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///                             AUTHENTICATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
 
+    /// @notice Is called when upgrading the contract to check whether it should be performed.
+    ///
+    /// @param newImplementation The address of the implementation being upgraded to.
+    ///
+    /// @custom:reverts string If the upgrade should not be performed.
     function _authorizeUpgrade(address newImplementation)
         internal
         virtual
@@ -416,9 +460,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///                    SEMAPHORE PROOF VALIDATION LOGIC                     ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// A verifier for the semaphore protocol.
-    ///
-    /// @notice Reverts if the zero-knowledge proof is invalid.
+    /// @notice A verifier for the semaphore protocol.
     /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.
     ///
@@ -427,6 +469,8 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @param nullifierHash The nullifier hash
     /// @param externalNullifierHash A keccak256 hash of the external nullifier
     /// @param proof The zero-knowledge proof
+    ///
+    /// @custom:reverts string If the zero-knowledge proof cannot be verified for the public inputs.
     function verifyProof(
         uint256 root,
         uint256 signalHash,
