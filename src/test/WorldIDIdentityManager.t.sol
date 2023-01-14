@@ -83,7 +83,7 @@ contract WorldIDIdentityManagerTest is Test {
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
         verifier = new SimpleVerifier();
-        initNewIdentityManager(initialRoot, verifier);
+        makeNewIdentityManager(initialRoot, verifier);
 
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
@@ -99,7 +99,7 @@ contract WorldIDIdentityManagerTest is Test {
     ///
     /// @param actualPreRoot The pre-root to use.
     /// @param actualVerifier The verifier instance to use.
-    function initNewIdentityManager(uint256 actualPreRoot, ITreeVerifier actualVerifier) public {
+    function makeNewIdentityManager(uint256 actualPreRoot, ITreeVerifier actualVerifier) public {
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
 
@@ -107,6 +107,15 @@ contract WorldIDIdentityManagerTest is Test {
             abi.encodeCall(ManagerImpl.initialize, (actualPreRoot, actualVerifier));
 
         identityManager = new IdentityManager(managerImplAddress, initCallData);
+        identityManagerAddress = address(identityManager);
+    }
+
+    /// @notice Creates a new identity manager without initializing the delegate.
+    /// @dev Uses the global variables.
+    function makeUninitIdentityManager() public {
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+        identityManager = new IdentityManager(managerImplAddress, new bytes(0x0));
         identityManagerAddress = address(identityManager);
     }
 
@@ -308,7 +317,7 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Tests that an upgrade cannot be performed by anybody other than the manager.
     function testCannotUpgradeUnlessManager(address naughty) public {
         // Setup
-        vm.assume(naughty != address(this) || naughty != address(0x0));
+        vm.assume(naughty != address(this) && naughty != address(0x0));
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
         bytes memory initCall = abi.encodeCall(WorldIDIdentityManagerImplMock.initializeV2, (320));
         bytes memory upgradeCall =
@@ -371,8 +380,7 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Ensures that it is impossible to transfer ownership without being the owner.
     function testCannotTransferOwnerIfNotOwner(address naughty, address newOwner) public {
         // Setup
-        vm.assume(naughty != thisAddress);
-        vm.assume(newOwner != nullAddress);
+        vm.assume(naughty != thisAddress && newOwner != nullAddress);
         bytes memory callData = abi.encodeCall(OwnableUpgradeable.transferOwnership, (newOwner));
         bytes memory expectedReturn = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(naughty);
@@ -412,7 +420,7 @@ contract WorldIDIdentityManagerTest is Test {
     function testRegisterIdentitiesWithCorrectInputsFromKnown() public {
         // Setup
         ITreeVerifier actualVerifier = new TreeVerifier();
-        initNewIdentityManager(preRoot, actualVerifier);
+        makeNewIdentityManager(preRoot, actualVerifier);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (proof, preRoot, startIndex, identityCommitments, postRoot)
@@ -441,7 +449,7 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        initNewIdentityManager(newPreRoot, verifier);
+        makeNewIdentityManager(newPreRoot, verifier);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareVerifierTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
@@ -464,7 +472,7 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        initNewIdentityManager(newPreRoot, verifier);
+        makeNewIdentityManager(newPreRoot, verifier);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareVerifierTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
@@ -483,7 +491,7 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(newStartIndex != startIndex);
         ITreeVerifier actualVerifier = new TreeVerifier();
-        initNewIdentityManager(preRoot, actualVerifier);
+        makeNewIdentityManager(preRoot, actualVerifier);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (proof, preRoot, newStartIndex, identityCommitments, postRoot)
@@ -506,7 +514,7 @@ contract WorldIDIdentityManagerTest is Test {
         uint256[] memory identities = cloneArray(identityCommitments);
         identities[invalidSlot] = identity;
         ITreeVerifier actualVerifier = new TreeVerifier();
-        initNewIdentityManager(preRoot, actualVerifier);
+        makeNewIdentityManager(preRoot, actualVerifier);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities, (proof, preRoot, startIndex, identities, postRoot)
         );
@@ -566,7 +574,7 @@ contract WorldIDIdentityManagerTest is Test {
             currentPreRoot != actualRoot && currentPreRoot < SNARK_SCALAR_FIELD
                 && actualRoot < SNARK_SCALAR_FIELD
         );
-        initNewIdentityManager(uint256(currentPreRoot), verifier);
+        makeNewIdentityManager(uint256(currentPreRoot), verifier);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (proof, actualRoot, startIndex, identityCommitments, postRoot)
@@ -694,7 +702,7 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Tests whether it is possible to query accurate information about the current root.
     function testQueryCurrentRoot(uint128 newPreRoot) public {
         // Setup
-        initNewIdentityManager(newPreRoot, verifier);
+        makeNewIdentityManager(newPreRoot, verifier);
         bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, newPreRoot);
         bytes memory returnData = abi.encode(ManagerImpl.RootInfo(newPreRoot, 0, true));
 
@@ -713,7 +721,7 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        initNewIdentityManager(newPreRoot, verifier);
+        makeNewIdentityManager(newPreRoot, verifier);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareVerifierTestCase(identities, prf);
         bytes memory registerCallData = abi.encodeCall(
@@ -740,7 +748,7 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
-        initNewIdentityManager(newPreRoot, verifier);
+        makeNewIdentityManager(newPreRoot, verifier);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareVerifierTestCase(identities, prf);
         uint256 originalTimestamp = block.timestamp;
@@ -785,7 +793,7 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Checks that it is possible to get the latest root from the contract.
     function testCanGetLatestRoot(uint256 actualRoot) public {
         // Setup
-        initNewIdentityManager(actualRoot, verifier);
+        makeNewIdentityManager(actualRoot, verifier);
         bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory returnData = abi.encode(actualRoot);
 
@@ -866,13 +874,87 @@ contract WorldIDIdentityManagerTest is Test {
     ///                                UNINIT TEST                              ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    function testShouldNotCallWhileUninit() public {
+    /// @notice Checks that it is impossible to call `registerIdentities` while the contract is not
+    ///         initialised.
+    function testShouldNotCallRegisterIdentitiesWhileUninit() public {
         // Setup
-        ManagerImpl localImpl = new ManagerImpl();
-        IdentityManager localManager = new IdentityManager(address(localImpl), new bytes(0x0));
-        bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
+        makeUninitIdentityManager();
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (proof, preRoot, startIndex, identityCommitments, postRoot)
+        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
 
         // Test
-        assertCallFailsOn(address(localManager), callData);
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `calculateTreeVerifierInputHash` while the
+    ///         contract is not initialised.
+    function testShouldNotCallCalculateInputHash() public {
+        // Setup
+        makeUninitIdentityManager();
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.calculateTreeVerifierInputHash,
+            (startIndex, preRoot, postRoot, identityCommitments)
+        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `latestRoot` while the contract is not
+    ///         initialised.
+    function testShouldNotCallLatestRootWhileUninit() public {
+        // Setup
+        makeUninitIdentityManager();
+        bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `queryRoot` while the contract is not
+    ///         initialised.
+    function testShouldNotCallQueryRootWhileUninit() public {
+        // Setup
+        makeUninitIdentityManager();
+        bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, (preRoot));
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `isInputInReducedForm` while the contract is
+    ///         not initialised.
+    function testShouldNotCallIsInputInReducedFormWhileUninit() public {
+        // Setup
+        makeUninitIdentityManager();
+        bytes memory callData = abi.encodeCall(ManagerImpl.isInputInReducedForm, (preRoot));
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `checkValidRoot` while the contract is not
+    ///         initialised.
+    function testShouldNotCallCheckValidRootWhileUninit() public {
+        // Setup
+        makeUninitIdentityManager();
+        bytes memory callData = abi.encodeCall(ManagerImpl.checkValidRoot, (preRoot));
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 }

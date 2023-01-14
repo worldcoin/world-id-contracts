@@ -34,6 +34,8 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     // - This contract deals with important data for the WorldID system. Ensure that all newly-added
     //   functionality is carefully access controlled using `onlyOwner`, or a more granular access
     //   mechanism.
+    // - Do not assign any contract-level variables at the definition site unless they are
+    //   `constant`.
     //
     // Additionally, the following notes apply:
     //
@@ -50,6 +52,10 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     // To ensure compatibility between upgrades, it is exceedingly important that no reordering of
     // these variables takes place. If reordering happens, a storage clash will occur (effectively a
     // memory safety error).
+
+    /// @notice Whether the initialization has been completed.
+    /// @dev This relies on the fact that a default-init `bool` is `false` here.
+    bool internal _initialized;
 
     /// @notice The latest root of the identity merkle tree.
     uint256 internal _latestRoot;
@@ -76,7 +82,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ITreeVerifier private merkleTreeVerifier;
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
-    SemaphoreVerifier private semaphoreVerifier = new SemaphoreVerifier();
+    SemaphoreVerifier private semaphoreVerifier;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                               PUBLIC TYPES                              ///
@@ -151,6 +157,10 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///         history.
     error NonExistentRoot();
 
+    /// @notice Thrown when attempting to call a function while the implementation has not been
+    ///         initialized.
+    error ImplementationNotInitialized();
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -185,6 +195,10 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         // Now perform the init logic for this contract.
         _latestRoot = initialRoot;
         merkleTreeVerifier = merkleTreeVerifier_;
+        semaphoreVerifier = new SemaphoreVerifier();
+
+        // Say that the contract is initialized.
+        _initialized = true;
     }
 
     // Todo [Ara] Work out if we should guard functionality on being inited.
@@ -237,7 +251,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         uint32 startIndex,
         uint256[] calldata identityCommitments,
         uint256 postRoot
-    ) public virtual onlyOwner onlyProxy {
+    ) public virtual onlyProxy onlyInitialized onlyOwner {
         // We can only operate on the latest root in reduced form.
         if (!isInputInReducedForm(preRoot)) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
@@ -316,7 +330,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         uint256 preRoot,
         uint256 postRoot,
         uint256[] calldata identityCommitments
-    ) public view virtual onlyProxy returns (bytes32 hash) {
+    ) public view virtual onlyProxy onlyInitialized returns (bytes32 hash) {
         bytes memory bytesToHash =
             abi.encodePacked(startIndex, preRoot, postRoot, identityCommitments);
 
@@ -326,7 +340,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @notice Allows a caller to query the latest root.
     ///
     /// @return root The value of the latest tree root.
-    function latestRoot() public view virtual onlyProxy returns (uint256 root) {
+    function latestRoot() public view virtual onlyProxy onlyInitialized returns (uint256 root) {
         return _latestRoot;
     }
 
@@ -342,6 +356,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         view
         virtual
         onlyProxy
+        onlyInitialized
         returns (RootInfo memory rootInfo)
     {
         if (root == _latestRoot) {
@@ -393,6 +408,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         view
         virtual
         onlyProxy
+        onlyInitialized
         returns (bool isInReducedForm)
     {
         return input < SNARK_SCALAR_FIELD;
@@ -419,7 +435,14 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @param root The root of a given identity group.
     /// @custom:reverts ExpiredRoot If the root is not valid due to being expired.
     /// @custom:reverts NonExistentRoot If the root does not exist.
-    function checkValidRoot(uint256 root) public view virtual onlyProxy returns (bool) {
+    function checkValidRoot(uint256 root)
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (bool)
+    {
         if (root != _latestRoot) {
             uint128 rootTimestamp = rootHistory[root];
 
@@ -450,8 +473,8 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         internal
         virtual
         override
-        onlyOwner
         onlyProxy
+        onlyOwner
     {
         // No body needed as `onlyOwner` handles it.
     }
@@ -477,7 +500,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         uint256 nullifierHash,
         uint256 externalNullifierHash,
         uint256[8] calldata proof
-    ) public view virtual onlyProxy {
+    ) public view virtual onlyProxy onlyInitialized {
         uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
 
         if (checkValidRoot(root)) {
@@ -488,5 +511,18 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
                 publicSignals
             );
         }
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                             AUTHENTICATION                              ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Asserts that the annotated function can only be called once the contract has been
+    ///         initialized.
+    modifier onlyInitialized() {
+        if (!_initialized) {
+            revert ImplementationNotInitialized();
+        }
+        _;
     }
 }
