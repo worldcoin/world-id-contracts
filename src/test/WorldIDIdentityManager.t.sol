@@ -287,6 +287,16 @@ contract WorldIDIdentityManagerTest is Test {
         assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
     }
 
+    /// @notice Checks that it is impossible to initialize the delegate on its own.
+    function testCannotInitializeTheDelegate() public {
+        // Setup
+        ManagerImpl localImpl = new  ManagerImpl();
+        vm.expectRevert("Initializable: contract is already initialized");
+
+        // Test
+        localImpl.initialize(initialRoot, verifier);
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                               UPGRADE TESTS                             ///
     ///////////////////////////////////////////////////////////////////////////////
