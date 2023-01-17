@@ -7,7 +7,7 @@ import dotenv from 'dotenv';
 import ora from 'ora';
 
 import solc from 'solc';
-import { ContractFactory, Wallet, providers } from 'ethers';
+import { Contract, ContractFactory, Wallet, providers } from 'ethers';
 import { Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
 
@@ -16,6 +16,7 @@ const { JsonRpcProvider } = providers;
 import Semaphore from '../out/Semaphore.sol/Semaphore.json' assert { type: 'json' };
 import WorldIDIdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import WorldIDIdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
+import { BigNumber } from '@ethersproject/bignumber';
 
 // === Constants ==================================================================================
 
@@ -337,17 +338,6 @@ async function ensureInitialRoot(plan, config) {
     }
 }
 
-async function deploySemaphore(plan, config) {
-    plan.add('Deploy Semaphore contract', async () => {
-        const spinner = ora(`Deploying Semaphore contract...`).start();
-        let factory = new ContractFactory(Semaphore.abi, Semaphore.bytecode.object, config.wallet);
-        let contract = await factory.deploy(config.initialRoot, config.verifierContractAddress);
-        spinner.text = `Waiting for Semaphore deploy transaction (address: ${contract.address})...`;
-        await contract.deployTransaction.wait();
-        spinner.succeed(`Deployed Semaphore contract to ${contract.address}...`);
-    });
-}
-
 async function deployIdentityManager(plan, config) {
     plan.add('Deploy WorldID Identity Manager Implementation', async () => {
         const spinner = ora('Deploying WorldID Identity Manager implementation...').start();
@@ -363,13 +353,15 @@ async function deployIdentityManager(plan, config) {
         spinner.succeed(`Deployed WorldID Identity Manager Implementation to ${contract.address}`);
     });
     plan.add('Deploy WorldID Identity Manager', async () => {
+        // Encode the initializer function call.
         const spinner = ora(`Building initializer call...`).start();
         const iface = new Interface(WorldIDIdentityManagerImpl.abi);
-        console.log(config.initialRoot);
         const callData = iface.encodeFunctionData('initialize', [
             config.initialRoot,
             config.verifierContractAddress,
         ]);
+
+        // Deploy the proxy contract.
         spinner.text = `Deploying WorldID Identity Manager proxy...`;
         const factory = new ContractFactory(
             WorldIDIdentityManager.abi,
@@ -383,7 +375,26 @@ async function deployIdentityManager(plan, config) {
         spinner.text = `Waiting for the WorldID Identity Manager deployment transaction (address: ${contract.address})...`;
         await contract.deployTransaction.wait();
         config.identityManagerContractAddress = contract.address;
-        spinner.succeed(`Deployed WorldID Identity Manager to ${contract.address}`);
+
+        // Verify that the deployment went correctly.
+        spinner.text = `Verifying correct deployment of the WorldID Identity Manager...`;
+        // Note that here the contract is constructed with the ABI of the _delegate_, allowing us to
+        // pretend that the proxy doesn't exist and yet still call through it.
+        const contractWithAbi = new Contract(
+            contract.address,
+            WorldIDIdentityManagerImpl.abi,
+            config.wallet
+        );
+        const latestRoot = await contractWithAbi.latestRoot();
+        if (latestRoot instanceof BigNumber && latestRoot._hex === config.initialRoot) {
+            // If we get the root back we know it's succeeded as if it isn't called through the
+            // proxy this call will revert.
+            spinner.succeed(`Deployed WorldID Identity Manager to ${contract.address}`);
+        } else {
+            spinner.fail(
+                `Could not communicate with the WorldID Identity Manager at ${contract.address}`
+            );
+        }
     });
 }
 
@@ -408,7 +419,6 @@ async function buildActionPlan(plan, config) {
 
     await ensureVerifierDeployment(plan, config);
     await ensureInitialRoot(plan, config);
-    // await deploySemaphore(plan, config);
     await deployIdentityManager(plan, config);
 }
 
