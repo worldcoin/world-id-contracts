@@ -7,7 +7,12 @@ libs = ['lib']
 ffi = true
 
 # Here we need some specific remappings.
-remappings = ['ds-test/=lib/ds-test/src/', '@zk-kit/=lib/zk-kit/packages/', '@openzeppelin/=lib/openzeppelin-contracts/']
+remappings = [
+  'ds-test/=lib/ds-test/src/',
+  '@zk-kit/=lib/zk-kit/packages/',
+  'openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/',
+  'contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/'
+]
 
 # The default is to optimise, but let's be clear about it.
 optimizer = true
@@ -40,7 +45,7 @@ stack_allocation = true   # Improves allocation of stack slots for variables.
 
 [profile.debug]
 # Make things chattier when debugging in case of test failures, giving us more
-# information with which to debug the issue. At this level, stack traces and 
+# information with which to debug the issue. At this level, stack traces and
 # setup traces for failing tests are displayed.
 verbosity = 3
 
@@ -52,12 +57,16 @@ verbosity = 3
 optimizer_runs = 20000
 
 # Make things chattier when debugging in case of test failures, giving us more
-# information with which to debug the issue. At this level, stack traces for 
+# information with which to debug the issue. At this level, stack traces for
 # failing tests are displayed.
 verbosity = 3
 
 # We can specify the contracts to track gas data for by tracing.
-gas_reports = ["Semaphore", "Verifier"]
+gas_reports = [
+  "WorldIDIdentityManager",
+  "WorldIdIdentityManagerImplV1",
+  "Verifier",
+]
 
 # === Production Profile ======================================================
 
