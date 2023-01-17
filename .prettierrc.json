@@ -1,19 +1,10 @@
 {
-    "semi": false,
+    "semi": true,
     "singleQuote": true,
     "printWidth": 100,
     "tabWidth": 4,
     "trailingComma": "es5",
     "useTabs": false,
     "bracketSpacing": true,
-    "arrowParens": "avoid",
-    "overrides": [
-        {
-            "files": "*.sol",
-            "options": {
-                "explicitTypes": "always",
-                "compiler": "0.8.12"
-            }
-        }
-    ]
+    "arrowParens": "avoid"
 }

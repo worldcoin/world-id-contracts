@@ -22,14 +22,18 @@ Deploying the Semaphore contract will require generating a verifier contract for
 
 The prover service comes with a way to generate test parameters – a mock insertion of a batch of consecutive commitments into the tree.
 Assuming you've already run `make deploy`, the prover serivce binary should have been downloaded. To generate a test batch, run
+
 ```
 ./mtb/bin/mtb gen-test-params --tree-depth=... --batch-size=...
 ```
+
 where the paremeters MUST match the parameters passed for contract deployment.
 To transform these into a proof, run the `prove` command, passing the params on stdin:
+
 ```
 ./mtb/bin/mtb prove --keys-file=mtb/keys < GENERATED_PARAMS
 ```
+
 The output of this, together with the relevant parts of the generated test params, should constitute a correct input to the `registerIdentities` method of the `Semaphore` contract, as long as it was deployed using the same keys file.
 
 ## Usage
