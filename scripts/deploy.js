@@ -8,6 +8,7 @@ import ora from 'ora';
 
 import solc from 'solc';
 import { ContractFactory, Wallet, providers } from 'ethers';
+import { Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
 
 const { JsonRpcProvider } = providers;
@@ -341,22 +342,49 @@ async function deploySemaphore(plan, config) {
         const spinner = ora(`Deploying Semaphore contract...`).start();
         let factory = new ContractFactory(Semaphore.abi, Semaphore.bytecode.object, config.wallet);
         let contract = await factory.deploy(config.initialRoot, config.verifierContractAddress);
-        spinner.text = `Waiting for Semaphore deploy transaction (address: ${contract.address})`;
+        spinner.text = `Waiting for Semaphore deploy transaction (address: ${contract.address})...`;
         await contract.deployTransaction.wait();
-        spinner.succeed(`Deployed Semaphore contract to ${contract.address}`);
+        spinner.succeed(`Deployed Semaphore contract to ${contract.address}...`);
     });
 }
 
 async function deployIdentityManager(plan, config) {
     plan.add('Deploy WorldID Identity Manager Implementation', async () => {
         const spinner = ora('Deploying WorldID Identity Manager implementation...').start();
-        let factory = new ContractFactory(
+        const factory = new ContractFactory(
             WorldIDIdentityManagerImpl.abi,
             WorldIDIdentityManagerImpl.bytecode.object,
             config.wallet
         );
+        const contract = await factory.deploy();
+        spinner.text = `Waiting for the WorldID Identity Manager Implementation deployment transaction (address: ${contract.address})...`;
+        await contract.deployTransaction.wait();
+        config.identityManagerImplementationContractAddress = contract.address;
+        spinner.succeed(`Deployed WorldID Identity Manager Implementation to ${contract.address}`);
     });
-    plan.add('Deploy WorldID Identity Manager Proxy', async () => {});
+    plan.add('Deploy WorldID Identity Manager', async () => {
+        const spinner = ora(`Building initializer call...`).start();
+        const iface = new Interface(WorldIDIdentityManagerImpl.abi);
+        console.log(config.initialRoot);
+        const callData = iface.encodeFunctionData('initialize', [
+            config.initialRoot,
+            config.verifierContractAddress,
+        ]);
+        spinner.text = `Deploying WorldID Identity Manager proxy...`;
+        const factory = new ContractFactory(
+            WorldIDIdentityManager.abi,
+            WorldIDIdentityManager.bytecode.object,
+            config.wallet
+        );
+        const contract = await factory.deploy(
+            config.identityManagerImplementationContractAddress,
+            callData
+        );
+        spinner.text = `Waiting for the WorldID Identity Manager deployment transaction (address: ${contract.address})...`;
+        await contract.deployTransaction.wait();
+        config.identityManagerContractAddress = contract.address;
+        spinner.succeed(`Deployed WorldID Identity Manager to ${contract.address}`);
+    });
 }
 
 async function buildActionPlan(plan, config) {
