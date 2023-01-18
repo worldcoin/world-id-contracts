@@ -25,11 +25,12 @@
         "url": "https://github.com/worldcoin/world-id-contracts/issues"
     },
     "dependencies": {
-        "ethers": "^5.7.2",
         "@zk-kit/identity": "^1.4.1",
         "@zk-kit/protocols": "^1.11.0",
         "circomlibjs": "0.0.8",
+        "commander": "^10.0.0",
         "dotenv": "^16.0.0",
+        "ethers": "^5.7.2",
         "ora": "^6.1.0",
         "solc": "0.8.17"
     },

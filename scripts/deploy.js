@@ -5,6 +5,7 @@ import { spawnSync } from 'child_process';
 
 import dotenv from 'dotenv';
 import ora from 'ora';
+import { Command } from 'commander';
 
 import solc from 'solc';
 import { Contract, ContractFactory, Wallet, providers } from 'ethers';
@@ -412,14 +413,14 @@ async function deployIdentityManager(plan, config) {
     });
 }
 
-async function buildActionPlan(plan, config) {
-    dotenv.config();
-
+async function getPrivateKey(config) {
     config.privateKey = process.env.PRIVATE_KEY;
     if (!config.privateKey) {
         config.privateKey = await ask('Enter your private key: ');
     }
+}
 
+async function getRpcUrl(config) {
     config.rpcUrl = process.env.RPC_URL;
     if (!config.rpcUrl) {
         config.rpcUrl = await ask(`Enter RPC URL: (${DEFAULT_RPC_URL}) `);
@@ -427,24 +428,93 @@ async function buildActionPlan(plan, config) {
     if (!config.rpcUrl) {
         config.rpcUrl = DEFAULT_RPC_URL;
     }
+}
 
+async function getProvider(config) {
     config.provider = new JsonRpcProvider(config.rpcUrl);
+}
+
+async function getWallet(config) {
     config.wallet = new Wallet(config.privateKey, config.provider);
+}
+
+async function buildDeploymentActionPlan(plan, config) {
+    dotenv.config();
+
+    await getPrivateKey(config);
+    await getRpcUrl(config);
+    await getProvider(config);
+    await getWallet(config);
 
     await ensureVerifierDeployment(plan, config);
     await ensureInitialRoot(plan, config);
     await deployIdentityManager(plan, config);
 }
 
-async function main() {
+async function buildUpgradeActionPlan(plan, config) {
+    dotenv.config();
+
+    await getPrivateKey(config);
+    await getRpcUrl(config);
+    await getProvider(config);
+    await getWallet(config);
+
+    // TODO [Ara]
+    //   1. Obtain the address at which to upgrade.
+    //   2. Work out _how_ to obtain the upgrade params from the user. Do I just hardcode some to
+    //      start with? Probably.
+    //   3. Work out if it makes sense to make it modular. Probably not. It's just deploying the
+    //      test.
+}
+
+/** Builds a plan using the provided function and then executes the plan.
+ *
+ * @param {(plan: Object, config: Object) => Promise<void>} planner The function that performs the
+ *        planning process.
+ * @param {Object} config The configuration object for the plan.
+ * @returns {Promise<void>}
+ */
+async function buildAndRunPlan(planner, config) {
     let plan = newPlan();
-    let config = {};
-    await buildActionPlan(plan, config);
+    await planner(plan, config);
 
     for (const item of plan.items) {
         console.log(item.label);
         await item.action(config);
     }
+}
+
+async function main() {
+    const program = new Command();
+
+    program
+        .name('deploy')
+        .description(
+            'A CLI interface for deploying the WorldID identity manager during development.'
+        );
+
+    program
+        .command('upgrade')
+        .description('Upgrades the deployed WorldID identity manager.')
+        .action(async () => {
+            let config = {};
+            await buildAndRunPlan(buildUpgradeActionPlan, config);
+        });
+
+    program
+        .command('deploy')
+        .description('Interactively deploys a new version of the WorldID identity manager.')
+        .option('--address', 'Upgrade the contract at the specified address.')
+        .action(async () => {
+            const options = program.opts();
+            let config = {};
+            if (options.address) {
+                config.identityManagerContractAddress = options.address;
+            }
+            await buildAndRunPlan(buildDeploymentActionPlan, config);
+        });
+
+    await program.parseAsync();
 }
 
 main().then(() => process.exit(0));
