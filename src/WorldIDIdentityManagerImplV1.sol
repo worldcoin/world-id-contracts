@@ -82,6 +82,12 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @notice The verifier instance needed for operating within the semaphore protocol.
     SemaphoreVerifier private semaphoreVerifier;
 
+    /// @notice The interface of the bridge contract from L1 to supported target chains.
+    address internal _stateBridgeProxyAddress;
+
+    /// @notice Boolean flag to enable/disable the state bridge.
+    bool internal _isStateBridgeEnabled;
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                               PUBLIC TYPES                              ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -160,6 +166,18 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///         initialized.
     error ImplementationNotInitialized();
 
+    /// @notice Thrown when attempting to send a transaction to the state bridge proxy that fails.
+    error StateBridgeProxySendRootMultichainFailure();
+
+    /// @notice Thrown when attempting to enable the bridge when it is already enabled.
+    error StateBridgeAlreadyEnabled();
+
+    /// @notice Thrown when attempting to disable the bridge when it is already disabled.
+    error StateBridgeAlreadyDisabled();
+
+    /// @notice Thrown when attempting to set the state bridge proxy address to the zero address.
+    error InvalidStateBridgeProxyAddress();
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -181,21 +199,27 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of the empty tree.
-    /// @param merkleTreeVerifier_ The initial tree verifier to use.
+    /// @param _merkleTreeVerifier The initial tree verifier to use.
+    /// @param _enableStateBridge Whether or not the state bridge should be enabled when
+    ///        initialising the identity manager.
+    /// @param initialStateBridgeProxyAddress The initial state bridge proxy address to use.
     ///
     /// @custom:reverts string If called more than once at the same initalisation number.
-    function initialize(uint256 initialRoot, ITreeVerifier merkleTreeVerifier_)
-        public
-        virtual
-        reinitializer(1)
-    {
+    function initialize(
+        uint256 initialRoot,
+        ITreeVerifier _merkleTreeVerifier,
+        bool _enableStateBridge,
+        address initialStateBridgeProxyAddress
+    ) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
         __delegate_init();
 
         // Now perform the init logic for this contract.
         _latestRoot = initialRoot;
-        merkleTreeVerifier = merkleTreeVerifier_;
+        merkleTreeVerifier = _merkleTreeVerifier;
         semaphoreVerifier = new SemaphoreVerifier();
+        _stateBridgeProxyAddress = initialStateBridgeProxyAddress;
+        _isStateBridgeEnabled = _enableStateBridge;
 
         // Say that the contract is initialized.
         _initialized = true;
@@ -298,6 +322,9 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
             // We also need to add the previous root to the history, and set the timestamp at which
             // it was expired.
             rootHistory[preRoot] = uint128(block.timestamp);
+
+            // With the update confirmed, we send the root across multiple chains to ensure sync.
+            sendRootToStateBridge();
         } catch Error(string memory errString) {
             /// This is not the revert we're looking for.
             revert(errString);
@@ -340,6 +367,76 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @return root The value of the latest tree root.
     function latestRoot() public view virtual onlyProxy onlyInitialized returns (uint256 root) {
         return _latestRoot;
+    }
+
+    /// @notice Sends the latest root to the state bridge.
+    /// @dev Only sends if the state bridge address is not the zero address.
+    ///
+    function sendRootToStateBridge() internal virtual onlyProxy onlyInitialized {
+        if (_isStateBridgeEnabled && _stateBridgeProxyAddress != address(0)) {
+            (bool success,) = _stateBridgeProxyAddress.call(
+                abi.encodeWithSignature("sendRootMultichain(uint256)", _latestRoot)
+            );
+
+            // If the call to the state bridge proxy failed, we revert with a failure.
+            if (!success) revert StateBridgeProxySendRootMultichainFailure();
+        }
+    }
+
+    /// @notice Allows a caller to query the address of the current stateBridgeProxy.
+    ///
+    /// @return proxy The address of the currently used stateBridgeProxy
+    function stateBridgeProxyAddress()
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (address proxy)
+    {
+        return _stateBridgeProxyAddress;
+    }
+
+    /// @notice Allows a caller to upgrade the stateBridgeProxy.
+    /// @dev Only the owner of the contract can call this function.
+    ///
+    /// @param newStateBridgeProxyAddress The address of the new stateBridgeProxy
+    function setStateBridgeProxyAddress(address newStateBridgeProxyAddress)
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+    {
+        if (newStateBridgeProxyAddress == address(0)) {
+            revert InvalidStateBridgeProxyAddress();
+        }
+
+        if (!_isStateBridgeEnabled) {
+            enableStateBridge();
+        }
+
+        _stateBridgeProxyAddress = newStateBridgeProxyAddress;
+    }
+
+    /// @notice Enables the state bridge.
+    /// @dev Only the owner of the contract can call this function.
+    function enableStateBridge() public virtual onlyProxy onlyInitialized onlyOwner {
+        if (!_isStateBridgeEnabled) {
+            _isStateBridgeEnabled = true;
+        } else {
+            revert StateBridgeAlreadyEnabled();
+        }
+    }
+
+    /// @notice Disables the state bridge.
+    /// @dev Only the owner of the contract can call this function.
+    function disableStateBridge() public virtual onlyProxy onlyInitialized onlyOwner {
+        if (_isStateBridgeEnabled) {
+            _isStateBridgeEnabled = false;
+        } else {
+            revert StateBridgeAlreadyDisabled();
+        }
     }
 
     /// @notice Allows a caller to query the root history for information about a given root.
