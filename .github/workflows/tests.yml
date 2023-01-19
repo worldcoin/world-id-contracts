@@ -36,5 +36,5 @@ jobs:
 
             - name: Run Benchmarks
               run: |
-                make bench
-                make snapshot
+                  make bench
+                  make snapshot
