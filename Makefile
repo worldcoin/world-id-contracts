@@ -10,7 +10,7 @@ bench:; FOUNDRY_PROFILE=bench forge test --gas-report --no-match-test testCannot
 # Snapshot the current test usages.
 snapshot:; FOUNDRY_PROFILE=bench forge snapshot --no-match-test testCannotRegisterIfProofIncorrect
 # Format the solidity code.
-format:; forge fmt
+format:; forge fmt; npx prettier --write .
 # Update forge dependencies.
 update:; forge update
 # Deploy contracts
