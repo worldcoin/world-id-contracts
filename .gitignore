@@ -4,3 +4,4 @@ remappings.txt
 node_modules
 .env
 mtb/
+.deploy-config.json

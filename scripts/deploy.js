@@ -14,7 +14,6 @@ import { poseidon } from 'circomlibjs';
 
 const { JsonRpcProvider } = providers;
 
-import Semaphore from '../out/Semaphore.sol/Semaphore.json' assert { type: 'json' };
 import WorldIDIdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import WorldIDIdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
 import { BigNumber } from '@ethersproject/bignumber';
@@ -28,6 +27,7 @@ const KEYS_PATH = MTB_DIR + '/keys';
 const MTB_BIN_DIR = MTB_DIR + '/bin';
 const MTB_BIN_PATH = MTB_BIN_DIR + '/mtb';
 const MTB_CONTRACTS_DIR = MTB_DIR + '/contracts';
+const CONFIG_FILENAME = '.deploy-config.json';
 
 // These are an arbitrary choice just for ease of development.
 const DEFAULT_TREE_DEPTH = 32;
@@ -42,7 +42,8 @@ const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json';
  * Asks the user a question and returns the answer.
  *
  * @param {string} question the question contents.
- * @param {?string} type an optional type to parse the answer as. Currently only supports 'int' for decimal integers.
+ * @param {?string} type an optional type to parse the answer as. Currently only supports 'int' for
+ *        decimal integers. and `bool` for booleans.
  * @returns a promise resolving to user's response
  */
 function ask(question, type) {
@@ -54,9 +55,32 @@ function ask(question, type) {
     return new Promise((resolve, reject) => {
         rl.question(question, input => {
             if (type === 'int' && input) {
-                input = parseInt(input);
+                input = parseInt(input.trim());
                 if (isNaN(input)) {
                     reject('Invalid input');
+                }
+            }
+            if (type === 'bool') {
+                if (!input) {
+                    input = undefined;
+                } else {
+                    switch (input.trim()) {
+                        case 'y':
+                        case 'Y':
+                        case 'true':
+                        case 'True':
+                            input = true;
+                            break;
+                        case 'n':
+                        case 'N':
+                        case 'false':
+                        case 'False':
+                            input = false;
+                            break;
+                        default:
+                            reject('Invalid input');
+                            break;
+                    }
                 }
             }
             resolve(input);
@@ -112,7 +136,7 @@ async function downloadSemaphoreMtbBinary(plan, config) {
         fs.mkdirSync(MTB_BIN_DIR, { recursive: true });
         const spinner = ora('Downloading Semaphore-MTB binary...').start();
         const url = `${MTB_RELEASES_URL}/${MTB_VERSION}/mtb-${config.os}-${config.arch}`;
-        const response = await httpsGetWithRedirects(url)
+        const response = await httpsGetWithRedirects(url);
         const done = new Promise((resolve, reject) => {
             const file = fs.createWriteStream(config.mtbBinary);
             response.pipe(file);
@@ -447,9 +471,34 @@ async function getUpgradeTargetAddress(config) {
         config.upgradeTargetAddress = await ask(`Enter upgrade target address: `);
     }
     if (!config.upgradeTargetAddress) {
-        console.error("Unable to detect upgrade target address. Aborting...")
+        console.error('Unable to detect upgrade target address. Aborting...');
         process.exit(1);
     }
+}
+
+async function loadConfiguration() {
+    let answer = await ask(`Do you want to load configuration from prior runs? [Y/n]: `, 'bool');
+    if (!answer) {
+        answer = true;
+    }
+    if (answer) {
+        if (!fs.existsSync(CONFIG_FILENAME)) {
+            console.warn("Load from configuration requested but none available. Continuing without it.");
+            return {};
+        }
+        const fileContents = JSON.parse(fs.readFileSync(CONFIG_FILENAME).toString());
+        if (fileContents) {
+            return fileContents;
+        } else {
+            console.warn('Unable to parse configuration. Continuing without it.');
+            return {};
+        }
+    }
+}
+
+async function saveConfiguration(config) {
+    const data = JSON.stringify(config);
+    fs.writeFileSync(CONFIG_FILENAME, data);
 }
 
 async function buildDeploymentActionPlan(plan, config) {
@@ -514,8 +563,9 @@ async function main() {
         .command('upgrade')
         .description('Upgrades the deployed WorldID identity manager.')
         .action(async () => {
-            let config = {};
+            let config = await loadConfiguration();
             await buildAndRunPlan(buildUpgradeActionPlan, config);
+            await saveConfiguration(config);
         });
 
     program
@@ -524,11 +574,12 @@ async function main() {
         .option('--address', 'Upgrade the contract at the specified address.')
         .action(async () => {
             const options = program.opts();
-            let config = {};
+            let config = await loadConfiguration();
             if (options.address) {
                 config.identityManagerContractAddress = options.address;
             }
             await buildAndRunPlan(buildDeploymentActionPlan, config);
+            await saveConfiguration(config);
         });
 
     await program.parseAsync();
