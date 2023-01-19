@@ -9,7 +9,7 @@ import { Command } from 'commander';
 
 import solc from 'solc';
 import { Contract, ContractFactory, providers, Wallet } from 'ethers';
-import { Interface } from 'ethers/lib/utils.js';
+import { defaultAbiCoder, Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
 import IdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
@@ -37,6 +37,7 @@ const MTB_VERSION = '1.0.2';
 const VERIFIER_SOURCE_PATH = MTB_CONTRACTS_DIR + '/Verifier.sol';
 const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json';
 const DEFAULT_IMPL_CONTRACT_NAME = 'WorldIDIdentityManagerImplV1';
+const DEFAULT_INIT_FUNCTION_SPEC = 'initialize(uint256,address)';
 const DEFAULT_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerImplMock';
 const DEFAULT_UPGRADE_FUNCTION_SPEC = 'initialize(uint32)';
 
@@ -500,13 +501,14 @@ async function getUpgradeTargetAddress(config) {
  *        implementation contract name.
  * @param {string} abiField The name of the field in the configuration object in which to store the
  *        implementation contract ABI.
+ * @param {string} defaultContract The name of the default contract to use.
  * @returns {Promise<void>}
  */
-async function getImplContractAbi(config, nameField, abiField) {
+async function getImplContractAbi(config, nameField, abiField, defaultContract) {
     let answer = '';
     if (!config[nameField]) {
         answer = await ask(
-            `Please provide the name of the implementation contract to use to upgrade WorldID (${DEFAULT_UPGRADE_CONTRACT_NAME}): `
+            `Please provide the name of the implementation contract to use for WorldID (${defaultContract}): `
         );
     }
     const spinner = ora('Obtaining contract ABI').start();
@@ -515,7 +517,7 @@ async function getImplContractAbi(config, nameField, abiField) {
         if (config[nameField]) {
             answer = config[nameField];
         } else {
-            answer = DEFAULT_UPGRADE_CONTRACT_NAME;
+            answer = defaultContract;
         }
     }
 
@@ -549,18 +551,26 @@ async function getImplContractAbi(config, nameField, abiField) {
     config[nameField] = answer;
 }
 
-async function buildUpgradeCall(config) {
-    let upgradeCall = config.upgradeCallInfo;
+/** Encodes a function call for sending to chain.
+ *
+ * @param {Object} config The configuration object.
+ * @param {string} targetAbiField The name of the field in the configuration object from which to
+ *        read the target contract ABI.
+ * @param {string} callInfoField The name of the field in the configuration object in which to store
+ *        the call data.
+ * @param {string} defaultFunction The default signature to use when building a call if none
+ *        specified.
+ * @returns {Promise<void>}
+ */
+async function buildCall(config, targetAbiField, callInfoField, defaultFunction) {
+    let upgradeCall = config[callInfoField];
     if (!upgradeCall) {
         upgradeCall = {};
     }
 
-    let defaultName = upgradeCall.functionSpec
-        ? ` (${upgradeCall.functionSpec})`
-        : ` (${DEFAULT_UPGRADE_FUNCTION_SPEC})`;
     let answer = '';
     if (!upgradeCall.functionSpec) {
-        answer = await ask(`Provide the signature of the upgrade function${defaultName}: `);
+        answer = await ask(`Provide the signature of the function (${defaultFunction}): `);
     }
 
     let spinner = ora('Building upgrade call').start();
@@ -569,13 +579,13 @@ async function buildUpgradeCall(config) {
         if (upgradeCall.functionSpec) {
             answer = upgradeCall.functionSpec;
         } else {
-            answer = DEFAULT_UPGRADE_FUNCTION_SPEC;
+            answer = defaultFunction;
         }
     }
 
-    const iface = new Contract('0x0', config.newImplementationAbi.abi, config.wallet);
+    const iface = new Interface(config[targetAbiField].abi);
 
-    const specifiedFunction = iface.interface.functions[answer];
+    const specifiedFunction = iface.functions[answer.replace(/ +/, '')];
     if (!specifiedFunction) {
         spinner.fail(`No function with signature ${answer} found`);
         process.exit(0);
@@ -597,8 +607,12 @@ async function buildUpgradeCall(config) {
         for (const input of specifiedFunction.inputs) {
             const param = `\`${input.name} : ${input.type}\``;
             let answer = await ask(`Please enter value for parameter ${param}: `);
+            answer = answer.trim();
             const spinner = ora(`Obtaining parameter value for ${param}`).start();
-            const encodedValue = iface.interface._abiCoder.encode([input.type], [answer]);
+            if (answer.startsWith('config.')) {
+                answer = eval(answer);
+            }
+            const encodedValue = iface._abiCoder.encode([input.type], [answer]);
             const paramValue = {
                 name: input.name,
                 type: input.type,
@@ -619,15 +633,19 @@ async function buildUpgradeCall(config) {
         spinner.succeed(`Using parameter values \`${display}\` for upgrade call`);
     }
 
-    config.upgradeCallInfo = upgradeCall;
+    config[callInfoField] = upgradeCall;
+}
+
+async function checkAbiCompatibility(previousInterface, newInterface) {
+    const spinner = ora('Checking ABI compatibility for the upgrade').start();
 }
 
 async function deployUpgrade(plan, config) {
     plan.add('Deploy WorldID Identity Manager Implementation Upgrade', async () => {
         const spinner = ora('Deploying WorldID Identity Manager Implementation Upgrade...').start();
         const factory = new ContractFactory(
-            config.newImplementationAbi.abi,
-            config.newImplementationAbi.bytecode.object,
+            config.upgradeImplementationAbi.abi,
+            config.upgradeImplementationAbi.bytecode.object,
             config.wallet
         );
         const contract = await factory.deploy();
@@ -639,13 +657,11 @@ async function deployUpgrade(plan, config) {
     plan.add('Upgrade WorldIDIdentityManager', async () => {
         // Encode the new initializer function call.
         const spinner = ora('Upgrading WorldID Identity Manager...').start();
-        const iface = new Interface(config.newImplementationAbi.abi);
+        const iface = new Interface(config.upgradeImplementationAbi.abi);
         const callData = iface.encodeFunctionData(
             config.upgradeCallInfo.functionSpec,
             config.upgradeCallInfo.paramValues.map(p => p.solValue)
         );
-
-        // TODO [Ara] Verify that the deployed contract is a parent of the new one (if possible).
 
         // Make the call.
         spinner.text = `Upgrading identity manager implementation (address: ${config.identityManagerContractAddress})`;
@@ -728,6 +744,8 @@ async function buildDeploymentActionPlan(plan, config) {
     await getProvider(config);
     await getWallet(config);
 
+    // TODO In future we may want to use the same call-encoding system as for the upgrade here.
+    //   It may require some changes, or precomputing addresses.
     await ensureVerifierDeployment(plan, config);
     await ensureInitialRoot(plan, config);
     await deployIdentityManager(plan, config);
@@ -743,8 +761,15 @@ async function buildUpgradeActionPlan(plan, config) {
 
     await getUpgradeTargetAddress(config);
 
-    await getImplContractAbi(config, 'upgradeImplementationName', 'upgradeImplementationAbi');
-    await buildUpgradeCall(config);
+    const abiFieldName = 'upgradeImplementationAbi';
+
+    await getImplContractAbi(
+        config,
+        'upgradeImplementationName',
+        abiFieldName,
+        DEFAULT_UPGRADE_CONTRACT_NAME
+    );
+    await buildCall(config, abiFieldName, 'upgradeCallInfo', DEFAULT_UPGRADE_FUNCTION_SPEC);
     await deployUpgrade(plan, config);
 }
 
