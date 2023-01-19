@@ -36,6 +36,8 @@ const DEFAULT_BATCH_SIZE = 3;
 const MTB_VERSION = '1.0.2';
 const VERIFIER_SOURCE_PATH = MTB_CONTRACTS_DIR + '/Verifier.sol';
 const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json';
+const DEFAULT_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerImplMock';
+const DEFAULT_UPGRADE_FUNCTION_SPEC = 'initialize(uint32)';
 
 // === Implementation =============================================================================
 
@@ -476,9 +478,10 @@ async function getUpgradeTargetAddress(config) {
         config.upgradeTargetAddress = process.env.UPGRADE_TARGET_ADDRESS;
     }
     if (!config.upgradeTargetAddress) {
-        config.upgradeTargetAddress = await ask(
-            `Enter upgrade target address (${config.identityManagerContractAddress}): `
-        );
+        const message = config.identityManagerContractAddress
+            ? ` (${config.identityManagerContractAddress}`
+            : '';
+        config.upgradeTargetAddress = await ask(`Enter upgrade target address${message}: `);
     }
     if (!config.upgradeTargetAddress) {
         config.upgradeTargetAddress = config.identityManagerContractAddress;
@@ -490,41 +493,126 @@ async function getUpgradeTargetAddress(config) {
 }
 
 async function getContractAbi(config) {
-    if (!config.newImplementationAbi) {
-        let answer = await ask(
-            'Please provide the name of the implementation contract to use to upgrade WorldID: '
+    let defaultName = config.newImplementationName
+        ? ` (${config.newImplementationName})`
+        : ` (${DEFAULT_UPGRADE_CONTRACT_NAME})`;
+    let answer = '';
+    if (!config.newImplementationName) {
+        answer = await ask(
+            `Please provide the name of the implementation contract to use to upgrade WorldID${defaultName}: `
         );
-        const spinner = ora('Obtaining contract ABI').start();
-        if (!answer) {
-            spinner.fail('No contract ABI provided');
-            process.exit(1);
+    }
+    const spinner = ora('Obtaining contract ABI').start();
+
+    if (!answer) {
+        if (config.newImplementationName) {
+            answer = config.newImplementationName;
+        } else {
+            answer = DEFAULT_UPGRADE_CONTRACT_NAME;
         }
-        answer = answer.replace(/(\.sol$)|(\.json$)/, '');
-        const path = `${SOLIDITY_OUTPUT_DIR}/${answer}.sol/${answer}.json`;
-        spinner.text = `Loading ABI from ${path}`;
-        try {
-            config.newImplementationAbi = JSON.parse(fs.readFileSync(path).toString());
-            let maybeAbi = config.newImplementationAbi;
-            if (!maybeAbi) {
-                spinner.fail(`Failed to load ABI at ${path}`);
-                process.exit(1);
-            }
-            if (
-                !maybeAbi.abi ||
-                !maybeAbi.bytecode ||
-                !maybeAbi.deployedBytecode ||
-                !maybeAbi.methodIdentifiers ||
-                !maybeAbi.metadata
-            ) {
-                spinner.fail(`Failed to load ABI at ${path}`);
-                process.exit(1);
-            }
-            spinner.succeed(`Loaded contract ABI from ${path}`);
-        } catch {
+    }
+
+    answer = answer.replace(/(\.sol$)|(\.json$)/, '');
+    const path = `${SOLIDITY_OUTPUT_DIR}/${answer}.sol/${answer}.json`;
+    spinner.text = `Loading ABI from ${path}`;
+
+    try {
+        config.newImplementationAbi = JSON.parse(fs.readFileSync(path).toString());
+        let maybeAbi = config.newImplementationAbi;
+        if (!maybeAbi) {
             spinner.fail(`Failed to load ABI at ${path}`);
             process.exit(1);
         }
+        if (
+            !maybeAbi.abi ||
+            !maybeAbi.bytecode ||
+            !maybeAbi.deployedBytecode ||
+            !maybeAbi.methodIdentifiers ||
+            !maybeAbi.metadata
+        ) {
+            spinner.fail(`Failed to load ABI at ${path}`);
+            process.exit(1);
+        }
+        spinner.succeed(`Loaded contract ABI from ${path}`);
+    } catch {
+        spinner.fail(`Failed to load ABI at ${path}`);
+        process.exit(1);
     }
+
+    config.newImplementationName = answer;
+}
+
+async function buildUpgradeCall(config) {
+    let upgradeCall = config.upgradeCallInfo;
+    if (!upgradeCall) {
+        upgradeCall = {};
+    }
+
+    let defaultName = upgradeCall.functionSpec
+        ? ` (${upgradeCall.functionSpec})`
+        : ` (${DEFAULT_UPGRADE_FUNCTION_SPEC})`;
+    let answer = '';
+    if (!upgradeCall.functionSpec) {
+        answer = await ask(`Provide the signature of the upgrade function${defaultName}: `);
+    }
+
+    let spinner = ora('Building upgrade call').start();
+
+    if (!answer) {
+        if (upgradeCall.functionSpec) {
+            answer = upgradeCall.functionSpec;
+        } else {
+            answer = DEFAULT_UPGRADE_FUNCTION_SPEC;
+        }
+    }
+
+    const iface = new Contract('0x0', config.newImplementationAbi.abi, config.wallet);
+
+    const specifiedFunction = iface.interface.functions[answer];
+    if (!specifiedFunction) {
+        spinner.fail(`No function with signature ${answer} found`);
+        process.exit(0);
+    }
+
+    // All done, so write to config.
+    upgradeCall.functionSpec = answer;
+    spinner.succeed(`Using upgrade call with signature ${answer}`);
+
+    const formatParamSpec = paramSpec => {
+        return `\`${paramSpec.name} : ${paramSpec.type} = ${paramSpec.jsValue}\``;
+    };
+
+    if (
+        !upgradeCall.paramValues ||
+        upgradeCall.paramValues.length !== specifiedFunction.inputs.length
+    ) {
+        const paramValues = [];
+        for (const input of specifiedFunction.inputs) {
+            const param = `\`${input.name} : ${input.type}\``;
+            let answer = await ask(`Please enter value for parameter ${param}: `);
+            const spinner = ora(`Obtaining parameter value for ${param}`).start();
+            const encodedValue = iface.interface._abiCoder.encode([input.type], [answer]);
+            const paramValue = {
+                name: input.name,
+                type: input.type,
+                jsValue: answer,
+                solValue: encodedValue,
+            };
+            paramValues.push(paramValue);
+            spinner.succeed(`Obtained value \`${formatParamSpec(paramValue)}\` for ${param}`);
+        }
+        upgradeCall.paramValues = paramValues;
+    } else {
+        const spinner = ora(`Using existing parameter values`).start();
+        let display = '';
+        upgradeCall.paramValues.forEach(paramSpec => {
+            display = display + `${paramSpec.name} : ${paramSpec.type} = ${paramSpec.jsValue}, `;
+        });
+        display = display.trim();
+        spinner.succeed(`Using parameter values \`${display}\` for upgrade call`);
+    }
+
+    config.upgradeCallInfo = upgradeCall;
 }
 
 async function loadConfiguration() {
@@ -588,12 +676,13 @@ async function buildUpgradeActionPlan(plan, config) {
     await getUpgradeTargetAddress(config);
 
     await getContractAbi(config);
+    await buildUpgradeCall(config);
 
     // TODO [Ara]
-    //   2. Ask the user for the path to the contract ABI specification.
-    //   3. Ask the user to provide the name of the upgrade function (or leave blank to default).
-    //   4. Ask the user for each argument to provide the call data (or default).
     //   5. Make the upgrade call.
+
+    // TODO [Ara] Merge existing config with old config when writing, overwriting where possible.
+    //  This will be more robust.
 }
 
 /** Builds a plan using the provided function and then executes the plan.
