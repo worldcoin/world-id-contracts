@@ -8,15 +8,14 @@ import ora from 'ora';
 import { Command } from 'commander';
 
 import solc from 'solc';
-import { Contract, ContractFactory, Wallet, providers } from 'ethers';
+import { Contract, ContractFactory, providers, Wallet } from 'ethers';
 import { Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
-
-const { JsonRpcProvider } = providers;
-
 import WorldIDIdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import WorldIDIdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
 import { BigNumber } from '@ethersproject/bignumber';
+
+const { JsonRpcProvider } = providers;
 
 // === Constants ==================================================================================
 
@@ -479,7 +478,7 @@ async function getUpgradeTargetAddress(config) {
     }
     if (!config.upgradeTargetAddress) {
         const message = config.identityManagerContractAddress
-            ? ` (${config.identityManagerContractAddress}`
+            ? ` (${config.identityManagerContractAddress})`
             : '';
         config.upgradeTargetAddress = await ask(`Enter upgrade target address${message}: `);
     }
@@ -615,6 +614,57 @@ async function buildUpgradeCall(config) {
     config.upgradeCallInfo = upgradeCall;
 }
 
+async function deployUpgrade(plan, config) {
+    plan.add('Deploy WorldID Identity Manager Implementation Upgrade', async () => {
+        const spinner = ora('Deploying WorldID Identity Manager Implementation Upgrade...').start();
+        const factory = new ContractFactory(
+            config.newImplementationAbi.abi,
+            config.newImplementationAbi.bytecode.object,
+            config.wallet
+        );
+        const contract = await factory.deploy();
+        spinner.text = `Waiting for the WorldID Identity Manager implementation upgrade deployment transaction (address ${contract.address})`;
+        await contract.deployTransaction.wait();
+        config.upgradedImplementationContractAddress = contract.address;
+        spinner.succeed(`Deployed upgraded implementation to ${contract.address}`);
+    });
+    plan.add('Upgrade WorldIDIdentityManager', async () => {
+        // Encode the new initializer function call.
+        const spinner = ora('Upgrading WorldID Identity Manager...').start();
+        const iface = new Interface(config.newImplementationAbi.abi);
+        const callData = iface.encodeFunctionData(
+            config.upgradeCallInfo.functionSpec,
+            config.upgradeCallInfo.paramValues.map(p => p.solValue)
+        );
+
+        // TODO [Ara] Make this not hardcode the contract names.
+        // TODO [Ara] Make the deployment more modular.
+        // TODO [Ara] Verify that the deployed contract is a parent of the new one (if possible).
+        // Make the call.
+        spinner.text = `Upgrading identity manager implementation (address: ${config.identityManagerContractAddress})`;
+        const contractWithAbi = new Contract(
+            config.identityManagerContractAddress,
+            WorldIDIdentityManagerImpl.abi,
+            config.wallet
+        );
+        try {
+            const result = await contractWithAbi.upgradeToAndCall(
+                config.upgradedImplementationContractAddress,
+                callData
+            );
+
+            spinner.succeed(
+                `Upgraded identity manager implementation to ${config.upgradedImplementationContractAddress}`
+            );
+        } catch (e) {
+            const message = JSON.parse(e.error.error.body).error.message;
+            const errString = message ? message : e.message;
+            spinner.fail(`Unable to upgrade identity manager implementation: ${errString}`);
+            process.exit(1);
+        }
+    });
+}
+
 async function loadConfiguration() {
     let answer = await ask(`Do you want to load configuration from prior runs? [Y/n]: `, 'bool');
     const spinner = ora('Configuration Loading').start();
@@ -648,7 +698,15 @@ async function loadConfiguration() {
 }
 
 async function saveConfiguration(config) {
-    const data = JSON.stringify(config);
+    const oldData = (() => {
+        try {
+            return JSON.parse(fs.readFileSync(CONFIG_FILENAME).toString());
+        } catch {
+            return {};
+        }
+    })();
+
+    const data = JSON.stringify({ ...oldData, ...config });
     fs.writeFileSync(CONFIG_FILENAME, data);
 }
 
@@ -677,12 +735,7 @@ async function buildUpgradeActionPlan(plan, config) {
 
     await getContractAbi(config);
     await buildUpgradeCall(config);
-
-    // TODO [Ara]
-    //   5. Make the upgrade call.
-
-    // TODO [Ara] Merge existing config with old config when writing, overwriting where possible.
-    //  This will be more robust.
+    await deployUpgrade(plan, config);
 }
 
 /** Builds a plan using the provided function and then executes the plan.
