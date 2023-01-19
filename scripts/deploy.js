@@ -74,6 +74,21 @@ function newPlan() {
     return self;
 }
 
+async function httpsGetWithRedirects(url) {
+    return new Promise((resolve, reject) => {
+        const request = https.get(url, function (response) {
+            if (response.statusCode == 302) {
+                httpsGetWithRedirects(response.headers.location).then(resolve, reject);
+            } else {
+                resolve(response);
+            }
+        });
+        request.on('error', err => {
+            reject(err);
+        });
+    });
+}
+
 async function downloadSemaphoreMtbBinary(plan, config) {
     config.mtbBinary = MTB_BIN_PATH;
     if (process.platform == 'win32') {
@@ -96,18 +111,14 @@ async function downloadSemaphoreMtbBinary(plan, config) {
         fs.mkdirSync(MTB_BIN_DIR, { recursive: true });
         const spinner = ora('Downloading Semaphore-MTB binary...').start();
         const url = `${MTB_RELEASES_URL}/${MTB_VERSION}/mtb-${config.os}-${config.arch}`;
+        const response = await httpsGetWithRedirects(url)
         const done = new Promise((resolve, reject) => {
             const file = fs.createWriteStream(config.mtbBinary);
-            const request = https.get(url, function (response) {
-                response.pipe(file);
+            response.pipe(file);
 
-                file.on('finish', () => {
-                    file.close();
-                    resolve();
-                });
-            });
-            request.on('error', err => {
-                fs.unlink(config.mtbBinary, () => reject(err));
+            file.on('finish', () => {
+                file.close();
+                resolve();
             });
 
             file.on('error', err => {
@@ -115,6 +126,9 @@ async function downloadSemaphoreMtbBinary(plan, config) {
             });
         });
         await done;
+        if (config.os != 'windows') {
+            fs.chmodSync(config.mtbBinary, '755');
+        }
         spinner.succeed('Semaphore-MTB binary downloaded');
     });
 }
