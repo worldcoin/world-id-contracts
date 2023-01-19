@@ -28,6 +28,7 @@ const MTB_BIN_DIR = MTB_DIR + '/bin';
 const MTB_BIN_PATH = MTB_BIN_DIR + '/mtb';
 const MTB_CONTRACTS_DIR = MTB_DIR + '/contracts';
 const CONFIG_FILENAME = '.deploy-config.json';
+const SOLIDITY_OUTPUT_DIR = 'out';
 
 // These are an arbitrary choice just for ease of development.
 const DEFAULT_TREE_DEPTH = 32;
@@ -341,7 +342,9 @@ async function deployVerifierContract(plan, config) {
 }
 
 async function ensureVerifierDeployment(plan, config) {
-    config.verifierContractAddress = process.env.VERIFIER_CONTRACT_ADDRESS;
+    if (!config.verifierContractAddress) {
+        config.verifierContractAddress = process.env.VERIFIER_CONTRACT_ADDRESS;
+    }
     if (!config.verifierContractAddress) {
         config.verifierContractAddress = await ask(
             'Enter batch insert verifier contract address, or leave empty to deploy it: '
@@ -363,7 +366,9 @@ function computeRoot(depth) {
 }
 
 async function ensureInitialRoot(plan, config) {
-    config.initialRoot = process.env.INITIAL_ROOT;
+    if (!config.initialRoot) {
+        config.initialRoot = process.env.INITIAL_ROOT;
+    }
     if (!config.initialRoot) {
         config.initialRoot = await ask(
             'Enter initial root, or leave empty to compute based on tree depth: '
@@ -438,14 +443,18 @@ async function deployIdentityManager(plan, config) {
 }
 
 async function getPrivateKey(config) {
-    config.privateKey = process.env.PRIVATE_KEY;
+    if (!config.privateKey) {
+        config.privateKey = process.env.PRIVATE_KEY;
+    }
     if (!config.privateKey) {
         config.privateKey = await ask('Enter your private key: ');
     }
 }
 
 async function getRpcUrl(config) {
-    config.rpcUrl = process.env.RPC_URL;
+    if (!config.rpcUrl) {
+        config.rpcUrl = process.env.RPC_URL;
+    }
     if (!config.rpcUrl) {
         config.rpcUrl = await ask(`Enter RPC URL: (${DEFAULT_RPC_URL}) `);
     }
@@ -463,12 +472,16 @@ async function getWallet(config) {
 }
 
 async function getUpgradeTargetAddress(config) {
-    config.upgradeTargetAddress = config.identityManagerContractAddress;
     if (!config.upgradeTargetAddress) {
         config.upgradeTargetAddress = process.env.UPGRADE_TARGET_ADDRESS;
     }
     if (!config.upgradeTargetAddress) {
-        config.upgradeTargetAddress = await ask(`Enter upgrade target address: `);
+        config.upgradeTargetAddress = await ask(
+            `Enter upgrade target address (${config.identityManagerContractAddress}): `
+        );
+    }
+    if (!config.upgradeTargetAddress) {
+        config.upgradeTargetAddress = config.identityManagerContractAddress;
     }
     if (!config.upgradeTargetAddress) {
         console.error('Unable to detect upgrade target address. Aborting...');
@@ -476,23 +489,73 @@ async function getUpgradeTargetAddress(config) {
     }
 }
 
+async function getContractAbi(config) {
+    if (!config.newImplementationAbi) {
+        let answer = await ask(
+            'Please provide the name of the implementation contract to use to upgrade WorldID: '
+        );
+        const spinner = ora('Obtaining contract ABI').start();
+        if (!answer) {
+            spinner.fail('No contract ABI provided');
+            process.exit(1);
+        }
+        answer = answer.replace(/(\.sol$)|(\.json$)/, '');
+        const path = `${SOLIDITY_OUTPUT_DIR}/${answer}.sol/${answer}.json`;
+        spinner.text = `Loading ABI from ${path}`;
+        try {
+            config.newImplementationAbi = JSON.parse(fs.readFileSync(path).toString());
+            let maybeAbi = config.newImplementationAbi;
+            if (!maybeAbi) {
+                spinner.fail(`Failed to load ABI at ${path}`);
+                process.exit(1);
+            }
+            if (
+                !maybeAbi.abi ||
+                !maybeAbi.bytecode ||
+                !maybeAbi.deployedBytecode ||
+                !maybeAbi.methodIdentifiers ||
+                !maybeAbi.metadata
+            ) {
+                spinner.fail(`Failed to load ABI at ${path}`);
+                process.exit(1);
+            }
+            spinner.succeed(`Loaded contract ABI from ${path}`);
+        } catch {
+            spinner.fail(`Failed to load ABI at ${path}`);
+            process.exit(1);
+        }
+    }
+}
+
 async function loadConfiguration() {
     let answer = await ask(`Do you want to load configuration from prior runs? [Y/n]: `, 'bool');
-    if (!answer) {
+    const spinner = ora('Configuration Loading').start();
+    if (answer === undefined) {
         answer = true;
     }
     if (answer) {
         if (!fs.existsSync(CONFIG_FILENAME)) {
-            console.warn("Load from configuration requested but none available. Continuing without it.");
+            spinner.warn('Configuration load requested but no configuration available: continuing');
             return {};
         }
-        const fileContents = JSON.parse(fs.readFileSync(CONFIG_FILENAME).toString());
-        if (fileContents) {
-            return fileContents;
-        } else {
-            console.warn('Unable to parse configuration. Continuing without it.');
+        try {
+            const fileContents = JSON.parse(fs.readFileSync(CONFIG_FILENAME).toString());
+            if (fileContents) {
+                spinner.succeed('Configuration loaded');
+                return fileContents;
+            } else {
+                spinner.warn('Unable to parse configuration: deleting and continuing');
+                fs.rmSync(CONFIG_FILENAME);
+                return {};
+            }
+        } catch {
+            spinner.warn('Unable to parse configuration: deleting and continuing');
+            fs.rmSync(CONFIG_FILENAME);
             return {};
         }
+    } else {
+        spinner.succeed('Configuration not loaded');
+        return {};
     }
 }
 
@@ -524,9 +587,9 @@ async function buildUpgradeActionPlan(plan, config) {
 
     await getUpgradeTargetAddress(config);
 
+    await getContractAbi(config);
+
     // TODO [Ara]
-    //   0. Make the existing config be saved and reused between runs.
-    //   1. Obtain the address at which to upgrade (cannot default, but can use env).
     //   2. Ask the user for the path to the contract ABI specification.
     //   3. Ask the user to provide the name of the upgrade function (or leave blank to default).
     //   4. Ask the user for each argument to provide the call data (or default).

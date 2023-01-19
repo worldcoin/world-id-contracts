@@ -3,6 +3,7 @@ lib/
 out/
 cache/
 mtb/
+.deploy-config.json
 
 # Solidity
 *.sol
