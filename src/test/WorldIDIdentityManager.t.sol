@@ -316,7 +316,7 @@ contract WorldIDIdentityManagerTest is Test {
     function testCanUpgradeImplementationWithCall() public {
         // Setup
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
-        bytes memory initCall = abi.encodeCall(WorldIDIdentityManagerImplMock.initializeV2, (320));
+        bytes memory initCall = abi.encodeCall(WorldIDIdentityManagerImplMock.initialize, (320));
         bytes memory upgradeCall =
             abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(mockUpgrade), initCall));
 
@@ -329,7 +329,7 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(naughty != address(this) && naughty != address(0x0));
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
-        bytes memory initCall = abi.encodeCall(WorldIDIdentityManagerImplMock.initializeV2, (320));
+        bytes memory initCall = abi.encodeCall(WorldIDIdentityManagerImplMock.initialize, (320));
         bytes memory upgradeCall =
             abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(mockUpgrade), initCall));
         vm.prank(naughty);

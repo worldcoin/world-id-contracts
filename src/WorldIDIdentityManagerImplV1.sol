@@ -185,6 +185,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @custom:reverts string If called more than once at the same initalisation number.
     function initialize(uint256 initialRoot, ITreeVerifier merkleTreeVerifier_)
         public
+        virtual 
         reinitializer(1)
     {
         // First, ensure that all of the parent contracts are initialised.

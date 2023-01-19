@@ -438,6 +438,20 @@ async function getWallet(config) {
     config.wallet = new Wallet(config.privateKey, config.provider);
 }
 
+async function getUpgradeTargetAddress(config) {
+    config.upgradeTargetAddress = config.identityManagerContractAddress;
+    if (!config.upgradeTargetAddress) {
+        config.upgradeTargetAddress = process.env.UPGRADE_TARGET_ADDRESS;
+    }
+    if (!config.upgradeTargetAddress) {
+        config.upgradeTargetAddress = await ask(`Enter upgrade target address: `);
+    }
+    if (!config.upgradeTargetAddress) {
+        console.error("Unable to detect upgrade target address. Aborting...")
+        process.exit(1);
+    }
+}
+
 async function buildDeploymentActionPlan(plan, config) {
     dotenv.config();
 
@@ -459,12 +473,15 @@ async function buildUpgradeActionPlan(plan, config) {
     await getProvider(config);
     await getWallet(config);
 
+    await getUpgradeTargetAddress(config);
+
     // TODO [Ara]
-    //   1. Obtain the address at which to upgrade.
-    //   2. Work out _how_ to obtain the upgrade params from the user. Do I just hardcode some to
-    //      start with? Probably.
-    //   3. Work out if it makes sense to make it modular. Probably not. It's just deploying the
-    //      test.
+    //   0. Make the existing config be saved and reused between runs.
+    //   1. Obtain the address at which to upgrade (cannot default, but can use env).
+    //   2. Ask the user for the path to the contract ABI specification.
+    //   3. Ask the user to provide the name of the upgrade function (or leave blank to default).
+    //   4. Ask the user for each argument to provide the call data (or default).
+    //   5. Make the upgrade call.
 }
 
 /** Builds a plan using the provided function and then executes the plan.
