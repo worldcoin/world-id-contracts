@@ -5,18 +5,17 @@ import { spawnSync } from 'child_process';
 
 import dotenv from 'dotenv';
 import ora from 'ora';
+import { Command } from 'commander';
 
 import solc from 'solc';
-import { Contract, ContractFactory, Wallet, providers } from 'ethers';
-import { Interface } from 'ethers/lib/utils.js';
+import { Contract, ContractFactory, providers, Wallet } from 'ethers';
+import { defaultAbiCoder, Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
+import IdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
+import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
+import { BigNumber } from '@ethersproject/bignumber';
 
 const { JsonRpcProvider } = providers;
-
-import Semaphore from '../out/Semaphore.sol/Semaphore.json' assert { type: 'json' };
-import WorldIDIdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
-import WorldIDIdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
-import { BigNumber } from '@ethersproject/bignumber';
 
 // === Constants ==================================================================================
 
@@ -27,6 +26,9 @@ const KEYS_PATH = MTB_DIR + '/keys';
 const MTB_BIN_DIR = MTB_DIR + '/bin';
 const MTB_BIN_PATH = MTB_BIN_DIR + '/mtb';
 const MTB_CONTRACTS_DIR = MTB_DIR + '/contracts';
+const CONFIG_FILENAME = '.deploy-config.json';
+const SOLIDITY_OUTPUT_DIR = 'out';
+const EXTENSION_REGEX = /(\.sol$)|(\.json$)/;
 
 // These are an arbitrary choice just for ease of development.
 const DEFAULT_TREE_DEPTH = 32;
@@ -34,6 +36,10 @@ const DEFAULT_BATCH_SIZE = 3;
 const MTB_VERSION = '1.0.2';
 const VERIFIER_SOURCE_PATH = MTB_CONTRACTS_DIR + '/Verifier.sol';
 const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json';
+const DEFAULT_IMPL_CONTRACT_NAME = 'WorldIDIdentityManagerImplV1';
+const DEFAULT_INIT_FUNCTION_SPEC = 'initialize(uint256,address)';
+const DEFAULT_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerImplMock';
+const DEFAULT_UPGRADE_FUNCTION_SPEC = 'initialize(uint32)';
 
 // === Implementation =============================================================================
 
@@ -41,7 +47,8 @@ const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json';
  * Asks the user a question and returns the answer.
  *
  * @param {string} question the question contents.
- * @param {?string} type an optional type to parse the answer as. Currently only supports 'int' for decimal integers.
+ * @param {?string} type an optional type to parse the answer as. Currently only supports 'int' for
+ *        decimal integers. and `bool` for booleans.
  * @returns a promise resolving to user's response
  */
 function ask(question, type) {
@@ -53,9 +60,32 @@ function ask(question, type) {
     return new Promise((resolve, reject) => {
         rl.question(question, input => {
             if (type === 'int' && input) {
-                input = parseInt(input);
+                input = parseInt(input.trim());
                 if (isNaN(input)) {
                     reject('Invalid input');
+                }
+            }
+            if (type === 'bool') {
+                if (!input) {
+                    input = undefined;
+                } else {
+                    switch (input.trim()) {
+                        case 'y':
+                        case 'Y':
+                        case 'true':
+                        case 'True':
+                            input = true;
+                            break;
+                        case 'n':
+                        case 'N':
+                        case 'false':
+                        case 'False':
+                            input = false;
+                            break;
+                        default:
+                            reject('Invalid input');
+                            break;
+                    }
                 }
             }
             resolve(input);
@@ -111,7 +141,7 @@ async function downloadSemaphoreMtbBinary(plan, config) {
         fs.mkdirSync(MTB_BIN_DIR, { recursive: true });
         const spinner = ora('Downloading Semaphore-MTB binary...').start();
         const url = `${MTB_RELEASES_URL}/${MTB_VERSION}/mtb-${config.os}-${config.arch}`;
-        const response = await httpsGetWithRedirects(url)
+        const response = await httpsGetWithRedirects(url);
         const done = new Promise((resolve, reject) => {
             const file = fs.createWriteStream(config.mtbBinary);
             response.pipe(file);
@@ -286,7 +316,7 @@ async function ensureVerifierBytecode(plan, config) {
     if (!config.mtbVerifierContractOutFile) {
         if (fs.existsSync(VERIFIER_ABI_PATH)) {
             config.mtbVerifierContractOutFile = VERIFIER_ABI_PATH;
-            console.log(`Using existing Semaphore-MTB bytecode file ${VERIFIER_ABI_PATH}}`);
+            console.log(`Using existing Semaphore-MTB bytecode file (${VERIFIER_ABI_PATH})`);
         }
     }
     if (!config.mtbVerifierContractOutFile) {
@@ -316,7 +346,9 @@ async function deployVerifierContract(plan, config) {
 }
 
 async function ensureVerifierDeployment(plan, config) {
-    config.verifierContractAddress = process.env.VERIFIER_CONTRACT_ADDRESS;
+    if (!config.verifierContractAddress) {
+        config.verifierContractAddress = process.env.VERIFIER_CONTRACT_ADDRESS;
+    }
     if (!config.verifierContractAddress) {
         config.verifierContractAddress = await ask(
             'Enter batch insert verifier contract address, or leave empty to deploy it: '
@@ -338,7 +370,9 @@ function computeRoot(depth) {
 }
 
 async function ensureInitialRoot(plan, config) {
-    config.initialRoot = process.env.INITIAL_ROOT;
+    if (!config.initialRoot) {
+        config.initialRoot = process.env.INITIAL_ROOT;
+    }
     if (!config.initialRoot) {
         config.initialRoot = await ask(
             'Enter initial root, or leave empty to compute based on tree depth: '
@@ -356,8 +390,8 @@ async function deployIdentityManager(plan, config) {
     plan.add('Deploy WorldID Identity Manager Implementation', async () => {
         const spinner = ora('Deploying WorldID Identity Manager implementation...').start();
         const factory = new ContractFactory(
-            WorldIDIdentityManagerImpl.abi,
-            WorldIDIdentityManagerImpl.bytecode.object,
+            IdentityManagerImpl.abi,
+            IdentityManagerImpl.bytecode.object,
             config.wallet
         );
         const contract = await factory.deploy();
@@ -369,7 +403,7 @@ async function deployIdentityManager(plan, config) {
     plan.add('Deploy WorldID Identity Manager', async () => {
         // Encode the initializer function call.
         const spinner = ora(`Building initializer call...`).start();
-        const iface = new Interface(WorldIDIdentityManagerImpl.abi);
+        const iface = new Interface(IdentityManagerImpl.abi);
         const callData = iface.encodeFunctionData('initialize', [
             config.initialRoot,
             config.verifierContractAddress,
@@ -378,8 +412,8 @@ async function deployIdentityManager(plan, config) {
         // Deploy the proxy contract.
         spinner.text = `Deploying WorldID Identity Manager proxy...`;
         const factory = new ContractFactory(
-            WorldIDIdentityManager.abi,
-            WorldIDIdentityManager.bytecode.object,
+            IdentityManager.abi,
+            IdentityManager.bytecode.object,
             config.wallet
         );
         const contract = await factory.deploy(
@@ -396,7 +430,7 @@ async function deployIdentityManager(plan, config) {
         // pretend that the proxy doesn't exist and yet still call through it.
         const contractWithAbi = new Contract(
             contract.address,
-            WorldIDIdentityManagerImpl.abi,
+            IdentityManagerImpl.abi,
             config.wallet
         );
         const latestRoot = await contractWithAbi.latestRoot();
@@ -412,39 +446,381 @@ async function deployIdentityManager(plan, config) {
     });
 }
 
-async function buildActionPlan(plan, config) {
-    dotenv.config();
-
-    config.privateKey = process.env.PRIVATE_KEY;
+async function getPrivateKey(config) {
+    if (!config.privateKey) {
+        config.privateKey = process.env.PRIVATE_KEY;
+    }
     if (!config.privateKey) {
         config.privateKey = await ask('Enter your private key: ');
     }
+}
 
-    config.rpcUrl = process.env.RPC_URL;
+async function getRpcUrl(config) {
+    if (!config.rpcUrl) {
+        config.rpcUrl = process.env.RPC_URL;
+    }
     if (!config.rpcUrl) {
         config.rpcUrl = await ask(`Enter RPC URL: (${DEFAULT_RPC_URL}) `);
     }
     if (!config.rpcUrl) {
         config.rpcUrl = DEFAULT_RPC_URL;
     }
+}
 
+async function getProvider(config) {
     config.provider = new JsonRpcProvider(config.rpcUrl);
-    config.wallet = new Wallet(config.privateKey, config.provider);
+}
 
+async function getWallet(config) {
+    config.wallet = new Wallet(config.privateKey, config.provider);
+}
+
+async function getUpgradeTargetAddress(config) {
+    if (!config.upgradeTargetAddress) {
+        config.upgradeTargetAddress = process.env.UPGRADE_TARGET_ADDRESS;
+    }
+    if (!config.upgradeTargetAddress) {
+        const message = config.identityManagerContractAddress
+            ? ` (${config.identityManagerContractAddress})`
+            : '';
+        config.upgradeTargetAddress = await ask(`Enter upgrade target address${message}: `);
+    }
+    if (!config.upgradeTargetAddress) {
+        config.upgradeTargetAddress = config.identityManagerContractAddress;
+    }
+    if (!config.upgradeTargetAddress) {
+        console.error('Unable to detect upgrade target address. Aborting...');
+        process.exit(1);
+    }
+}
+
+/** Gets the ABI data from the implementation contract.
+ *
+ * @param {Object} config The configuration object.
+ * @param {string} nameField The name of the field in the configuration object in which to store the
+ *        implementation contract name.
+ * @param {string} abiField The name of the field in the configuration object in which to store the
+ *        implementation contract ABI.
+ * @param {string} defaultContract The name of the default contract to use.
+ * @returns {Promise<void>}
+ */
+async function getImplContractAbi(config, nameField, abiField, defaultContract) {
+    let answer = '';
+    if (!config[nameField]) {
+        answer = await ask(
+            `Please provide the name of the implementation contract to use for WorldID (${defaultContract}): `
+        );
+    }
+    const spinner = ora('Obtaining contract ABI').start();
+
+    if (!answer) {
+        if (config[nameField]) {
+            answer = config[nameField];
+        } else {
+            answer = defaultContract;
+        }
+    }
+
+    answer = answer.replace(EXTENSION_REGEX, '');
+    const path = `${SOLIDITY_OUTPUT_DIR}/${answer}.sol/${answer}.json`;
+    spinner.text = `Loading ABI from ${path}`;
+
+    try {
+        config[abiField] = JSON.parse(fs.readFileSync(path).toString());
+        let maybeAbi = config[abiField];
+        if (!maybeAbi) {
+            spinner.fail(`Failed to load ABI at ${path}`);
+            process.exit(1);
+        }
+        if (
+            !maybeAbi.abi ||
+            !maybeAbi.bytecode ||
+            !maybeAbi.deployedBytecode ||
+            !maybeAbi.methodIdentifiers ||
+            !maybeAbi.metadata
+        ) {
+            spinner.fail(`Failed to load ABI at ${path}`);
+            process.exit(1);
+        }
+        spinner.succeed(`Loaded contract ABI from ${path}`);
+    } catch {
+        spinner.fail(`Failed to load ABI at ${path}`);
+        process.exit(1);
+    }
+
+    config[nameField] = answer;
+}
+
+/** Encodes a function call for sending to chain.
+ *
+ * @param {Object} config The configuration object.
+ * @param {string} targetAbiField The name of the field in the configuration object from which to
+ *        read the target contract ABI.
+ * @param {string} callInfoField The name of the field in the configuration object in which to store
+ *        the call data.
+ * @param {string} defaultFunction The default signature to use when building a call if none
+ *        specified.
+ * @returns {Promise<void>}
+ */
+async function buildCall(config, targetAbiField, callInfoField, defaultFunction) {
+    let upgradeCall = config[callInfoField];
+    if (!upgradeCall) {
+        upgradeCall = {};
+    }
+
+    let answer = '';
+    if (!upgradeCall.functionSpec) {
+        answer = await ask(`Provide the signature of the function (${defaultFunction}): `);
+    }
+
+    let spinner = ora('Building upgrade call').start();
+
+    if (!answer) {
+        if (upgradeCall.functionSpec) {
+            answer = upgradeCall.functionSpec;
+        } else {
+            answer = defaultFunction;
+        }
+    }
+
+    const iface = new Interface(config[targetAbiField].abi);
+
+    const specifiedFunction = iface.functions[answer.replace(/ +/, '')];
+    if (!specifiedFunction) {
+        spinner.fail(`No function with signature ${answer} found`);
+        process.exit(0);
+    }
+
+    // All done, so write to config.
+    upgradeCall.functionSpec = answer;
+    spinner.succeed(`Using upgrade call with signature ${answer}`);
+
+    const formatParamSpec = paramSpec => {
+        return `\`${paramSpec.name} : ${paramSpec.type} = ${paramSpec.jsValue}\``;
+    };
+
+    if (
+        !upgradeCall.paramValues ||
+        upgradeCall.paramValues.length !== specifiedFunction.inputs.length
+    ) {
+        const paramValues = [];
+        for (const input of specifiedFunction.inputs) {
+            const param = `\`${input.name} : ${input.type}\``;
+            let answer = await ask(`Please enter value for parameter ${param}: `);
+            answer = answer.trim();
+            const spinner = ora(`Obtaining parameter value for ${param}`).start();
+            if (answer.startsWith('config.')) {
+                answer = eval(answer);
+            }
+            const encodedValue = iface._abiCoder.encode([input.type], [answer]);
+            const paramValue = {
+                name: input.name,
+                type: input.type,
+                jsValue: answer,
+                solValue: encodedValue,
+            };
+            paramValues.push(paramValue);
+            spinner.succeed(`Obtained value \`${formatParamSpec(paramValue)}\` for ${param}`);
+        }
+        upgradeCall.paramValues = paramValues;
+    } else {
+        const spinner = ora(`Using existing parameter values`).start();
+        let display = '';
+        upgradeCall.paramValues.forEach(paramSpec => {
+            display = display + `${paramSpec.name} : ${paramSpec.type} = ${paramSpec.jsValue}, `;
+        });
+        display = display.trim();
+        spinner.succeed(`Using parameter values \`${display}\` for upgrade call`);
+    }
+
+    config[callInfoField] = upgradeCall;
+}
+
+async function checkAbiCompatibility(previousInterface, newInterface) {
+    const spinner = ora('Checking ABI compatibility for the upgrade').start();
+}
+
+async function deployUpgrade(plan, config) {
+    plan.add('Deploy WorldID Identity Manager Implementation Upgrade', async () => {
+        const spinner = ora('Deploying WorldID Identity Manager Implementation Upgrade...').start();
+        const factory = new ContractFactory(
+            config.upgradeImplementationAbi.abi,
+            config.upgradeImplementationAbi.bytecode.object,
+            config.wallet
+        );
+        const contract = await factory.deploy();
+        spinner.text = `Waiting for the WorldID Identity Manager implementation upgrade deployment transaction (address ${contract.address})`;
+        await contract.deployTransaction.wait();
+        config.upgradedImplementationContractAddress = contract.address;
+        spinner.succeed(`Deployed upgraded implementation to ${contract.address}`);
+    });
+    plan.add('Upgrade WorldIDIdentityManager', async () => {
+        // Encode the new initializer function call.
+        const spinner = ora('Upgrading WorldID Identity Manager...').start();
+        const iface = new Interface(config.upgradeImplementationAbi.abi);
+        const callData = iface.encodeFunctionData(
+            config.upgradeCallInfo.functionSpec,
+            config.upgradeCallInfo.paramValues.map(p => p.solValue)
+        );
+
+        // Make the call.
+        spinner.text = `Upgrading identity manager implementation (address: ${config.identityManagerContractAddress})`;
+        const contractWithAbi = new Contract(
+            config.identityManagerContractAddress,
+            IdentityManagerImpl.abi,
+            config.wallet
+        );
+        try {
+            const result = await contractWithAbi.upgradeToAndCall(
+                config.upgradedImplementationContractAddress,
+                callData
+            );
+
+            spinner.succeed(
+                `Upgraded identity manager implementation to ${config.upgradedImplementationContractAddress}`
+            );
+        } catch (e) {
+            const message = JSON.parse(e.error.error.body).error.message;
+            const errString = message ? message : e.message;
+            spinner.fail(`Unable to upgrade identity manager implementation: ${errString}`);
+            process.exit(1);
+        }
+    });
+}
+
+async function loadConfiguration(useConfig) {
+    if (!useConfig) {
+        return {};
+    }
+    let answer = await ask(`Do you want to load configuration from prior runs? [Y/n]: `, 'bool');
+    const spinner = ora('Configuration Loading').start();
+    if (answer === undefined) {
+        answer = true;
+    }
+    if (answer) {
+        if (!fs.existsSync(CONFIG_FILENAME)) {
+            spinner.warn('Configuration load requested but no configuration available: continuing');
+            return {};
+        }
+        try {
+            const fileContents = JSON.parse(fs.readFileSync(CONFIG_FILENAME).toString());
+            if (fileContents) {
+                spinner.succeed('Configuration loaded');
+                return fileContents;
+            } else {
+                spinner.warn('Unable to parse configuration: deleting and continuing');
+                fs.rmSync(CONFIG_FILENAME);
+                return {};
+            }
+        } catch {
+            spinner.warn('Unable to parse configuration: deleting and continuing');
+            fs.rmSync(CONFIG_FILENAME);
+            return {};
+        }
+    } else {
+        spinner.succeed('Configuration not loaded');
+        return {};
+    }
+}
+
+async function saveConfiguration(config) {
+    const oldData = (() => {
+        try {
+            return JSON.parse(fs.readFileSync(CONFIG_FILENAME).toString());
+        } catch {
+            return {};
+        }
+    })();
+
+    const data = JSON.stringify({ ...oldData, ...config });
+    fs.writeFileSync(CONFIG_FILENAME, data);
+}
+
+async function buildDeploymentActionPlan(plan, config) {
+    dotenv.config();
+
+    await getPrivateKey(config);
+    await getRpcUrl(config);
+    await getProvider(config);
+    await getWallet(config);
+
+    // TODO In future we may want to use the same call-encoding system as for the upgrade here.
+    //   It may require some changes, or precomputing addresses.
     await ensureVerifierDeployment(plan, config);
     await ensureInitialRoot(plan, config);
     await deployIdentityManager(plan, config);
 }
 
-async function main() {
+async function buildUpgradeActionPlan(plan, config) {
+    dotenv.config();
+
+    await getPrivateKey(config);
+    await getRpcUrl(config);
+    await getProvider(config);
+    await getWallet(config);
+
+    await getUpgradeTargetAddress(config);
+
+    const abiFieldName = 'upgradeImplementationAbi';
+
+    await getImplContractAbi(
+        config,
+        'upgradeImplementationName',
+        abiFieldName,
+        DEFAULT_UPGRADE_CONTRACT_NAME
+    );
+    await buildCall(config, abiFieldName, 'upgradeCallInfo', DEFAULT_UPGRADE_FUNCTION_SPEC);
+    await deployUpgrade(plan, config);
+}
+
+/** Builds a plan using the provided function and then executes the plan.
+ *
+ * @param {(plan: Object, config: Object) => Promise<void>} planner The function that performs the
+ *        planning process.
+ * @param {Object} config The configuration object for the plan.
+ * @returns {Promise<void>}
+ */
+async function buildAndRunPlan(planner, config) {
     let plan = newPlan();
-    let config = {};
-    await buildActionPlan(plan, config);
+    await planner(plan, config);
 
     for (const item of plan.items) {
         console.log(item.label);
         await item.action(config);
     }
+}
+
+async function main() {
+    const program = new Command();
+
+    program
+        .name('deploy')
+        .description(
+            'A CLI interface for deploying the WorldID identity manager during development.'
+        )
+        .option('--no-config', 'Do not use any existing configuration.');
+
+    program
+        .command('deploy')
+        .description('Interactively deploys a new version of the WorldID identity manager.')
+        .action(async () => {
+            const options = program.opts();
+            let config = await loadConfiguration(options.config);
+            await buildAndRunPlan(buildDeploymentActionPlan, config);
+            await saveConfiguration(config);
+        });
+
+    program
+        .command('upgrade')
+        .description('Interactively upgrades the deployed WorldID identity manager.')
+        .action(async () => {
+            const options = program.opts();
+            let config = await loadConfiguration(options.config);
+            await buildAndRunPlan(buildUpgradeActionPlan, config);
+            await saveConfiguration(config);
+        });
+
+    await program.parseAsync();
 }
 
 main().then(() => process.exit(0));
