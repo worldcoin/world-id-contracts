@@ -136,8 +136,9 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
 
     /// @notice Thrown when one or more of the identity commitments to be inserted is invalid.
     ///
-    /// @param commitment The invalid commitment.
-    error InvalidCommitment(uint256 commitment);
+    /// @param index The index in the array of identity commitments where the invalid commitment was
+    ///        found.
+    error InvalidCommitment(uint256 index);
 
     /// @notice Thrown when the provided proof cannot be verified for the accompanying inputs.
     error ProofValidationFailure();
@@ -199,8 +200,6 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         // Say that the contract is initialized.
         _initialized = true;
     }
-
-    // Todo [Ara] Work out if we should guard functionality on being inited.
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
     /// @dev Must be called exactly once.
@@ -374,6 +373,8 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
 
     /// @notice Validates an array of identity commitments, reverting if it finds one that is
     ///         invalid or has not been reduced.
+    /// @dev Identities are not valid if they are all zeroes or if an identity is a non-zero element
+    ///      that occurs after a zero element in the array.
     ///
     /// @param identityCommitments The array of identity commitments to be validated.
     ///
@@ -386,13 +387,25 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         view
         virtual
     {
+        bool previousIsValid = false;
+        uint256 previous = 0;
+
         for (uint256 i = 0; i < identityCommitments.length; ++i) {
             uint256 commitment = identityCommitments[i];
+            if (previousIsValid && previous == 0 && commitment != 0) {
+                revert InvalidCommitment(i);
+            }
             if (!isInputInReducedForm(commitment)) {
                 revert UnreducedElement(UnreducedElementType.IdentityCommitment, commitment);
             }
-            if (commitment == EMPTY_LEAF) {
-                revert InvalidCommitment(identityCommitments[i]);
+            if (i > 0) {
+                previousIsValid = true;
+                previous = commitment;
+            } else {
+                // The first iteration needs to be checked separately.
+                if (commitment == 0) {
+                    revert InvalidCommitment(i);
+                }
             }
         }
     }

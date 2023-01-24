@@ -599,23 +599,62 @@ contract WorldIDIdentityManagerTest is Test {
 
     /// @notice Tests that it reverts if an attempt is made to register identity commitments
     ///         containing an invalid identity.
-    function testCannotRegisterIdentitiesWithInvalidIdentities(uint256 fuzz) public {
-        delete fuzz; // Not actually used, I just want it to run a few times
-
+    function testCannotRegisterIdentitiesWithInvalidIdentities(
+        uint8 identitiesLength,
+        uint8 invalidPosition
+    ) public {
         // Setup
-        uint256 position = rotateSlot();
-        uint256[] memory invalidCommitments = new uint256[](identityCommitments.length);
-        invalidCommitments[position] = 0x0;
+        vm.assume(identitiesLength != 0);
+        vm.assume(invalidPosition < (identitiesLength - 1));
+        uint256[] memory invalidCommitments = new uint256[](identitiesLength);
+
+        for (uint256 i = 0; i < identitiesLength; ++i) {
+            invalidCommitments[i] = i + 1;
+        }
+        invalidCommitments[invalidPosition] = 0x0;
+        uint256 errorIndex = 0;
+        if (invalidPosition != 0) {
+            errorIndex = invalidPosition + 1;
+        }
+
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (proof, initialRoot, startIndex, invalidCommitments, postRoot)
         );
         bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.InvalidCommitment.selector, uint256(0));
+            abi.encodeWithSelector(ManagerImpl.InvalidCommitment.selector, uint256(errorIndex));
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
+
+    /// @notice Tests that runs of zeroes are accepted by the `registerIdentities` function as valid
+    ///         arrays of identity commitments.
+    function testRegisterIdentitiesWithRunsOfZeroes(uint8 identitiesLength, uint8 zeroPosition)
+        public
+    {
+        // Setup
+        vm.assume(identitiesLength != 0);
+        vm.assume(zeroPosition < identitiesLength && zeroPosition > 0);
+        uint256[] memory identities = new uint256[](identitiesLength);
+
+        for (uint256 i = 0; i < zeroPosition; ++i) {
+            identities[i] = i + 1;
+        }
+        for (uint256 i = zeroPosition; i < identitiesLength; ++i) {
+            identities[i] = 0x0;
+        }
+
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            ([uint256(2), 1, 3, 4, 5, 6, 7, 9], initialRoot, startIndex, identities, postRoot)
+        );
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0));
+    }
+
+    // TODO [Ara] Function to check that runs of zeroes are valid.
 
     /// @notice Tests that it reverts if an attempt is made to register identity commitments that
     ///         are not in reduced form.
