@@ -387,26 +387,17 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         view
         virtual
     {
-        bool previousIsValid = false;
-        uint256 previous = 0;
+        bool previousIsZero = false;
 
         for (uint256 i = 0; i < identityCommitments.length; ++i) {
             uint256 commitment = identityCommitments[i];
-            if (previousIsValid && previous == 0 && commitment != 0) {
+            if (previousIsZero && commitment != 0) {
                 revert InvalidCommitment(i);
             }
             if (!isInputInReducedForm(commitment)) {
                 revert UnreducedElement(UnreducedElementType.IdentityCommitment, commitment);
             }
-            if (i > 0) {
-                previousIsValid = true;
-                previous = commitment;
-            } else {
-                // The first iteration needs to be checked separately.
-                if (commitment == 0) {
-                    revert InvalidCommitment(i);
-                }
-            }
+            previousIsZero = commitment == 0;
         }
     }
 

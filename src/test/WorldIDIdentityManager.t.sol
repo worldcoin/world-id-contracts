@@ -612,17 +612,14 @@ contract WorldIDIdentityManagerTest is Test {
             invalidCommitments[i] = i + 1;
         }
         invalidCommitments[invalidPosition] = 0x0;
-        uint256 errorIndex = 0;
-        if (invalidPosition != 0) {
-            errorIndex = invalidPosition + 1;
-        }
 
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (proof, initialRoot, startIndex, invalidCommitments, postRoot)
         );
-        bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.InvalidCommitment.selector, uint256(errorIndex));
+        bytes memory expectedError = abi.encodeWithSelector(
+            ManagerImpl.InvalidCommitment.selector, uint256(invalidPosition + 1)
+        );
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
