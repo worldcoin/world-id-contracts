@@ -391,13 +391,13 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
 
         for (uint256 i = 0; i < identityCommitments.length; ++i) {
             uint256 commitment = identityCommitments[i];
-            if (previousIsZero && commitment != 0) {
+            if (previousIsZero && commitment != EMPTY_LEAF) {
                 revert InvalidCommitment(i);
             }
             if (!isInputInReducedForm(commitment)) {
                 revert UnreducedElement(UnreducedElementType.IdentityCommitment, commitment);
             }
-            previousIsZero = commitment == 0;
+            previousIsZero = commitment == EMPTY_LEAF;
         }
     }
 
