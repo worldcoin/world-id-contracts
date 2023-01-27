@@ -8,8 +8,8 @@ import ora from 'ora';
 import { Command } from 'commander';
 
 import solc from 'solc';
-import { Contract, ContractFactory, providers, Wallet } from 'ethers';
-import { defaultAbiCoder, Interface } from 'ethers/lib/utils.js';
+import { Contract, ContractFactory, providers, utils, Wallet } from 'ethers';
+import { Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
 import IdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
@@ -36,8 +36,6 @@ const DEFAULT_BATCH_SIZE = 3;
 const MTB_VERSION = '1.0.2';
 const VERIFIER_SOURCE_PATH = MTB_CONTRACTS_DIR + '/Verifier.sol';
 const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json';
-const DEFAULT_IMPL_CONTRACT_NAME = 'WorldIDIdentityManagerImplV1';
-const DEFAULT_INIT_FUNCTION_SPEC = 'initialize(uint256,address)';
 const DEFAULT_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerImplMock';
 const DEFAULT_UPGRADE_FUNCTION_SPEC = 'initialize(uint32)';
 
@@ -404,9 +402,12 @@ async function deployIdentityManager(plan, config) {
         // Encode the initializer function call.
         const spinner = ora(`Building initializer call...`).start();
         const iface = new Interface(IdentityManagerImpl.abi);
+        const processedStateBridgeAddress = utils.getAddress(config.stateBridgeContractAddress);
         const callData = iface.encodeFunctionData('initialize', [
             config.initialRoot,
             config.verifierContractAddress,
+            processedStateBridgeAddress,
+            config.enableStateBridge,
         ]);
 
         // Deploy the proxy contract.
@@ -473,6 +474,37 @@ async function getProvider(config) {
 
 async function getWallet(config) {
     config.wallet = new Wallet(config.privateKey, config.provider);
+}
+
+async function getEnableStateBridge(config) {
+    if (!config.enableStateBridge) {
+        config.enableStateBridge = process.env.ENABLE_STATE_BRIDGE;
+    }
+    if (!config.enableStateBridge) {
+        config.enableStateBridge = await ask(`Enable State Bridge? [y/N] `, 'bool');
+    }
+    if (!config.enableStateBridge) {
+        config.enableStateBridge = false;
+    }
+}
+
+async function getStateBridgeAddress(config) {
+    const stateBridgeDefault = config.wallet.address;
+    if (config.enableStateBridge) {
+        if (!config.stateBridgeContractAddress) {
+            config.stateBridgeContractAddress = process.env.STATE_BRIDGE_CONTRACT_ADDRESS;
+        }
+        if (!config.stateBridgeContractAddress) {
+            config.stateBridgeContractAddress = await ask(
+                `Enter state bridge contract address (${stateBridgeDefault}): `
+            );
+        }
+        if (!config.stateBridgeContractAddress) {
+            config.stateBridgeContractAddress = stateBridgeDefault;
+        }
+    } else {
+        config.stateBridgeContractAddress = stateBridgeDefault;
+    }
 }
 
 async function getUpgradeTargetAddress(config) {
@@ -636,10 +668,6 @@ async function buildCall(config, targetAbiField, callInfoField, defaultFunction)
     config[callInfoField] = upgradeCall;
 }
 
-async function checkAbiCompatibility(previousInterface, newInterface) {
-    const spinner = ora('Checking ABI compatibility for the upgrade').start();
-}
-
 async function deployUpgrade(plan, config) {
     plan.add('Deploy WorldID Identity Manager Implementation Upgrade', async () => {
         const spinner = ora('Deploying WorldID Identity Manager Implementation Upgrade...').start();
@@ -743,6 +771,8 @@ async function buildDeploymentActionPlan(plan, config) {
     await getRpcUrl(config);
     await getProvider(config);
     await getWallet(config);
+    await getEnableStateBridge(config);
+    await getStateBridgeAddress(config);
 
     // TODO In future we may want to use the same call-encoding system as for the upgrade here.
     //   It may require some changes, or precomputing addresses.
@@ -758,7 +788,6 @@ async function buildUpgradeActionPlan(plan, config) {
     await getRpcUrl(config);
     await getProvider(config);
     await getWallet(config);
-
     await getUpgradeTargetAddress(config);
 
     const abiFieldName = 'upgradeImplementationAbi';

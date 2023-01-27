@@ -9,6 +9,7 @@ import "forge-std/console.sol";
 import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
+import {SimpleStateBridge} from "./mock/SimpleStateBridge.sol";
 import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {WorldIDIdentityManagerImplMock} from "./mock/WorldIDIdentityManagerImplMock.sol";
@@ -55,6 +56,13 @@ contract WorldIDIdentityManagerTest is Test {
     uint256 constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
+    // StateBridgeProxy mock
+    SimpleStateBridge stateBridge;
+    address public stateBridgeProxy;
+    bool isStateBridgeEnabled = true;
+
+    event StateRootSentMultichain(uint256 indexed root);
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -83,11 +91,14 @@ contract WorldIDIdentityManagerTest is Test {
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
         verifier = new SimpleVerifier();
-        makeNewIdentityManager(initialRoot, verifier);
+        stateBridge = new SimpleStateBridge();
+        stateBridgeProxy = address(stateBridge);
+        makeNewIdentityManager(initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
 
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
         hevm.label(managerImplAddress, "ManagerImplementation");
+        hevm.label(stateBridgeProxy, "StateBridgeProxy");
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -99,12 +110,22 @@ contract WorldIDIdentityManagerTest is Test {
     ///
     /// @param actualPreRoot The pre-root to use.
     /// @param actualVerifier The verifier instance to use.
-    function makeNewIdentityManager(uint256 actualPreRoot, ITreeVerifier actualVerifier) public {
+    /// @param enableStateBridge Whether or not the new identity manager should have the state
+    ///        bridge enabled.
+    /// @param actualStateBridgeProxy The address of the state bridge.
+    function makeNewIdentityManager(
+        uint256 actualPreRoot,
+        ITreeVerifier actualVerifier,
+        bool enableStateBridge,
+        address actualStateBridgeProxy
+    ) public {
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
 
-        bytes memory initCallData =
-            abi.encodeCall(ManagerImpl.initialize, (actualPreRoot, actualVerifier));
+        bytes memory initCallData = abi.encodeCall(
+            ManagerImpl.initialize,
+            (actualPreRoot, actualVerifier, enableStateBridge, actualStateBridgeProxy)
+        );
 
         identityManager = new IdentityManager(managerImplAddress, initCallData);
         identityManagerAddress = address(identityManager);
@@ -249,7 +270,9 @@ contract WorldIDIdentityManagerTest is Test {
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
         managerImpl = new ManagerImpl();
-        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (initialRoot, verifier));
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.initialize, (initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy)
+        );
 
         // Test
         identityManager = new IdentityManager(address(managerImpl), callData);
@@ -267,7 +290,9 @@ contract WorldIDIdentityManagerTest is Test {
 
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
-        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (initialRoot, verifier));
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.initialize, (initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy)
+        );
 
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
@@ -279,7 +304,9 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Checks that it is not possible to initialise the contract more than once.
     function testInitializationOnlyOnce() public {
         // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (initialRoot, verifier));
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.initialize, (initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy)
+        );
         bytes memory expectedReturn =
             encodeStringRevert("Initializable: contract is already initialized");
 
@@ -290,11 +317,11 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Checks that it is impossible to initialize the delegate on its own.
     function testCannotInitializeTheDelegate() public {
         // Setup
-        ManagerImpl localImpl = new  ManagerImpl();
+        ManagerImpl localImpl = new ManagerImpl();
         vm.expectRevert("Initializable: contract is already initialized");
 
         // Test
-        localImpl.initialize(initialRoot, verifier);
+        localImpl.initialize(initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -347,11 +374,107 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
         address mockUpgradeAddress = address(mockUpgrade);
-        bytes memory initCall = abi.encodeCall(ManagerImpl.initialize, (initialRoot, verifier));
+        bytes memory initCall = abi.encodeCall(
+            ManagerImpl.initialize, (initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy)
+        );
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
         managerImpl.upgradeToAndCall(mockUpgradeAddress, initCall);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                               STATE BRIDGE                              ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Tests that it is possible to upgrade `stateBridgeProxy` to a new implementation.
+    function testCanUpgradeStateBridgeProxy(address newStateBridgeProxy) public {
+        vm.assume(newStateBridgeProxy != address(0x0) && newStateBridgeProxy != address(this));
+        // Setup
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.setStateBridgeProxyAddress, (newStateBridgeProxy));
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));
+    }
+
+    /// @notice Tests that it is possible to disable the `stateBridgeProxy`.
+    function testCanDisableStateBridgeFunctionality() public {
+        // Setup
+        bytes memory callData = abi.encodeCall(ManagerImpl.disableStateBridge, ());
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));
+
+        // Registering an identity after disabling the state bridge should not fail
+        testRegisterIdentitiesWithCorrectInputsFromKnown();
+    }
+
+    /// @notice Tests that it is not possible to upgrade `stateBridgeProxy` to the 0x0 address.
+    function testCannotUpgradeStateBridgeToZeroAddress() public {
+        // address used to disable the state bridge functionality
+        address zeroAddress = address(0x0);
+        // Setup
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.setStateBridgeProxyAddress, (zeroAddress));
+
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.InvalidStateBridgeProxyAddress.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `setStateBridgeProxyAddress` as a non-owner.
+    function testCannotUpdateStateBridgeAsNonOwner(address nonManager) public {
+        // Setup
+        vm.assume(nonManager != address(this) && nonManager != address(0x0));
+
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.setStateBridgeProxyAddress, (address(0x1)));
+
+        bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
+        vm.prank(nonManager);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, errorData);
+    }
+
+    /// @notice Checks that the state bridge can be enabled if it is disabled.
+    function testCanEnableStateBridgeIfDisabled() public {
+        // Setup
+        makeNewIdentityManager(preRoot, verifier, false, stateBridgeProxy);
+        bytes memory callData = abi.encodeCall(ManagerImpl.enableStateBridge, ());
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));
+    }
+
+    /// @notice Tests that it is impossible to enable the `stateBridgeProxy` if it is already
+    ///         enabled.
+    function testCannotEnableStateBridgeIfAlreadyEnabled() public {
+        // Setup
+        bytes memory callData = abi.encodeCall(ManagerImpl.enableStateBridge, ());
+
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.StateBridgeAlreadyEnabled.selector);
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Tests that it is impossible to disabled the `stateBridgeProxy` if it is already
+    ///         disabled.
+    function testCannotDisableStateBridgeIfAlreadyDisabled() public {
+        // Setup
+        bytes memory callData = abi.encodeCall(ManagerImpl.disableStateBridge, ());
+
+        // disable state bridge
+        assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));
+
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImpl.StateBridgeAlreadyDisabled.selector);
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -430,13 +553,17 @@ contract WorldIDIdentityManagerTest is Test {
     function testRegisterIdentitiesWithCorrectInputsFromKnown() public {
         // Setup
         ITreeVerifier actualVerifier = new TreeVerifier();
-        makeNewIdentityManager(preRoot, actualVerifier);
+        makeNewIdentityManager(preRoot, actualVerifier, isStateBridgeEnabled, stateBridgeProxy);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (proof, preRoot, startIndex, identityCommitments, postRoot)
         );
         bytes memory latestRootCallData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory queryRootCallData = abi.encodeCall(ManagerImpl.queryRoot, (postRoot));
+
+        // expect event that state root was sent to state bridge
+        vm.expectEmit(true, true, true, true);
+        emit StateRootSentMultichain(postRoot);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
@@ -459,13 +586,17 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        makeNewIdentityManager(newPreRoot, verifier);
+        makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareVerifierTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
         );
+
+        // expect event that state root was sent to state bridge
+        vm.expectEmit(true, true, true, true);
+        emit StateRootSentMultichain(newPostRoot);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData);
@@ -482,7 +613,7 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        makeNewIdentityManager(newPreRoot, verifier);
+        makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareVerifierTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
@@ -501,7 +632,7 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(newStartIndex != startIndex);
         ITreeVerifier actualVerifier = new TreeVerifier();
-        makeNewIdentityManager(preRoot, actualVerifier);
+        makeNewIdentityManager(preRoot, actualVerifier, isStateBridgeEnabled, stateBridgeProxy);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (proof, preRoot, newStartIndex, identityCommitments, postRoot)
@@ -524,7 +655,7 @@ contract WorldIDIdentityManagerTest is Test {
         uint256[] memory identities = cloneArray(identityCommitments);
         identities[invalidSlot] = identity;
         ITreeVerifier actualVerifier = new TreeVerifier();
-        makeNewIdentityManager(preRoot, actualVerifier);
+        makeNewIdentityManager(preRoot, actualVerifier, isStateBridgeEnabled, stateBridgeProxy);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities, (proof, preRoot, startIndex, identities, postRoot)
         );
@@ -543,7 +674,10 @@ contract WorldIDIdentityManagerTest is Test {
         managerImplAddress = address(managerImpl);
         ITreeVerifier actualVerifier = new TreeVerifier();
 
-        bytes memory callData = abi.encodeCall(ManagerImpl.initialize, (preRoot, actualVerifier));
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.initialize,
+            (preRoot, actualVerifier, isStateBridgeEnabled, stateBridgeProxy)
+        );
 
         identityManager = new IdentityManager(managerImplAddress, callData);
         identityManagerAddress = address(identityManager);
@@ -584,7 +718,9 @@ contract WorldIDIdentityManagerTest is Test {
             currentPreRoot != actualRoot && currentPreRoot < SNARK_SCALAR_FIELD
                 && actualRoot < SNARK_SCALAR_FIELD
         );
-        makeNewIdentityManager(uint256(currentPreRoot), verifier);
+        makeNewIdentityManager(
+            uint256(currentPreRoot), verifier, isStateBridgeEnabled, stateBridgeProxy
+        );
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (proof, actualRoot, startIndex, identityCommitments, postRoot)
@@ -748,7 +884,7 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Tests whether it is possible to query accurate information about the current root.
     function testQueryCurrentRoot(uint128 newPreRoot) public {
         // Setup
-        makeNewIdentityManager(newPreRoot, verifier);
+        makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, newPreRoot);
         bytes memory returnData = abi.encode(ManagerImpl.RootInfo(newPreRoot, 0, true));
 
@@ -767,13 +903,18 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        makeNewIdentityManager(newPreRoot, verifier);
+        makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareVerifierTestCase(identities, prf);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
         );
+
+        // expect event that state root was sent to state bridge
+        vm.expectEmit(true, true, true, true);
+        emit StateRootSentMultichain(newPostRoot);
+
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
         bytes memory queryCallData = abi.encodeCall(ManagerImpl.queryRoot, (newPreRoot));
         bytes memory returnData =
@@ -794,7 +935,7 @@ contract WorldIDIdentityManagerTest is Test {
         // Setup
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
-        makeNewIdentityManager(newPreRoot, verifier);
+        makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareVerifierTestCase(identities, prf);
         uint256 originalTimestamp = block.timestamp;
@@ -802,6 +943,11 @@ contract WorldIDIdentityManagerTest is Test {
             ManagerImpl.registerIdentities,
             (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
         );
+
+        // expect event that state root was sent to state bridge
+        vm.expectEmit(true, true, true, true);
+        emit StateRootSentMultichain(newPostRoot);
+
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
         bytes memory queryCallData = abi.encodeCall(ManagerImpl.queryRoot, (newPreRoot));
         bytes memory returnData =
@@ -839,7 +985,7 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice Checks that it is possible to get the latest root from the contract.
     function testCanGetLatestRoot(uint256 actualRoot) public {
         // Setup
-        makeNewIdentityManager(actualRoot, verifier);
+        makeNewIdentityManager(actualRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory returnData = abi.encode(actualRoot);
 
