@@ -373,8 +373,8 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
 
     /// @notice Validates an array of identity commitments, reverting if it finds one that is
     ///         invalid or has not been reduced.
-    /// @dev Identities are not valid if they are all zeroes or if an identity is a non-zero element
-    ///      that occurs after a zero element in the array.
+    /// @dev Identities are not valid if an identity is a non-zero element that occurs after a zero
+    ///      element in the array.
     ///
     /// @param identityCommitments The array of identity commitments to be validated.
     ///
