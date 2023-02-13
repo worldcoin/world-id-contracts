@@ -77,10 +77,10 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     /// @notice The verifier instance needed for verifying batch identity insertions.
-    ITreeVerifier private merkleTreeVerifier;
+    ITreeVerifier internal merkleTreeVerifier;
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
-    SemaphoreVerifier private semaphoreVerifier;
+    SemaphoreVerifier internal semaphoreVerifier;
 
     /// @notice The interface of the bridge contract from L1 to supported target chains.
     address internal _stateBridgeProxyAddress;
