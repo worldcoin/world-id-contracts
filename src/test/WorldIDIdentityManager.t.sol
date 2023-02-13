@@ -1131,6 +1131,128 @@ contract WorldIDIdentityManagerTest is Test {
         managerImpl.setRegisterIdentitiesVerifier(newVerifier);
     }
 
+    /// @notice Checks that it is possible to get the address of the contract currently being used
+    ///         to verify identity removal proofs.
+    function testCanGetIdentityRemovalVerifierAddress() public {
+        // Setup
+        bytes memory callData = abi.encodeCall(ManagerImpl.getIdentityRemovalVerifierAddress, ());
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData);
+    }
+
+    /// @notice Ensures that it is not possible to get the address of the verifier for identity
+    ///         removal unless called via the proxy.
+    function testCannotGetIdentityRemovalVerifierAddressUnlessViaProxy() public {
+        // Setup
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.getIdentityRemovalVerifierAddress();
+    }
+
+    /// @notice Checks that it is possible to set the contract currently being used to verify
+    ///         identity removal proofs.
+    function testCanSetIdentityRemovalVerifier() public {
+        // Setup
+        ITreeVerifier newVerifier = new SimpleVerifier();
+        address newVerifierAddress = address(newVerifier);
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.setIdentityRemovalVerifier, (newVerifier));
+        bytes memory checkCallData =
+            abi.encodeCall(ManagerImpl.getIdentityRemovalVerifierAddress, ());
+        bytes memory expectedReturn = abi.encode(newVerifierAddress);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData);
+        assertCallSucceedsOn(identityManagerAddress, checkCallData, expectedReturn);
+    }
+
+    /// @notice Checks that the identity removal verifier cannot be set except by the owner.
+    function testCannotSetIdentityRemovalVerifierUnlessOwner(address notOwner) public {
+        // Setup
+        vm.assume(notOwner != address(this) && notOwner != address(0x0));
+        ITreeVerifier newVerifier = new SimpleVerifier();
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.setIdentityRemovalVerifier, (newVerifier));
+        bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
+        vm.prank(notOwner);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, errorData);
+    }
+
+    /// @notice Ensures that it is not possible to set the address of the verifier for identity
+    ///         removal unless called via the proxy.
+    function testCannotSetIdentityRemovalVerifierUnlessViaProxy() public {
+        // Setup
+        ITreeVerifier newVerifier = new SimpleVerifier();
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.setIdentityRemovalVerifier(newVerifier);
+    }
+
+    /// @notice Checks that it is possible to get the address of the contract currently being used
+    ///         to verify identity update proofs.
+    function testCanGetIdentityUpdateVerifierAddress() public {
+        // Setup
+        bytes memory callData = abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierAddress, ());
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData);
+    }
+
+    /// @notice Ensures that it is not possible to get the address of the verifier for identity
+    ///         updates unless called via the proxy.
+    function testCannotGetIdentityUpdateVerifierAddressUnlessViaProxy() public {
+        // Setup
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.getIdentityUpdateVerifierAddress();
+    }
+
+    /// @notice Checks that it is possible to set the contract currently being used to verify
+    ///         identity update proofs.
+    function testCanSetIdentityUpdateVerifier() public {
+        // Setup
+        ITreeVerifier newVerifier = new SimpleVerifier();
+        address newVerifierAddress = address(newVerifier);
+        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityUpdateVerifier, (newVerifier));
+        bytes memory checkCallData =
+            abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierAddress, ());
+        bytes memory expectedReturn = abi.encode(newVerifierAddress);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData);
+        assertCallSucceedsOn(identityManagerAddress, checkCallData, expectedReturn);
+    }
+
+    /// @notice Checks that the identity update verifier cannot be set except by the owner.
+    function testCannotSetIdentityUpdateVerifierUnlessOwner(address notOwner) public {
+        // Setup
+        vm.assume(notOwner != address(this) && notOwner != address(0x0));
+        ITreeVerifier newVerifier = new SimpleVerifier();
+        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityUpdateVerifier, (newVerifier));
+        bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
+        vm.prank(notOwner);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, errorData);
+    }
+
+    /// @notice Ensures that it is not possible to set the address of the verifier for identity
+    ///         removal unless called via the proxy.
+    function testCannotSetIdentityUpdateVerifierUnlessViaProxy() public {
+        // Setup
+        ITreeVerifier newVerifier = new SimpleVerifier();
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.setIdentityUpdateVerifier(newVerifier);
+    }
+
     /// @notice Ensures that we can get the address of the semaphore verifier.
     function testCanGetSemaphoreVerifierAddress() public {
         // Setup
@@ -1287,6 +1409,61 @@ contract WorldIDIdentityManagerTest is Test {
         ITreeVerifier newVerifier = new SimpleVerifier();
         bytes memory callData =
             abi.encodeCall(ManagerImpl.setRegisterIdentitiesVerifier, (newVerifier));
+        bytes memory expectedError =
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `getIdentityRemovalVerifierAddress` while
+    ///         the contract is not initialized.
+    function testShouldNotCallGetIdentityRemovalVerifierAddressWhileUninit() public {
+        // Setup
+        makeUninitIdentityManager();
+        bytes memory callData = abi.encodeCall(ManagerImpl.getIdentityRemovalVerifierAddress, ());
+        bytes memory expectedError =
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `setIdentityRemovalVerifier` while the
+    ///        contract is not initialized.
+    function testShouldNotCallSetIdentityRemovalVerifierWhileUninit() public {
+        // Setup
+        makeUninitIdentityManager();
+        ITreeVerifier newVerifier = new SimpleVerifier();
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.setIdentityRemovalVerifier, (newVerifier));
+        bytes memory expectedError =
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `getIdentityUpdateVerifierAddress` while
+    ///         the contract is not initialized.
+    function testShouldNotCallGetIdentityUpdateVerifierAddressWhileUninit() public {
+        // Setup
+        makeUninitIdentityManager();
+        bytes memory callData = abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierAddress, ());
+        bytes memory expectedError =
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `setIdentityUpdateVerifier` while the
+    ///        contract is not initialized.
+    function testShouldNotCallSetIdentityUpdateVerifierWhileUninit() public {
+        // Setup
+        makeUninitIdentityManager();
+        ITreeVerifier newVerifier = new SimpleVerifier();
+        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityUpdateVerifier, (newVerifier));
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 

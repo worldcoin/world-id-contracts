@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
+import {CheckInitialized} from "./utils/CheckInitialized.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
+import {UnimplementedTreeVerifier} from "./utils/UnimplementedTreeVerifier.sol";
 import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
-import {CheckInitialized} from "./utils/CheckInitialized.sol";
 
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -79,7 +80,13 @@ contract WorldIDIdentityManagerImplV1 is
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     /// @notice The verifier instance needed for verifying batch identity insertions.
-    ITreeVerifier internal merkleTreeVerifier;
+    ITreeVerifier internal batchInsertionVerifier;
+
+    /// @notice The verifier instance needed for verifying identity removals.
+    ITreeVerifier internal identityRemovalVerifier;
+
+    /// @notice The verifier instance needed for verifying identity updates.
+    ITreeVerifier internal identityUpdateVerifier;
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
     SemaphoreVerifier internal semaphoreVerifier;
@@ -213,8 +220,11 @@ contract WorldIDIdentityManagerImplV1 is
         __delegateInit();
 
         // Now perform the init logic for this contract.
+        ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
         _latestRoot = initialRoot;
-        merkleTreeVerifier = _merkleTreeVerifier;
+        batchInsertionVerifier = _merkleTreeVerifier;
+        identityRemovalVerifier = unimplementedVerifier;
+        identityUpdateVerifier = unimplementedVerifier;
         semaphoreVerifier = new SemaphoreVerifier();
         _stateBridgeProxyAddress = initialStateBridgeProxyAddress;
         _isStateBridgeEnabled = _enableStateBridge;
@@ -302,7 +312,7 @@ contract WorldIDIdentityManagerImplV1 is
         // verifier.
         uint256 reducedElement = reduceInputElementInSnarkScalarField(uint256(inputHash));
 
-        try merkleTreeVerifier.verifyProof(
+        try batchInsertionVerifier.verifyProof(
             [insertionProof[0], insertionProof[1]],
             [[insertionProof[2], insertionProof[3]], [insertionProof[4], insertionProof[5]]],
             [insertionProof[6], insertionProof[7]],
@@ -570,7 +580,7 @@ contract WorldIDIdentityManagerImplV1 is
         onlyInitialized
         returns (address addr)
     {
-        return address(merkleTreeVerifier);
+        return address(batchInsertionVerifier);
     }
 
     /// @notice Sets the address for the merkle tree verifier to be used for verification of
@@ -586,7 +596,69 @@ contract WorldIDIdentityManagerImplV1 is
         onlyInitialized
         onlyOwner
     {
-        merkleTreeVerifier = newVerifier;
+        batchInsertionVerifier = newVerifier;
+    }
+
+    /// @notice Gets the address for the merkle tree verifier used for verifying identity
+    ///         removals.
+    ///
+    /// @return addr The addresss of the contract being used as the verifier.
+    function getIdentityRemovalVerifierAddress()
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (address addr)
+    {
+        return address(identityRemovalVerifier);
+    }
+
+    /// @notice Sets the address for the merkle tree verifier to be used for verification of
+    ///         identity removals.
+    /// @dev Only the owner of the contract can call this function.
+    ///
+    /// @param newVerifier The new verifier instance to be used for verifying identity
+    ///                    removals.
+    function setIdentityRemovalVerifier(ITreeVerifier newVerifier)
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+    {
+        identityRemovalVerifier = newVerifier;
+    }
+
+    /// @notice Gets the address for the merkle tree verifier used for verifying identity
+    ///         updates.
+    ///
+    /// @return addr The addresss of the contract being used as the verifier.
+    function getIdentityUpdateVerifierAddress()
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (address addr)
+    {
+        return address(identityUpdateVerifier);
+    }
+
+    /// @notice Sets the address for the merkle tree verifier to be used for verification of
+    ///         identity updates.
+    /// @dev Only the owner of the contract can call this function.
+    ///
+    /// @param newVerifier The new verifier instance to be used for verifying identity
+    ///                    updates.
+    function setIdentityUpdateVerifier(ITreeVerifier newVerifier)
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+    {
+        identityUpdateVerifier = newVerifier;
     }
 
     /// @notice Gets the address of the verifier used for verification os semaphore proofs.
