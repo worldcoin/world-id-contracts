@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
 import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
+import {CheckInitialized} from "./utils/CheckInitialized.sol";
 
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -14,7 +15,12 @@ import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable
 /// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs
 ///      to perform the insertions.
 /// @dev This is the implementation delegated to by a proxy.
-contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IWorldID {
+contract WorldIDIdentityManagerImplV1 is
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    IWorldID,
+    CheckInitialized
+{
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -50,10 +56,6 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     // To ensure compatibility between upgrades, it is exceedingly important that no reordering of
     // these variables takes place. If reordering happens, a storage clash will occur (effectively a
     // memory safety error).
-
-    /// @notice Whether the initialization has been completed.
-    /// @dev This relies on the fact that a default-init `bool` is `false` here.
-    bool internal _initialized;
 
     /// @notice The latest root of the identity merkle tree.
     uint256 internal _latestRoot;
@@ -162,10 +164,6 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///         history.
     error NonExistentRoot();
 
-    /// @notice Thrown when attempting to call a function while the implementation has not been
-    ///         initialized.
-    error ImplementationNotInitialized();
-
     /// @notice Thrown when attempting to send a transaction to the state bridge proxy that fails.
     error StateBridgeProxySendRootMultichainFailure();
 
@@ -234,15 +232,6 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     function __delegateInit() internal virtual onlyInitializing {
         __Ownable_init();
         __UUPSUpgradeable_init();
-    }
-
-    /// @notice Sets the contract as initialized.
-    /// @dev Must be called exactly once.
-    /// @dev There must be no other setter access to the `_initialized` state variable.
-    ///
-    /// @custom:reverts string If called more than once.
-    function __setInitialized() private onlyInitializing {
-        _initialized = true;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -680,18 +669,5 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
                 publicSignals
             );
         }
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                             AUTHENTICATION                              ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Asserts that the annotated function can only be called once the contract has been
-    ///         initialized.
-    modifier onlyInitialized() {
-        if (!_initialized) {
-            revert ImplementationNotInitialized();
-        }
-        _;
     }
 }

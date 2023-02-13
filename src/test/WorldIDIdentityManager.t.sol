@@ -14,6 +14,7 @@ import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable
 import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
 import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
 import {WorldIDIdentityManagerImplMock} from "./mock/WorldIDIdentityManagerImplMock.sol";
+import {CheckInitialized} from "../utils/CheckInitialized.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
@@ -1191,7 +1192,7 @@ contract WorldIDIdentityManagerTest is Test {
             (proof, preRoot, startIndex, identityCommitments, postRoot)
         );
         bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
@@ -1207,7 +1208,7 @@ contract WorldIDIdentityManagerTest is Test {
             (startIndex, preRoot, postRoot, identityCommitments)
         );
         bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
@@ -1220,7 +1221,7 @@ contract WorldIDIdentityManagerTest is Test {
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
@@ -1233,7 +1234,7 @@ contract WorldIDIdentityManagerTest is Test {
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, (preRoot));
         bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
@@ -1246,7 +1247,7 @@ contract WorldIDIdentityManagerTest is Test {
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(ManagerImpl.isInputInReducedForm, (preRoot));
         bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
@@ -1259,7 +1260,7 @@ contract WorldIDIdentityManagerTest is Test {
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(ManagerImpl.checkValidRoot, (preRoot));
         bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
@@ -1272,7 +1273,7 @@ contract WorldIDIdentityManagerTest is Test {
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(ManagerImpl.getRegisterIdentitiesVerifierAddress, ());
         bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
@@ -1287,7 +1288,7 @@ contract WorldIDIdentityManagerTest is Test {
         bytes memory callData =
             abi.encodeCall(ManagerImpl.setRegisterIdentitiesVerifier, (newVerifier));
         bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
@@ -1300,7 +1301,7 @@ contract WorldIDIdentityManagerTest is Test {
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(ManagerImpl.getSemaphoreVerifierAddress, ());
         bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
@@ -1314,7 +1315,7 @@ contract WorldIDIdentityManagerTest is Test {
         SemaphoreVerifier newVerifier = new SemaphoreVerifier();
         bytes memory callData = abi.encodeCall(ManagerImpl.setSemaphoreVerifier, (newVerifier));
         bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.ImplementationNotInitialized.selector);
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
