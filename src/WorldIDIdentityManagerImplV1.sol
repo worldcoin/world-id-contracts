@@ -212,7 +212,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         address initialStateBridgeProxyAddress
     ) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
-        __delegate_init();
+        __delegateInit();
 
         // Now perform the init logic for this contract.
         _latestRoot = initialRoot;
@@ -222,7 +222,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         _isStateBridgeEnabled = _enableStateBridge;
 
         // Say that the contract is initialized.
-        _initialized = true;
+        __setInitialized();
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -231,9 +231,18 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///      is accounted for here.
     ///
     /// @custom:reverts string If called more than once.
-    function __delegate_init() internal virtual onlyInitializing {
+    function __delegateInit() internal virtual onlyInitializing {
         __Ownable_init();
         __UUPSUpgradeable_init();
+    }
+
+    /// @notice Sets the contract as initialized.
+    /// @dev Must be called exactly once.
+    /// @dev There must be no other setter access to the `_initialized` state variable.
+    ///
+    /// @custom:reverts string If called more than once.
+    function __setInitialized() private onlyInitializing {
+        _initialized = true;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -558,6 +567,66 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         }
 
         return true;
+    }
+
+    /// @notice Gets the address for the merkle tree verifier used for verifying identity
+    ///         registrations.
+    ///
+    /// @return addr The addresss of the contract being used as the verifier.
+    function getRegisterIdentitiesVerifierAddress()
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (address addr)
+    {
+        return address(merkleTreeVerifier);
+    }
+
+    /// @notice Sets the address for the merkle tree verifier to be used for verification of
+    ///         identity registrations.
+    /// @dev Only the owner of the contract can call this function.
+    ///
+    /// @param newVerifier The new verifier instance to be used for verifying identity
+    ///                    registrations.
+    function setRegisterIdentitiesVerifier(ITreeVerifier newVerifier)
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+    {
+        merkleTreeVerifier = newVerifier;
+    }
+
+    /// @notice Gets the address of the verifier used for verification os semaphore proofs.
+    ///
+    /// @return addr The addresss of the contract being used as the verifier.
+    function getSemaphoreVerifierAddress()
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (address addr)
+    {
+        return address(semaphoreVerifier);
+    }
+
+    /// @notice Sets the address for the semaphore verifier to be used for verification of
+    ///         semaphore proofs.
+    /// @dev Only the owner of the contract can call this function.
+    ///
+    /// @param newVerifier The new verifier instance to be used for verifying semaphore proofs.
+    function setSemaphoreVerifier(SemaphoreVerifier newVerifier)
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+    {
+        semaphoreVerifier = newVerifier;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
