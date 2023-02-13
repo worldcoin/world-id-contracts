@@ -406,8 +406,8 @@ async function deployIdentityManager(plan, config) {
         const callData = iface.encodeFunctionData('initialize', [
             config.initialRoot,
             config.verifierContractAddress,
-            processedStateBridgeAddress,
             config.enableStateBridge,
+            processedStateBridgeAddress,
         ]);
 
         // Deploy the proxy contract.
