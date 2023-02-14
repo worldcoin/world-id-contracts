@@ -39,7 +39,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         // Setup
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.calculateTreeVerifierInputHash,
+            ManagerImpl.calculateIdentityRegistrationInputHash,
             (startIndex, preRoot, postRoot, identityCommitments)
         );
         bytes memory expectedError =

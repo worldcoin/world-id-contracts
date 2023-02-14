@@ -13,10 +13,10 @@ import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityMan
 contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
     /// @notice Tests whether it is possible to correctly calculate the `inputHash` to the merkle
     ///         tree verifier.
-    function testCalculateInputHashFromParametersOnKnownInput() public {
+    function testCalculateIdentityRegistrationInputHashFromParametersOnKnownInput() public {
         // Setup
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.calculateTreeVerifierInputHash,
+            ManagerImpl.calculateIdentityRegistrationInputHash,
             (startIndex, preRoot, postRoot, identityCommitments)
         );
         bytes memory returnData = abi.encode(inputHash);
@@ -26,12 +26,12 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
     }
 
     /// @notice Checks that the input hash can only be calculated if behind the proxy.
-    function testCannotCalculateInputHashIfNotViaProxy() public {
+    function testCannotCalculateIdentityRegistrationInputHashIfNotViaProxy() public {
         // Setup
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.calculateTreeVerifierInputHash(
+        managerImpl.calculateIdentityRegistrationInputHash(
             startIndex, preRoot, postRoot, identityCommitments
         );
     }
@@ -65,5 +65,65 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
 
         // Test
         managerImpl.isInputInReducedForm(preRoot);
+    }
+
+    /// @notice Check whether it's possible to caculate the identity update input hash.
+    function testCanCalculateIdentityUpdateInputHash(
+        uint256 preRoot,
+        uint256 postRoot,
+        uint32 startIndex1,
+        uint32 startIndex2,
+        uint256 oldIdent1,
+        uint256 oldIdent2,
+        uint256 newIdent1,
+        uint256 newIdent2
+    ) public {
+        // Setup
+        ManagerImpl.Identity memory ident1 = ManagerImpl.Identity(startIndex1, oldIdent1, newIdent1);
+        ManagerImpl.Identity memory ident2 = ManagerImpl.Identity(startIndex2, oldIdent2, newIdent2);
+        ManagerImpl.Identity[] memory newIdents = new ManagerImpl.Identity[](2);
+        newIdents[0] = ident1;
+        newIdents[1] = ident2;
+        bytes32 expectedResult = keccak256(
+            abi.encodePacked(
+                preRoot,
+                postRoot,
+                startIndex1,
+                oldIdent1,
+                newIdent1,
+                startIndex2,
+                oldIdent2,
+                newIdent2
+            )
+        );
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.calculateIdentityUpdateInputHash, (preRoot, postRoot, newIdents)
+        );
+        bytes memory expectedReturn = abi.encode(expectedResult);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, expectedReturn);
+    }
+
+    function testCannotCalculateIdentityUpdateHashIfNotViaProxy(
+        uint256 preRoot,
+        uint256 postRoot,
+        uint32 startIndex1,
+        uint32 startIndex2,
+        uint256 oldIdent1,
+        uint256 oldIdent2,
+        uint256 newIdent1,
+        uint256 newIdent2
+    ) public {
+        // Setup
+        ManagerImpl.Identity memory ident1 = ManagerImpl.Identity(startIndex1, oldIdent1, newIdent1);
+        ManagerImpl.Identity memory ident2 = ManagerImpl.Identity(startIndex2, oldIdent2, newIdent2);
+        ManagerImpl.Identity[] memory newIdents = new ManagerImpl.Identity[](2);
+        newIdents[0] = ident1;
+        newIdents[1] = ident2;
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.calculateIdentityUpdateInputHash(preRoot, postRoot, newIdents);
     }
 }

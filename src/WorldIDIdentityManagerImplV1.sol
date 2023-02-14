@@ -82,9 +82,6 @@ contract WorldIDIdentityManagerImplV1 is
     /// @notice The verifier instance needed for verifying batch identity insertions.
     ITreeVerifier internal batchInsertionVerifier;
 
-    /// @notice The verifier instance needed for verifying identity removals.
-    ITreeVerifier internal identityRemovalVerifier;
-
     /// @notice The verifier instance needed for verifying identity updates.
     ITreeVerifier internal identityUpdateVerifier;
 
@@ -237,7 +234,6 @@ contract WorldIDIdentityManagerImplV1 is
         ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
         _latestRoot = initialRoot;
         batchInsertionVerifier = _merkleTreeVerifier;
-        identityRemovalVerifier = unimplementedVerifier;
         identityUpdateVerifier = unimplementedVerifier;
         semaphoreVerifier = new SemaphoreVerifier();
         _stateBridgeProxyAddress = initialStateBridgeProxyAddress;
@@ -315,11 +311,12 @@ contract WorldIDIdentityManagerImplV1 is
         }
 
         // We can only operate on identities that are valid and in reduced form.
-        validateIdentityCommitments(identityCommitments);
+        validateIdentityCommitmentsForRegistration(identityCommitments);
 
         // Having validated the preconditions we can now check the proof itself.
-        bytes32 inputHash =
-            calculateTreeVerifierInputHash(startIndex, preRoot, postRoot, identityCommitments);
+        bytes32 inputHash = calculateIdentityRegistrationInputHash(
+            startIndex, preRoot, postRoot, identityCommitments
+        );
 
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
@@ -389,7 +386,13 @@ contract WorldIDIdentityManagerImplV1 is
         Identity[] calldata removedIdentities,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyOwner {
-        // TODO What should this actually _do_ before hitting the verifier?
+        // We need to validate that all of the new commitments for the provided removedIdentities
+        // are equal to zero.
+        validateIdentityCommitmentsForRemoval(removedIdentities);
+
+        // Removing identities is just a special case of updating identities with the target
+        // identities. With the validation done we can just delegate.
+        updateIdentities(removalProof, preRoot, removedIdentities, postRoot);
     }
 
     /// @notice Updates identities in the WorldID system.
@@ -433,7 +436,7 @@ contract WorldIDIdentityManagerImplV1 is
     ///                             UTILITY FUNCTIONS                           ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Calculates the input hash for the merkle tree verifier.
+    /// @notice Calculates the input hash for the identity registration verifier.
     /// @dev Implements the computation described below.
     ///
     /// @param startIndex The index in the tree from which inserting started.
@@ -441,20 +444,54 @@ contract WorldIDIdentityManagerImplV1 is
     /// @param postRoot The root value of the tree after these insertsions were made.
     /// @param identityCommitments The identities that were added to the tree to produce `postRoot`.
     ///
+    /// @return hash The input hash calculated as described below.
+    ///
     /// We keccak hash all input to save verification gas. Inputs are arranged as follows:
+    ///
     /// StartIndex || PreRoot || PostRoot || IdComms[0] || IdComms[1] || ... || IdComms[batchSize-1]
     ///     32	   ||   256   ||   256    ||    256     ||    256     || ... ||     256 bits
-    function calculateTreeVerifierInputHash( // TODO Rename this
-    uint32 startIndex, uint256 preRoot, uint256 postRoot, uint256[] calldata identityCommitments)
-        public
-        view
-        virtual
-        onlyProxy
-        onlyInitialized
-        returns (bytes32 hash)
-    {
+    function calculateIdentityRegistrationInputHash(
+        uint32 startIndex,
+        uint256 preRoot,
+        uint256 postRoot,
+        uint256[] calldata identityCommitments
+    ) public view virtual onlyProxy onlyInitialized returns (bytes32 hash) {
         bytes memory bytesToHash =
             abi.encodePacked(startIndex, preRoot, postRoot, identityCommitments);
+
+        hash = keccak256(bytesToHash);
+    }
+
+    /// @notice Calculates the input hash for the identity update verifier.
+    /// @dev Implements the computation described below.
+    ///
+    /// @param preRoot The root value of the tree before the updates were made.
+    /// @param postRoot The root value of the tree after the udpates were made.
+    /// @param identities The identity structures providing the identity data.
+    ///
+    /// @return hash The input hash calculated as described below.
+    ///
+    /// We keccak hash all input to save verification gas. The inputs are arranged as follows:
+    ///
+    /// preRoot || postRoot || id[0].leafIndex || id[0].oldCommitment || id[0].newCommitment || ... || id[n].leafIndex || id[n].oldCommitment || id[n].newCommitment
+    ///   256   ||    256   ||        32       ||         256         ||          256        || ... ||        32       ||         256         ||          256
+    ///
+    /// where:
+    /// - `id[n] == identities[n]`
+    /// - `n == batchSize - 1`
+    function calculateIdentityUpdateInputHash(
+        uint256 preRoot,
+        uint256 postRoot,
+        Identity[] calldata identities
+    ) public view virtual onlyProxy onlyInitialized returns (bytes32 hash) {
+        bytes memory identityBytes = new bytes(0);
+        for (uint256 i = 0; i < identities.length; ++i) {
+            Identity memory ident = identities[i];
+            bytes memory newBytes =
+                abi.encodePacked(ident.leafIndex, ident.oldCommitment, ident.newCommitment);
+            identityBytes = bytes.concat(identityBytes, newBytes);
+        }
+        bytes memory bytesToHash = abi.encodePacked(preRoot, postRoot, identityBytes);
 
         hash = keccak256(bytesToHash);
     }
@@ -576,7 +613,7 @@ contract WorldIDIdentityManagerImplV1 is
     ///                 is invalid.
     /// @custom:reverts Reverts with `UnreducedElement` if one or more of the provided commitments
     ///                 is not in reduced form.
-    function validateIdentityCommitments(uint256[] calldata identityCommitments)
+    function validateIdentityCommitmentsForRegistration(uint256[] calldata identityCommitments)
         internal
         view
         virtual
@@ -592,6 +629,27 @@ contract WorldIDIdentityManagerImplV1 is
                 revert UnreducedElement(UnreducedElementType.IdentityCommitment, commitment);
             }
             previousIsZero = commitment == EMPTY_LEAF;
+        }
+    }
+
+    /// @notice Vaslidates an array of identity commitments as part of identity removal.
+    /// @dev Identities are not valid for identity removal if the provided commitment value is
+    ///      non-zero.
+    ///
+    /// @param identities The array of identity commitments to be validated.
+    ///
+    /// @custom:reverts Reverts with `InvalidCommitment` if one or more of the provided commitments
+    ///                 is invalid due to being non-zero.
+    function validateIdentityCommitmentsForRemoval(Identity[] calldata identities)
+        internal
+        view
+        virtual
+    {
+        for (uint256 i = 0; i < identities.length; ++i) {
+            Identity memory commitmentValue = identities[i];
+            if (commitmentValue.newCommitment != 0) {
+                revert InvalidCommitment(i);
+            }
         }
     }
 
