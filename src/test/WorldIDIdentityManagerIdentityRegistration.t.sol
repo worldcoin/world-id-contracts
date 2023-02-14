@@ -10,12 +10,12 @@ import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
 import {WorldIDIdentityManager as IdentityManager} from "../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
 
-/// @title World ID Identity Manager Identity Management Tests
+/// @title World ID Identity Manager Identity Registration Tests
 /// @notice Contains tests for the WorldID identity manager.
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
-contract WorldIDIdentityManagerIdentityManagement is WorldIDIdentityManagerTest {
+contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTest {
     /// @notice Checks that the proof validates properly with the correct inputs.
     function testRegisterIdentitiesWithCorrectInputsFromKnown() public {
         // Setup

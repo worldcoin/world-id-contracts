@@ -68,7 +68,7 @@ contract WorldIDIdentityManagerImplV1 is
     /// @notice The amount of time an outdated root is considered as valid.
     /// @dev This prevents proofs getting invalidated in the mempool by another tx modifying the
     ///      group.
-    uint256 internal constant ROOT_HISTORY_EXPIRY = 1 hours;
+    uint256 internal rootHistoryExpiry;
 
     /// @notice Represents the initial leaf in an empty merkle tree.
     /// @dev Prevents the empty leaf from being inserted into the root history.
@@ -112,6 +112,19 @@ contract WorldIDIdentityManagerImplV1 is
         uint256 root;
         uint128 supersededTimestamp;
         bool isValid;
+    }
+
+    /// @notice A structure representing an identity when it needs to be paired to an index.
+    ///
+    /// @param leafIndex The index in the merkle tree at which `commitment` can be found.
+    /// @param oldCommitment The previous value of the identity commitment at the provided
+    ///        `leafIndex` in the merkle tree.
+    /// @param newCommitment The new value of the identity commitment at the provided `leafIndex` in
+    ///        the merkle tree.
+    struct Identity {
+        uint32 leafIndex;
+        uint256 oldCommitment;
+        uint256 newCommitment;
     }
 
     /// @notice Represents the kind of element that has not been provided in reduced form.
@@ -220,6 +233,7 @@ contract WorldIDIdentityManagerImplV1 is
         __delegateInit();
 
         // Now perform the init logic for this contract.
+        rootHistoryExpiry = 1 hours;
         ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
         _latestRoot = initialRoot;
         batchInsertionVerifier = _merkleTreeVerifier;
@@ -248,7 +262,8 @@ contract WorldIDIdentityManagerImplV1 is
     ///                           IDENTITY MANAGEMENT                           ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Registers identities into the WorldID system. Can only be called by the manager.
+    /// @notice Registers identities into the WorldID system.
+    /// @dev Can only be called by the owner.
     /// @dev Registration is performed off-chain and verified on-chain via the `insertionProof`.
     ///      This saves gas and time over inserting identities one at a time.
     ///
@@ -275,7 +290,6 @@ contract WorldIDIdentityManagerImplV1 is
     ///                 `identityCommitments` is not an element of the field `Kr`. It describes the
     ///                 type and value of the unreduced element.
     function registerIdentities(
-        // MerkleTreeProof calldata insertionProof,
         uint256[8] calldata insertionProof,
         uint256 preRoot,
         uint32 startIndex,
@@ -343,6 +357,78 @@ contract WorldIDIdentityManagerImplV1 is
         }
     }
 
+    /// @notice Removes identities from the WorldID system.
+    /// @dev Can only be called by the owner.
+    /// @dev The removal is performed off-chain and verified on-chain via the `removalProof`. This
+    ///      saves gas and time over removing identities one at a time.
+    ///
+    /// @param removalProof The proof that, given the conditions (`preRoot`, `startIndex` and
+    ///        `removedIdentities`), removal from the tree results in `postRoot`. Elements 0 and 1
+    ///        are the `x` and `y` coordinates for `ar` respectively. Elements 2 and 3 are the `x`
+    ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
+    ///        and 7 are the `x` and `y` coordinates for `krs`.
+    /// @param preRoot The value for the root of the tree before the `removedIdentities` have been
+    ////       removed. Must be an element of the field `Kr`.
+    /// @param removedIdentities The identities that were removed from the tree. As they each hold
+    ///        their own leaf index, these need not be contiguous. All of the commitments must be
+    ///        elements of the field `Kr`.
+    /// @param postRoot The root obtained after removing all of `removedIdentities` from the tree
+    ///        described by `preRoot`. Must be an element of the field `Kr`.
+    ///
+    /// @custom:reverts Unauthorized If the message sender is not authorised to remove identities.
+    /// @custom:reverts InvalidCommitment If one or more of the provided identities is invalid.
+    /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
+    /// @custom:reverts ProofValidationFailure If `removalProof` cannot be verified using the
+    ///                 provided inputs.
+    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
+    ///                 `removedIdentities` is not an element of the field `Kr`. It describes the
+    ///                 type and value of the unreduced element.
+    function removeIdentities(
+        uint256[8] calldata removalProof,
+        uint256 preRoot,
+        Identity[] calldata removedIdentities,
+        uint256 postRoot
+    ) public virtual onlyProxy onlyInitialized onlyOwner {
+        // TODO What should this actually _do_ before hitting the verifier?
+    }
+
+    /// @notice Updates identities in the WorldID system.
+    /// @dev Can only be called by the owner.
+    /// @dev The update is performed off-chain and verified on-chain via the `updateProof`. This
+    ///      saves gas and time over removing identities one at a time.
+    ///
+    /// @param removalProof The proof that, given the conditions (`preRoot`, `startIndex` and
+    ///        `removedIdentities`), updates in the tree results in `postRoot`. Elements 0 and 1 are
+    ///        the `x` and `y` coordinates for `ar` respectively. Elements 2 and 3 are the `x`
+    ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
+    ///        and 7 are the `x` and `y` coordinates for `krs`.
+    /// @param preRoot The value for the root of the tree before the `updatedIdentities` have been
+    ////       altered. Must be an element of the field `Kr`.
+    /// @param updatedIdentities The identities that were updated in the tree. As they each hold
+    ///        their own leaf index, these need not be contiguous. All of the commitments must be
+    ///        elements of the field `Kr`.
+    /// @param postRoot The root obtained after removing all of `removedIdentities` from the tree
+    ///        described by `preRoot`. Must be an element of the field `Kr`.
+    ///
+    /// @custom:reverts Unauthorized If the message sender is not authorised to update identities.
+    /// @custom:reverts InvalidCommitment If one or more of the provided identities is invalid.
+    /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
+    /// @custom:reverts ProofValidationFailure If `removalProof` cannot be verified using the
+    ///                 provided inputs.
+    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
+    ///                 `removedIdentities` is not an element of the field `Kr`. It describes the
+    ///                 type and value of the unreduced element.
+    function updateIdentities(
+        uint256[8] calldata updateProof,
+        uint256 preRoot,
+        Identity[] calldata updatedIdentities,
+        uint256 postRoot
+    ) public virtual onlyProxy onlyInitialized onlyOwner {
+        // TODO What should this actually _do_ before hitting the verifier?
+        // 1. Compute an arbitrary hash (and document it).
+        // 2. Do the same verification (logically) that insert does.
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             UTILITY FUNCTIONS                           ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -358,12 +444,15 @@ contract WorldIDIdentityManagerImplV1 is
     /// We keccak hash all input to save verification gas. Inputs are arranged as follows:
     /// StartIndex || PreRoot || PostRoot || IdComms[0] || IdComms[1] || ... || IdComms[batchSize-1]
     ///     32	   ||   256   ||   256    ||    256     ||    256     || ... ||     256 bits
-    function calculateTreeVerifierInputHash(
-        uint32 startIndex,
-        uint256 preRoot,
-        uint256 postRoot,
-        uint256[] calldata identityCommitments
-    ) public view virtual onlyProxy onlyInitialized returns (bytes32 hash) {
+    function calculateTreeVerifierInputHash( // TODO Rename this
+    uint32 startIndex, uint256 preRoot, uint256 postRoot, uint256[] calldata identityCommitments)
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (bytes32 hash)
+    {
         bytes memory bytesToHash =
             abi.encodePacked(startIndex, preRoot, postRoot, identityCommitments);
 
@@ -452,8 +541,8 @@ contract WorldIDIdentityManagerImplV1 is
     ///
     /// @param root The root for which you are querying information.
     /// @return rootInfo The information about `root`, or `NO_SUCH_ROOT` if `root` does not exist.
-    ///                  Note that if the queried root is the current, the timestamp will be invalid
-    ///                  as the root has not been superseded.
+    ///         Note that if the queried root is the current, the timestamp will be invalid as the
+    ///         root has not been superseded.
     function queryRoot(uint256 root)
         public
         view
@@ -471,7 +560,7 @@ contract WorldIDIdentityManagerImplV1 is
                 return NO_SUCH_ROOT();
             }
 
-            bool isValid = !(block.timestamp - rootTimestamp > ROOT_HISTORY_EXPIRY);
+            bool isValid = !(block.timestamp - rootTimestamp > rootHistoryExpiry);
             return RootInfo(root, rootTimestamp, isValid);
         }
     }
@@ -555,7 +644,7 @@ contract WorldIDIdentityManagerImplV1 is
             uint128 rootTimestamp = rootHistory[root];
 
             // A root is no longer valid if it has expired.
-            if (block.timestamp - rootTimestamp > ROOT_HISTORY_EXPIRY) {
+            if (block.timestamp - rootTimestamp > rootHistoryExpiry) {
                 revert ExpiredRoot();
             }
 
@@ -600,38 +689,8 @@ contract WorldIDIdentityManagerImplV1 is
     }
 
     /// @notice Gets the address for the merkle tree verifier used for verifying identity
-    ///         removals.
-    ///
-    /// @return addr The addresss of the contract being used as the verifier.
-    function getIdentityRemovalVerifierAddress()
-        public
-        view
-        virtual
-        onlyProxy
-        onlyInitialized
-        returns (address addr)
-    {
-        return address(identityRemovalVerifier);
-    }
-
-    /// @notice Sets the address for the merkle tree verifier to be used for verification of
-    ///         identity removals.
-    /// @dev Only the owner of the contract can call this function.
-    ///
-    /// @param newVerifier The new verifier instance to be used for verifying identity
-    ///                    removals.
-    function setIdentityRemovalVerifier(ITreeVerifier newVerifier)
-        public
-        virtual
-        onlyProxy
-        onlyInitialized
-        onlyOwner
-    {
-        identityRemovalVerifier = newVerifier;
-    }
-
-    /// @notice Gets the address for the merkle tree verifier used for verifying identity
     ///         updates.
+    /// @dev The update verifier is also used for member removals.
     ///
     /// @return addr The addresss of the contract being used as the verifier.
     function getIdentityUpdateVerifierAddress()
@@ -648,6 +707,7 @@ contract WorldIDIdentityManagerImplV1 is
     /// @notice Sets the address for the merkle tree verifier to be used for verification of
     ///         identity updates.
     /// @dev Only the owner of the contract can call this function.
+    /// @dev The update verifier is also used for member removals.
     ///
     /// @param newVerifier The new verifier instance to be used for verifying identity
     ///                    updates.
@@ -661,7 +721,7 @@ contract WorldIDIdentityManagerImplV1 is
         identityUpdateVerifier = newVerifier;
     }
 
-    /// @notice Gets the address of the verifier used for verification os semaphore proofs.
+    /// @notice Gets the address of the verifier used for verification of semaphore proofs.
     ///
     /// @return addr The addresss of the contract being used as the verifier.
     function getSemaphoreVerifierAddress()
@@ -688,6 +748,36 @@ contract WorldIDIdentityManagerImplV1 is
         onlyOwner
     {
         semaphoreVerifier = newVerifier;
+    }
+
+    /// @notice Gets the current amount of time used to expire roots in the history.
+    ///
+    /// @return expiryTime The amount of time it takes for a root to expire.
+    function getRootHistoryExpiry()
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (uint256 expiryTime)
+    {
+        return rootHistoryExpiry;
+    }
+
+    /// @notice Sets the time to wait before expiring a root from the root history.
+    /// @dev Only the owner of the contract can call this function.
+    ///
+    /// @param newExpiryTime The new time to use to expire roots.
+    function setRootHistoryExpiry(uint256 newExpiryTime)
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+    {
+        if (newExpiryTime == 0) {
+            revert("Expiry time cannot be zero.");
+        }
+        rootHistoryExpiry = newExpiryTime;
     }
 
     ///////////////////////////////////////////////////////////////////////////////

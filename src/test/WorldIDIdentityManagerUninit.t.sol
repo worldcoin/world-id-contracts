@@ -129,34 +129,6 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Checks that it is impossible to call `getIdentityRemovalVerifierAddress` while
-    ///         the contract is not initialized.
-    function testShouldNotCallGetIdentityRemovalVerifierAddressWhileUninit() public {
-        // Setup
-        makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.getIdentityRemovalVerifierAddress, ());
-        bytes memory expectedError =
-            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
-    /// @notice Checks that it is impossible to call `setIdentityRemovalVerifier` while the
-    ///        contract is not initialized.
-    function testShouldNotCallSetIdentityRemovalVerifierWhileUninit() public {
-        // Setup
-        makeUninitIdentityManager();
-        ITreeVerifier newVerifier = new SimpleVerifier();
-        bytes memory callData =
-            abi.encodeCall(ManagerImpl.setIdentityRemovalVerifier, (newVerifier));
-        bytes memory expectedError =
-            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
     /// @notice Checks that it is impossible to call `getIdentityUpdateVerifierAddress` while
     ///         the contract is not initialized.
     function testShouldNotCallGetIdentityUpdateVerifierAddressWhileUninit() public {
@@ -204,6 +176,32 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         makeUninitIdentityManager();
         SemaphoreVerifier newVerifier = new SemaphoreVerifier();
         bytes memory callData = abi.encodeCall(ManagerImpl.setSemaphoreVerifier, (newVerifier));
+        bytes memory expectedError =
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `getRootHistoryExpiry` while the contract is
+    ///         not initialized.
+    function testShouldNotCallGetRootHistoryExpiryWhileUninit() public {
+        // Setup
+        makeUninitIdentityManager();
+        bytes memory callData = abi.encodeCall(ManagerImpl.getRootHistoryExpiry, ());
+        bytes memory expectedError =
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `setRootHistoryExpiry` while the contract is
+    ///         not initialized.
+    function testShouldNotCallSetRootHistoryExpiryWhileUninit() public {
+        // Setup
+        makeUninitIdentityManager();
+        bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (2 hours));
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 

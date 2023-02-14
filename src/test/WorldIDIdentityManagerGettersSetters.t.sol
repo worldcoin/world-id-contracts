@@ -79,68 +79,6 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     }
 
     /// @notice Checks that it is possible to get the address of the contract currently being used
-    ///         to verify identity removal proofs.
-    function testCanGetIdentityRemovalVerifierAddress() public {
-        // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.getIdentityRemovalVerifierAddress, ());
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
-    }
-
-    /// @notice Ensures that it is not possible to get the address of the verifier for identity
-    ///         removal unless called via the proxy.
-    function testCannotGetIdentityRemovalVerifierAddressUnlessViaProxy() public {
-        // Setup
-        vm.expectRevert("Function must be called through delegatecall");
-
-        // Test
-        managerImpl.getIdentityRemovalVerifierAddress();
-    }
-
-    /// @notice Checks that it is possible to set the contract currently being used to verify
-    ///         identity removal proofs.
-    function testCanSetIdentityRemovalVerifier() public {
-        // Setup
-        ITreeVerifier newVerifier = new SimpleVerifier();
-        address newVerifierAddress = address(newVerifier);
-        bytes memory callData =
-            abi.encodeCall(ManagerImpl.setIdentityRemovalVerifier, (newVerifier));
-        bytes memory checkCallData =
-            abi.encodeCall(ManagerImpl.getIdentityRemovalVerifierAddress, ());
-        bytes memory expectedReturn = abi.encode(newVerifierAddress);
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
-        assertCallSucceedsOn(identityManagerAddress, checkCallData, expectedReturn);
-    }
-
-    /// @notice Checks that the identity removal verifier cannot be set except by the owner.
-    function testCannotSetIdentityRemovalVerifierUnlessOwner(address notOwner) public {
-        // Setup
-        vm.assume(notOwner != address(this) && notOwner != address(0x0));
-        ITreeVerifier newVerifier = new SimpleVerifier();
-        bytes memory callData =
-            abi.encodeCall(ManagerImpl.setIdentityRemovalVerifier, (newVerifier));
-        bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
-        vm.prank(notOwner);
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, errorData);
-    }
-
-    /// @notice Ensures that it is not possible to set the address of the verifier for identity
-    ///         removal unless called via the proxy.
-    function testCannotSetIdentityRemovalVerifierUnlessViaProxy() public {
-        // Setup
-        ITreeVerifier newVerifier = new SimpleVerifier();
-        vm.expectRevert("Function must be called through delegatecall");
-
-        // Test
-        managerImpl.setIdentityRemovalVerifier(newVerifier);
-    }
-
-    /// @notice Checks that it is possible to get the address of the contract currently being used
     ///         to verify identity update proofs.
     function testCanGetIdentityUpdateVerifierAddress() public {
         // Setup
@@ -245,5 +183,80 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, errorData);
+    }
+
+    /// @notice Ensures that it is not possible to set the address of the verifier for semaphore
+    ///         proofs unless called via the proxy.
+    function testCannotSetSemaphoreVerifierAddressUnlessViaProxy() public {
+        // Setup
+        SemaphoreVerifier newVerifier = new SemaphoreVerifier();
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.setSemaphoreVerifier(newVerifier);
+    }
+
+    /// @notice Ensures that it's possible to get the root history expiry time.
+    function testCanGetRootHistoryExpiry() public {
+        // Setup
+        bytes memory callData = abi.encodeCall(ManagerImpl.getRootHistoryExpiry, ());
+        bytes memory result = abi.encode(uint256(1 hours));
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, result);
+    }
+
+    /// @notice Ensures that it is impossible to get the root history except via the proxy.
+    function testCannotGetRootHistoryExpiryUnlessViaProxy() public {
+        // Setup
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.getRootHistoryExpiry();
+    }
+
+    /// @notice Ensures that it is possible to set the root history expiry time.
+    function testCanSetRootHistoryExpiry(uint256 newExpiry) public {
+        // Setup
+        vm.assume(newExpiry != 0 && newExpiry != 1 hours);
+        bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (newExpiry));
+        bytes memory checkCallData = abi.encodeCall(ManagerImpl.getRootHistoryExpiry, ());
+        bytes memory expectedReturn = abi.encode(newExpiry);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData);
+        assertCallSucceedsOn(identityManagerAddress, checkCallData, expectedReturn);
+    }
+
+    /// @notice Ensures that the root history expiry time can't be set to zero.
+    function testCannotSetRootHistoryExpiryToZero() public {
+        // Setup
+        bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (0));
+        bytes memory expectedError = encodeStringRevert("Expiry time cannot be zero.");
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that the semaphore verifier cannot be set except by the owner.
+    function testCannotSetRootHistoryExpiryUnlessOwner(address notOwner) public {
+        // Setup
+        vm.assume(notOwner != address(this) && notOwner != address(0x0));
+        SemaphoreVerifier newVerifier = new SemaphoreVerifier();
+        bytes memory callData = abi.encodeCall(ManagerImpl.setSemaphoreVerifier, (newVerifier));
+        bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
+        vm.prank(notOwner);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, errorData);
+    }
+
+    function testCannotSetRootHistoryExpiryUnlessViaProxy(uint256 newExpiry) public {
+        // Setup
+        vm.assume(newExpiry != 0);
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.setRootHistoryExpiry(newExpiry);
     }
 }
