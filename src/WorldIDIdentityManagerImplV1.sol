@@ -303,7 +303,7 @@ contract WorldIDIdentityManagerImplV1 is
         // As the `startIndex` is restricted to a uint32, where
         // `type(uint32).max <<< SNARK_SCALAR_FIELD`, we are safe not to check this. As verified in
         // the tests, a revert happens if you pass a value larger than `type(uint32).max` when
-        // calling outside the type-checker.
+        // calling outside the type-checker's protection.
 
         // We need the post root to be in reduced form.
         if (!isInputInReducedForm(postRoot)) {
@@ -399,6 +399,8 @@ contract WorldIDIdentityManagerImplV1 is
     /// @dev Can only be called by the owner.
     /// @dev The update is performed off-chain and verified on-chain via the `updateProof`. This
     ///      saves gas and time over removing identities one at a time.
+    /// @dev This function can perform arbitrary identity alterations and does not require any
+    ///      preconditions on the inputs other than that the identities are in reduced form.
     ///
     /// @param removalProof The proof that, given the conditions (`preRoot`, `startIndex` and
     ///        `removedIdentities`), updates in the tree results in `postRoot`. Elements 0 and 1 are
@@ -414,22 +416,71 @@ contract WorldIDIdentityManagerImplV1 is
     ///        described by `preRoot`. Must be an element of the field `Kr`.
     ///
     /// @custom:reverts Unauthorized If the message sender is not authorised to update identities.
-    /// @custom:reverts InvalidCommitment If one or more of the provided identities is invalid.
     /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
     /// @custom:reverts ProofValidationFailure If `removalProof` cannot be verified using the
     ///                 provided inputs.
-    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
-    ///                 `removedIdentities` is not an element of the field `Kr`. It describes the
-    ///                 type and value of the unreduced element.
+    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and `identities` is not
+    ///                 an element of the field `Kr`. It describes the type and value of the
+    ///                 unreduced element.
     function updateIdentities(
         uint256[8] calldata updateProof,
         uint256 preRoot,
         Identity[] calldata updatedIdentities,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyOwner {
-        // TODO What should this actually _do_ before hitting the verifier?
-        // 1. Compute an arbitrary hash (and document it).
-        // 2. Do the same verification (logically) that insert does.
+        // We can only operate on the latest root in reduced form.
+        if (!isInputInReducedForm(preRoot)) {
+            revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
+        }
+        if (preRoot != _latestRoot) {
+            revert NotLatestRoot(preRoot, _latestRoot);
+        }
+
+        // We also need the post root to be in reduced form.
+        if (!isInputInReducedForm(postRoot)) {
+            revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
+        }
+
+        // We only operate on identities that are in reduced form.
+        validateIdentitiesInReducedForm(updatedIdentities);
+
+        // With valid preconditions we can calculate the input to the proof.
+        bytes32 inputHash = calculateIdentityUpdateInputHash(preRoot, postRoot, updatedIdentities);
+
+        // No matter what, the input hashing process can result in a hash that is not an element of
+        // the field Fr. We reduce it into the field to give it safely to the verifier.
+        uint256 reducedInputHash = reduceInputElementInSnarkScalarField(uint256(inputHash));
+
+        // With all of that done we can hand it to the verifier to check the proof.
+        try batchInsertionVerifier.verifyProof(
+            [updateProof[0], updateProof[1]],
+            [[updateProof[2], updateProof[3]], [updateProof[4], updateProof[5]]],
+            [updateProof[6], updateProof[7]],
+            [reducedInputHash]
+        ) returns (bool verifierResult) {
+            // If the proof did not verify, we revert with a failure.
+            if (!verifierResult) {
+                revert ProofValidationFailure();
+            }
+
+            // If it did verify, we need to update the contract's state. We set the currently valid
+            // root to the root after the insertions.
+            _latestRoot = postRoot;
+
+            // We also need to add the previous root to the history, and set the timestamp at which
+            // it was expired.
+            rootHistory[preRoot] = uint128(block.timestamp);
+
+            // With the update confirmed, we send the root across multiple chains to ensure sync.
+            sendRootToStateBridge();
+        } catch Error(string memory errString) {
+            /// This is not the revert we're looking for.
+            revert(errString);
+        } catch {
+            // If we reach here we know it's the internal error, as the tree verifier only uses
+            // `require`s otherwise, which will be re-thrown above.
+            revert ProofValidationFailure();
+        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -632,14 +683,41 @@ contract WorldIDIdentityManagerImplV1 is
         }
     }
 
+    /// @notice Validates the array of identities for each of the old and new commitments being in
+    ///         reduced form.
+    ///
+    /// @param identities The array of (old, new) identity pairs with their indices to validate.
+    ///
+    /// @custom:reverts UnreducedElement If one or more of the provided commitments is not in
+    ////                reduced form.
+    function validateIdentitiesInReducedForm(Identity[] calldata identities)
+        internal
+        view
+        virtual
+    {
+        for (uint256 i = 0; i < identities.length; ++i) {
+            Identity memory identity = identities[i];
+            if (!isInputInReducedForm(identity.oldCommitment)) {
+                revert UnreducedElement(
+                    UnreducedElementType.IdentityCommitment, identity.oldCommitment
+                );
+            }
+            if (!isInputInReducedForm(identity.newCommitment)) {
+                revert UnreducedElement(
+                    UnreducedElementType.IdentityCommitment, identity.newCommitment
+                );
+            }
+        }
+    }
+
     /// @notice Vaslidates an array of identity commitments as part of identity removal.
     /// @dev Identities are not valid for identity removal if the provided commitment value is
     ///      non-zero.
     ///
     /// @param identities The array of identity commitments to be validated.
     ///
-    /// @custom:reverts Reverts with `InvalidCommitment` if one or more of the provided commitments
-    ///                 is invalid due to being non-zero.
+    /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid due
+    ///                 to being non-zero.
     function validateIdentityCommitmentsForRemoval(Identity[] calldata identities)
         internal
         view
