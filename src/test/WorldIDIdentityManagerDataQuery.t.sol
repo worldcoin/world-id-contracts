@@ -37,7 +37,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareVerifierTestCase(identities, prf);
+            prepareInsertIdentitiesTestCase(identities, prf);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
@@ -69,7 +69,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareVerifierTestCase(identities, prf);
+            prepareInsertIdentitiesTestCase(identities, prf);
         uint256 originalTimestamp = block.timestamp;
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,

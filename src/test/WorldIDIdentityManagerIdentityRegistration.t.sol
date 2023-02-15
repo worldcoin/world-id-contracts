@@ -55,7 +55,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareVerifierTestCase(identities, prf);
+            prepareInsertIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
@@ -82,7 +82,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareVerifierTestCase(identities, prf);
+            prepareInsertIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)

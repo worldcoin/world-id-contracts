@@ -106,6 +106,7 @@ contract WorldIDIdentityManagerTest is Test {
 
     /// @notice Initialises a new identity manager using the provided information.
     /// @dev It is initialised in the globals.
+    /// @dev It is initialised in the globals.
     ///
     /// @param actualPreRoot The pre-root to use.
     /// @param actualVerifier The verifier instance to use.
@@ -128,6 +129,11 @@ contract WorldIDIdentityManagerTest is Test {
 
         identityManager = new IdentityManager(managerImplAddress, initCallData);
         identityManagerAddress = address(identityManager);
+
+        bytes memory updateVerifierCallData =
+            abi.encodeCall(ManagerImpl.setIdentityUpdateVerifier, (new SimpleVerifier()));
+        (bool status,) = identityManagerAddress.call(updateVerifierCallData);
+        assert(status);
     }
 
     /// @notice Creates a new identity manager without initializing the delegate.
@@ -231,7 +237,22 @@ contract WorldIDIdentityManagerTest is Test {
     ///
     /// @return preparedIdents The conversion of `idents` to the proper type.
     /// @return actualProof The conversion of `pft` to the proper type.
-    function prepareVerifierTestCase(uint128[] memory idents, uint128[8] memory prf)
+    function prepareInsertIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
+        public
+        returns (uint256[] memory preparedIdents, uint256[8] memory actualProof)
+    {
+        for (uint256 i = 0; i < idents.length; ++i) {
+            vm.assume(idents[i] != 0x0);
+        }
+        preparedIdents = new uint256[](idents.length);
+        for (uint256 i = 0; i < idents.length; ++i) {
+            preparedIdents[i] = uint256(idents[i]);
+        }
+
+        actualProof = [uint256(prf[0]), prf[1], prf[2], prf[3], prf[4], prf[5], prf[6], prf[7]];
+    }
+
+    function prepareUpdateIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
         public
         returns (uint256[] memory preparedIdents, uint256[8] memory actualProof)
     {
