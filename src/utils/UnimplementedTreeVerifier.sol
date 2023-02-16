@@ -5,12 +5,25 @@ import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
 
 /// @title Unimplemented Tree Verifier
 /// @author Worldcoin
-/// @notice A tree verifier instance that performs no operations.
+/// @notice A tree verifier instance that will always revert.
+/// @dev This verifier is used as the default implementation for the update and remove endpoints in
+///      the WorldID identity manager. We do not currently have ZK circuit designs for these
+///      endpoints, but having the contract portion already implemented makes it easier for the
+///      future where those will work.
 contract UnimplementedTreeVerifier is ITreeVerifier {
     /// @notice Thrown when an operation is not supported.
     error UnsupportedOperation();
 
-    /// @notice Exists to satisfy the interface.
+    /// @notice Verifies the provided proof data for the provided public inputs.
+    /// @dev Exists to satisfy the interface. Will always revert.
+    ///
+    /// @param a The first G1Point of the proof (ar).
+    /// @param b The G2Point for the proof (bs).
+    /// @param c The second G1Point of the proof (kr).
+    /// @param input The public inputs to the function, reduced such that it is a member of the
+    ///              field `Fr` where `r` is `SNARK_SCALAR_FIELD`.
+    ///
+    /// @custom:reverts UnsupportedOperation When called.
     function verifyProof(
         uint256[2] memory a,
         uint256[2][2] memory b,

@@ -891,6 +891,7 @@ contract WorldIDIdentityManagerImplV1 is
     /// @return expiryTime The amount of time it takes for a root to expire.
     function getRootHistoryExpiry()
         public
+        view
         virtual
         onlyProxy
         onlyInitialized
