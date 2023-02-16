@@ -33,6 +33,46 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
+    /// @notice Checks that it is impossible to call `updateIdentities` while the contract is not
+    ///         initialised.
+    function testShouldNotCallUpdateIdentitiesWhileUninit(
+        uint128[] memory identities,
+        uint128[8] memory prf
+    ) public {
+        // Setup
+        makeUninitIdentityManager();
+        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareUpdateIdentitiesTestCase(identities, prf);
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.updateIdentities, (actualProof, initialRoot, preparedIdents, postRoot)
+        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `removeIdentities` while the contract is not
+    ///         initialised.
+    function testShouldNotCallRemoveIdentitiesWhileUninit(
+        uint128[] memory identities,
+        uint128[8] memory prf
+    ) public {
+        // Setup
+        makeUninitIdentityManager();
+        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareRemoveIdentitiesTestCase(identities, prf);
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.removeIdentities, (actualProof, initialRoot, preparedIdents, postRoot)
+        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
     /// @notice Checks that it is impossible to call `calculateTreeVerifierInputHash` while the
     ///         contract is not initialised.
     function testShouldNotCallCalculateInputHash() public {

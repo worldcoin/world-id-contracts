@@ -254,8 +254,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0));
     }
 
-    // TODO [Ara] Function to check that runs of zeroes are valid.
-
     /// @notice Tests that it reverts if an attempt is made to register identity commitments that
     ///         are not in reduced form.
     function testCannotRegisterIdentitiesWithUnreducedIdentities(uint128 i) public {
