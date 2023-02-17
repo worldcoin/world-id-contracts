@@ -13,25 +13,16 @@ contract SimpleVerifier is ITreeVerifier {
         uint256[2] memory c,
         uint256[1] memory input
     ) external pure override returns (bool) {
-        return SimpleVerify.verifyProof(a, b, c, input);
+        delete b;
+        delete c;
+        delete input;
+        return a[0] % 2 == 0;
     }
 }
 
 library SimpleVerify {
     function isValidInput(uint256 a) public pure returns (bool) {
         return a % 2 == 0;
-    }
-
-    function verifyProof(
-        uint256[2] memory a,
-        uint256[2][2] memory b,
-        uint256[2] memory c,
-        uint256[1] memory input
-    ) public pure returns (bool) {
-        delete b;
-        delete c;
-        delete input;
-        return isValidInput(a[0]);
     }
 
     function calculateInputHash(

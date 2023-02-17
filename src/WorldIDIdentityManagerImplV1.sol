@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
+import {CheckInitialized} from "./utils/CheckInitialized.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
+import {UnimplementedTreeVerifier} from "./utils/UnimplementedTreeVerifier.sol";
 import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
 
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -14,7 +16,12 @@ import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable
 /// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs
 ///      to perform the insertions.
 /// @dev This is the implementation delegated to by a proxy.
-contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IWorldID {
+contract WorldIDIdentityManagerImplV1 is
+    OwnableUpgradeable,
+    UUPSUpgradeable,
+    IWorldID,
+    CheckInitialized
+{
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -51,10 +58,6 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     // these variables takes place. If reordering happens, a storage clash will occur (effectively a
     // memory safety error).
 
-    /// @notice Whether the initialization has been completed.
-    /// @dev This relies on the fact that a default-init `bool` is `false` here.
-    bool internal _initialized;
-
     /// @notice The latest root of the identity merkle tree.
     uint256 internal _latestRoot;
 
@@ -65,7 +68,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @notice The amount of time an outdated root is considered as valid.
     /// @dev This prevents proofs getting invalidated in the mempool by another tx modifying the
     ///      group.
-    uint256 internal constant ROOT_HISTORY_EXPIRY = 1 hours;
+    uint256 internal rootHistoryExpiry;
 
     /// @notice Represents the initial leaf in an empty merkle tree.
     /// @dev Prevents the empty leaf from being inserted into the root history.
@@ -77,10 +80,13 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
     /// @notice The verifier instance needed for verifying batch identity insertions.
-    ITreeVerifier private merkleTreeVerifier;
+    ITreeVerifier internal batchInsertionVerifier;
+
+    /// @notice The verifier instance needed for verifying identity updates.
+    ITreeVerifier internal identityUpdateVerifier;
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
-    SemaphoreVerifier private semaphoreVerifier;
+    SemaphoreVerifier internal semaphoreVerifier;
 
     /// @notice The interface of the bridge contract from L1 to supported target chains.
     address internal _stateBridgeProxyAddress;
@@ -103,6 +109,19 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         uint256 root;
         uint128 supersededTimestamp;
         bool isValid;
+    }
+
+    /// @notice A structure representing an identity when it needs to be paired to an index.
+    ///
+    /// @param leafIndex The index in the merkle tree at which `commitment` can be found.
+    /// @param oldCommitment The previous value of the identity commitment at the provided
+    ///        `leafIndex` in the merkle tree.
+    /// @param newCommitment The new value of the identity commitment at the provided `leafIndex` in
+    ///        the merkle tree.
+    struct IdentityUpdate {
+        uint32 leafIndex;
+        uint256 oldCommitment;
+        uint256 newCommitment;
     }
 
     /// @notice Represents the kind of element that has not been provided in reduced form.
@@ -162,10 +181,6 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///         history.
     error NonExistentRoot();
 
-    /// @notice Thrown when attempting to call a function while the implementation has not been
-    ///         initialized.
-    error ImplementationNotInitialized();
-
     /// @notice Thrown when attempting to send a transaction to the state bridge proxy that fails.
     error StateBridgeProxySendRootMultichainFailure();
 
@@ -212,17 +227,20 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         address initialStateBridgeProxyAddress
     ) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
-        __delegate_init();
+        __delegateInit();
 
         // Now perform the init logic for this contract.
+        rootHistoryExpiry = 1 hours;
+        ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
         _latestRoot = initialRoot;
-        merkleTreeVerifier = _merkleTreeVerifier;
+        batchInsertionVerifier = _merkleTreeVerifier;
+        identityUpdateVerifier = unimplementedVerifier;
         semaphoreVerifier = new SemaphoreVerifier();
         _stateBridgeProxyAddress = initialStateBridgeProxyAddress;
         _isStateBridgeEnabled = _enableStateBridge;
 
         // Say that the contract is initialized.
-        _initialized = true;
+        __setInitialized();
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -231,7 +249,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///      is accounted for here.
     ///
     /// @custom:reverts string If called more than once.
-    function __delegate_init() internal virtual onlyInitializing {
+    function __delegateInit() internal virtual onlyInitializing {
         __Ownable_init();
         __UUPSUpgradeable_init();
     }
@@ -240,7 +258,8 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///                           IDENTITY MANAGEMENT                           ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Registers identities into the WorldID system. Can only be called by the manager.
+    /// @notice Registers identities into the WorldID system.
+    /// @dev Can only be called by the owner.
     /// @dev Registration is performed off-chain and verified on-chain via the `insertionProof`.
     ///      This saves gas and time over inserting identities one at a time.
     ///
@@ -267,7 +286,6 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///                 `identityCommitments` is not an element of the field `Kr`. It describes the
     ///                 type and value of the unreduced element.
     function registerIdentities(
-        // MerkleTreeProof calldata insertionProof,
         uint256[8] calldata insertionProof,
         uint256 preRoot,
         uint32 startIndex,
@@ -285,7 +303,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         // As the `startIndex` is restricted to a uint32, where
         // `type(uint32).max <<< SNARK_SCALAR_FIELD`, we are safe not to check this. As verified in
         // the tests, a revert happens if you pass a value larger than `type(uint32).max` when
-        // calling outside the type-checker.
+        // calling outside the type-checker's protection.
 
         // We need the post root to be in reduced form.
         if (!isInputInReducedForm(postRoot)) {
@@ -293,18 +311,19 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         }
 
         // We can only operate on identities that are valid and in reduced form.
-        validateIdentityCommitments(identityCommitments);
+        validateIdentityCommitmentsForRegistration(identityCommitments);
 
         // Having validated the preconditions we can now check the proof itself.
-        bytes32 inputHash =
-            calculateTreeVerifierInputHash(startIndex, preRoot, postRoot, identityCommitments);
+        bytes32 inputHash = calculateIdentityRegistrationInputHash(
+            startIndex, preRoot, postRoot, identityCommitments
+        );
 
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
         // verifier.
         uint256 reducedElement = reduceInputElementInSnarkScalarField(uint256(inputHash));
 
-        try merkleTreeVerifier.verifyProof(
+        try batchInsertionVerifier.verifyProof(
             [insertionProof[0], insertionProof[1]],
             [[insertionProof[2], insertionProof[3]], [insertionProof[4], insertionProof[5]]],
             [insertionProof[6], insertionProof[7]],
@@ -335,11 +354,140 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         }
     }
 
+    /// @notice Removes identities from the WorldID system.
+    /// @dev Can only be called by the owner.
+    /// @dev The removal is performed off-chain and verified on-chain via the `removalProof`. This
+    ///      saves gas and time over removing identities one at a time.
+    ///
+    /// @param removalProof The proof that, given the conditions (`preRoot`, `startIndex` and
+    ///        `removedIdentities`), removal from the tree results in `postRoot`. Elements 0 and 1
+    ///        are the `x` and `y` coordinates for `ar` respectively. Elements 2 and 3 are the `x`
+    ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
+    ///        and 7 are the `x` and `y` coordinates for `krs`.
+    /// @param preRoot The value for the root of the tree before the `removedIdentities` have been
+    ////       removed. Must be an element of the field `Kr`.
+    /// @param removedIdentities The identities that were removed from the tree. As they each hold
+    ///        their own leaf index, these need not be contiguous. All of the commitments must be
+    ///        elements of the field `Kr`.
+    /// @param postRoot The root obtained after removing all of `removedIdentities` from the tree
+    ///        described by `preRoot`. Must be an element of the field `Kr`.
+    ///
+    /// @custom:reverts Unauthorized If the message sender is not authorised to remove identities.
+    /// @custom:reverts InvalidCommitment If one or more of the provided identities is invalid.
+    /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
+    /// @custom:reverts ProofValidationFailure If `removalProof` cannot be verified using the
+    ///                 provided inputs.
+    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
+    ///                 `removedIdentities` is not an element of the field `Kr`. It describes the
+    ///                 type and value of the unreduced element.
+    function removeIdentities(
+        uint256[8] calldata removalProof,
+        uint256 preRoot,
+        IdentityUpdate[] calldata removedIdentities,
+        uint256 postRoot
+    ) public virtual onlyProxy onlyInitialized onlyOwner {
+        // We need to validate that all of the new commitments for the provided removedIdentities
+        // are equal to zero.
+        validateIdentityCommitmentsForRemoval(removedIdentities);
+
+        // Removing identities is just a special case of updating identities with the target
+        // identities. With the validation done we can just delegate.
+        updateIdentities(removalProof, preRoot, removedIdentities, postRoot);
+    }
+
+    /// @notice Updates identities in the WorldID system.
+    /// @dev Can only be called by the owner.
+    /// @dev The update is performed off-chain and verified on-chain via the `updateProof`. This
+    ///      saves gas and time over removing identities one at a time.
+    /// @dev This function can perform arbitrary identity alterations and does not require any
+    ///      preconditions on the inputs other than that the identities are in reduced form.
+    ///
+    /// @param removalProof The proof that, given the conditions (`preRoot`, `startIndex` and
+    ///        `removedIdentities`), updates in the tree results in `postRoot`. Elements 0 and 1 are
+    ///        the `x` and `y` coordinates for `ar` respectively. Elements 2 and 3 are the `x`
+    ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
+    ///        and 7 are the `x` and `y` coordinates for `krs`.
+    /// @param preRoot The value for the root of the tree before the `updatedIdentities` have been
+    ////       altered. Must be an element of the field `Kr`.
+    /// @param updatedIdentities The identities that were updated in the tree. As they each hold
+    ///        their own leaf index, these need not be contiguous. All of the commitments must be
+    ///        elements of the field `Kr`.
+    /// @param postRoot The root obtained after removing all of `removedIdentities` from the tree
+    ///        described by `preRoot`. Must be an element of the field `Kr`.
+    ///
+    /// @custom:reverts Unauthorized If the message sender is not authorised to update identities.
+    /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
+    /// @custom:reverts ProofValidationFailure If `removalProof` cannot be verified using the
+    ///                 provided inputs.
+    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and `identities` is not
+    ///                 an element of the field `Kr`. It describes the type and value of the
+    ///                 unreduced element.
+    function updateIdentities(
+        uint256[8] calldata updateProof,
+        uint256 preRoot,
+        IdentityUpdate[] calldata updatedIdentities,
+        uint256 postRoot
+    ) public virtual onlyProxy onlyInitialized onlyOwner {
+        // We can only operate on the latest root in reduced form.
+        if (!isInputInReducedForm(preRoot)) {
+            revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
+        }
+        if (preRoot != _latestRoot) {
+            revert NotLatestRoot(preRoot, _latestRoot);
+        }
+
+        // We also need the post root to be in reduced form.
+        if (!isInputInReducedForm(postRoot)) {
+            revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
+        }
+
+        // We only operate on identities that are in reduced form.
+        validateIdentitiesInReducedForm(updatedIdentities);
+
+        // With valid preconditions we can calculate the input to the proof.
+        bytes32 inputHash = calculateIdentityUpdateInputHash(preRoot, postRoot, updatedIdentities);
+
+        // No matter what, the input hashing process can result in a hash that is not an element of
+        // the field Fr. We reduce it into the field to give it safely to the verifier.
+        uint256 reducedInputHash = reduceInputElementInSnarkScalarField(uint256(inputHash));
+
+        // With all of that done we can hand it to the verifier to check the proof.
+        try batchInsertionVerifier.verifyProof(
+            [updateProof[0], updateProof[1]],
+            [[updateProof[2], updateProof[3]], [updateProof[4], updateProof[5]]],
+            [updateProof[6], updateProof[7]],
+            [reducedInputHash]
+        ) returns (bool verifierResult) {
+            // If the proof did not verify, we revert with a failure.
+            if (!verifierResult) {
+                revert ProofValidationFailure();
+            }
+
+            // If it did verify, we need to update the contract's state. We set the currently valid
+            // root to the root after the insertions.
+            _latestRoot = postRoot;
+
+            // We also need to add the previous root to the history, and set the timestamp at which
+            // it was expired.
+            rootHistory[preRoot] = uint128(block.timestamp);
+
+            // With the update confirmed, we send the root across multiple chains to ensure sync.
+            sendRootToStateBridge();
+        } catch Error(string memory errString) {
+            /// This is not the revert we're looking for.
+            revert(errString);
+        } catch {
+            // If we reach here we know it's the internal error, as the tree verifier only uses
+            // `require`s otherwise, which will be re-thrown above.
+            revert ProofValidationFailure();
+        }
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             UTILITY FUNCTIONS                           ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Calculates the input hash for the merkle tree verifier.
+    /// @notice Calculates the input hash for the identity registration verifier.
     /// @dev Implements the computation described below.
     ///
     /// @param startIndex The index in the tree from which inserting started.
@@ -347,10 +495,13 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     /// @param postRoot The root value of the tree after these insertsions were made.
     /// @param identityCommitments The identities that were added to the tree to produce `postRoot`.
     ///
+    /// @return hash The input hash calculated as described below.
+    ///
     /// We keccak hash all input to save verification gas. Inputs are arranged as follows:
+    ///
     /// StartIndex || PreRoot || PostRoot || IdComms[0] || IdComms[1] || ... || IdComms[batchSize-1]
     ///     32	   ||   256   ||   256    ||    256     ||    256     || ... ||     256 bits
-    function calculateTreeVerifierInputHash(
+    function calculateIdentityRegistrationInputHash(
         uint32 startIndex,
         uint256 preRoot,
         uint256 postRoot,
@@ -358,6 +509,40 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ) public view virtual onlyProxy onlyInitialized returns (bytes32 hash) {
         bytes memory bytesToHash =
             abi.encodePacked(startIndex, preRoot, postRoot, identityCommitments);
+
+        hash = keccak256(bytesToHash);
+    }
+
+    /// @notice Calculates the input hash for the identity update verifier.
+    /// @dev Implements the computation described below.
+    ///
+    /// @param preRoot The root value of the tree before the updates were made.
+    /// @param postRoot The root value of the tree after the udpates were made.
+    /// @param identities The identity structures providing the identity data.
+    ///
+    /// @return hash The input hash calculated as described below.
+    ///
+    /// We keccak hash all input to save verification gas. The inputs are arranged as follows:
+    ///
+    /// preRoot || postRoot || id[0].leafIndex || id[0].oldCommitment || id[0].newCommitment || ... || id[n].leafIndex || id[n].oldCommitment || id[n].newCommitment
+    ///   256   ||    256   ||        32       ||         256         ||          256        || ... ||        32       ||         256         ||          256
+    ///
+    /// where:
+    /// - `id[n] == identities[n]`
+    /// - `n == batchSize - 1`
+    function calculateIdentityUpdateInputHash(
+        uint256 preRoot,
+        uint256 postRoot,
+        IdentityUpdate[] calldata identities
+    ) public view virtual onlyProxy onlyInitialized returns (bytes32 hash) {
+        bytes memory identityBytes = new bytes(0);
+        for (uint256 i = 0; i < identities.length; ++i) {
+            IdentityUpdate memory ident = identities[i];
+            bytes memory newBytes =
+                abi.encodePacked(ident.leafIndex, ident.oldCommitment, ident.newCommitment);
+            identityBytes = bytes.concat(identityBytes, newBytes);
+        }
+        bytes memory bytesToHash = abi.encodePacked(preRoot, postRoot, identityBytes);
 
         hash = keccak256(bytesToHash);
     }
@@ -444,8 +629,8 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///
     /// @param root The root for which you are querying information.
     /// @return rootInfo The information about `root`, or `NO_SUCH_ROOT` if `root` does not exist.
-    ///                  Note that if the queried root is the current, the timestamp will be invalid
-    ///                  as the root has not been superseded.
+    ///         Note that if the queried root is the current, the timestamp will be invalid as the
+    ///         root has not been superseded.
     function queryRoot(uint256 root)
         public
         view
@@ -463,7 +648,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
                 return NO_SUCH_ROOT();
             }
 
-            bool isValid = !(block.timestamp - rootTimestamp > ROOT_HISTORY_EXPIRY);
+            bool isValid = !(block.timestamp - rootTimestamp > rootHistoryExpiry);
             return RootInfo(root, rootTimestamp, isValid);
         }
     }
@@ -479,7 +664,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
     ///                 is invalid.
     /// @custom:reverts Reverts with `UnreducedElement` if one or more of the provided commitments
     ///                 is not in reduced form.
-    function validateIdentityCommitments(uint256[] calldata identityCommitments)
+    function validateIdentityCommitmentsForRegistration(uint256[] calldata identityCommitments)
         internal
         view
         virtual
@@ -495,6 +680,54 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
                 revert UnreducedElement(UnreducedElementType.IdentityCommitment, commitment);
             }
             previousIsZero = commitment == EMPTY_LEAF;
+        }
+    }
+
+    /// @notice Validates the array of identities for each of the old and new commitments being in
+    ///         reduced form.
+    ///
+    /// @param identities The array of (old, new) identity pairs with their indices to validate.
+    ///
+    /// @custom:reverts UnreducedElement If one or more of the provided commitments is not in
+    ////                reduced form.
+    function validateIdentitiesInReducedForm(IdentityUpdate[] calldata identities)
+        internal
+        view
+        virtual
+    {
+        for (uint256 i = 0; i < identities.length; ++i) {
+            IdentityUpdate memory identity = identities[i];
+            if (!isInputInReducedForm(identity.oldCommitment)) {
+                revert UnreducedElement(
+                    UnreducedElementType.IdentityCommitment, identity.oldCommitment
+                );
+            }
+            if (!isInputInReducedForm(identity.newCommitment)) {
+                revert UnreducedElement(
+                    UnreducedElementType.IdentityCommitment, identity.newCommitment
+                );
+            }
+        }
+    }
+
+    /// @notice Vaslidates an array of identity commitments as part of identity removal.
+    /// @dev Identities are not valid for identity removal if the provided commitment value is
+    ///      non-zero.
+    ///
+    /// @param identities The array of identity commitments to be validated.
+    ///
+    /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid due
+    ///                 to being non-zero.
+    function validateIdentityCommitmentsForRemoval(IdentityUpdate[] calldata identities)
+        internal
+        view
+        virtual
+    {
+        for (uint256 i = 0; i < identities.length; ++i) {
+            IdentityUpdate memory commitmentValue = identities[i];
+            if (commitmentValue.newCommitment != 0) {
+                revert InvalidCommitment(i);
+            }
         }
     }
 
@@ -547,7 +780,7 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
             uint128 rootTimestamp = rootHistory[root];
 
             // A root is no longer valid if it has expired.
-            if (block.timestamp - rootTimestamp > ROOT_HISTORY_EXPIRY) {
+            if (block.timestamp - rootTimestamp > rootHistoryExpiry) {
                 revert ExpiredRoot();
             }
 
@@ -558,6 +791,130 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
         }
 
         return true;
+    }
+
+    /// @notice Gets the address for the merkle tree verifier used for verifying identity
+    ///         registrations.
+    ///
+    /// @return addr The addresss of the contract being used as the verifier.
+    function getRegisterIdentitiesVerifierAddress()
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (address addr)
+    {
+        return address(batchInsertionVerifier);
+    }
+
+    /// @notice Sets the address for the merkle tree verifier to be used for verification of
+    ///         identity registrations.
+    /// @dev Only the owner of the contract can call this function.
+    ///
+    /// @param newVerifier The new verifier instance to be used for verifying identity
+    ///                    registrations.
+    function setRegisterIdentitiesVerifier(ITreeVerifier newVerifier)
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+    {
+        batchInsertionVerifier = newVerifier;
+    }
+
+    /// @notice Gets the address for the merkle tree verifier used for verifying identity
+    ///         updates.
+    /// @dev The update verifier is also used for member removals.
+    ///
+    /// @return addr The addresss of the contract being used as the verifier.
+    function getIdentityUpdateVerifierAddress()
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (address addr)
+    {
+        return address(identityUpdateVerifier);
+    }
+
+    /// @notice Sets the address for the merkle tree verifier to be used for verification of
+    ///         identity updates.
+    /// @dev Only the owner of the contract can call this function.
+    /// @dev The update verifier is also used for member removals.
+    ///
+    /// @param newVerifier The new verifier instance to be used for verifying identity
+    ///                    updates.
+    function setIdentityUpdateVerifier(ITreeVerifier newVerifier)
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+    {
+        identityUpdateVerifier = newVerifier;
+    }
+
+    /// @notice Gets the address of the verifier used for verification of semaphore proofs.
+    ///
+    /// @return addr The addresss of the contract being used as the verifier.
+    function getSemaphoreVerifierAddress()
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (address addr)
+    {
+        return address(semaphoreVerifier);
+    }
+
+    /// @notice Sets the address for the semaphore verifier to be used for verification of
+    ///         semaphore proofs.
+    /// @dev Only the owner of the contract can call this function.
+    ///
+    /// @param newVerifier The new verifier instance to be used for verifying semaphore proofs.
+    function setSemaphoreVerifier(SemaphoreVerifier newVerifier)
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+    {
+        semaphoreVerifier = newVerifier;
+    }
+
+    /// @notice Gets the current amount of time used to expire roots in the history.
+    ///
+    /// @return expiryTime The amount of time it takes for a root to expire.
+    function getRootHistoryExpiry()
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (uint256 expiryTime)
+    {
+        return rootHistoryExpiry;
+    }
+
+    /// @notice Sets the time to wait before expiring a root from the root history.
+    /// @dev Only the owner of the contract can call this function.
+    ///
+    /// @param newExpiryTime The new time to use to expire roots.
+    function setRootHistoryExpiry(uint256 newExpiryTime)
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+    {
+        if (newExpiryTime == 0) {
+            revert("Expiry time cannot be zero.");
+        }
+        rootHistoryExpiry = newExpiryTime;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -611,18 +968,5 @@ contract WorldIDIdentityManagerImplV1 is OwnableUpgradeable, UUPSUpgradeable, IW
                 publicSignals
             );
         }
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                             AUTHENTICATION                              ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Asserts that the annotated function can only be called once the contract has been
-    ///         initialized.
-    modifier onlyInitialized() {
-        if (!_initialized) {
-            revert ImplementationNotInitialized();
-        }
-        _;
     }
 }
