@@ -27,7 +27,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
-        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
@@ -52,7 +52,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
-        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
@@ -72,7 +72,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         vm.assume(nonManager != address(this) && nonManager != address(0x0));
-        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.removeIdentities, (actualProof, preRoot, preparedIdents, postRoot)
@@ -94,7 +94,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         vm.assume(index < identities.length && commitment != 0);
-        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         preparedIdents[index].newCommitment = uint256(commitment);
         bytes memory callData = abi.encodeCall(
@@ -120,7 +120,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
             currentPreRoot != actualRoot && currentPreRoot < SNARK_SCALAR_FIELD
                 && actualRoot < SNARK_SCALAR_FIELD
         );
-        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         makeNewIdentityManager(
             uint256(currentPreRoot), verifier, isStateBridgeEnabled, stateBridgeProxy
@@ -147,7 +147,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         vm.assume(position < identities.length);
-        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         preparedIdents[position].oldCommitment = SNARK_SCALAR_FIELD + i;
@@ -173,7 +173,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
-        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, postRoot)
@@ -197,7 +197,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
-        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.removeIdentities, (actualProof, initialRoot, preparedIdents, newPostRoot)
@@ -219,7 +219,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         address expectedOwner = managerImpl.owner();
-        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         vm.expectRevert("Function must be called through delegatecall");
         vm.prank(expectedOwner);

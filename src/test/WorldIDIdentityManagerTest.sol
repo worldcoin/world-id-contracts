@@ -263,12 +263,12 @@ contract WorldIDIdentityManagerTest is Test {
     /// @return actualProof The conversion of `prf` to the proper type.
     function prepareUpdateIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
         public
-        returns (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof)
+        returns (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof)
     {
         for (uint256 i = 0; i < idents.length; ++i) {
             vm.assume(idents[i] != 0x0);
         }
-        preparedIdents = new ManagerImpl.Identity[](idents.length);
+        preparedIdents = new ManagerImpl.IdentityUpdate[](idents.length);
         for (uint256 i = 0; i < idents.length; ++i) {
             preparedIdents[i].leafIndex = uint32(idents[i] % 1024);
             preparedIdents[i].oldCommitment = idents[i];
@@ -294,12 +294,12 @@ contract WorldIDIdentityManagerTest is Test {
     /// @return actualProof The conversion of `prf` to the proper type.
     function prepareRemoveIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
         public
-        returns (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof)
+        returns (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof)
     {
         for (uint256 i = 0; i < idents.length; ++i) {
             vm.assume(idents[i] != 0x0);
         }
-        preparedIdents = new ManagerImpl.Identity[](idents.length);
+        preparedIdents = new ManagerImpl.IdentityUpdate[](idents.length);
         for (uint256 i = 0; i < idents.length; ++i) {
             preparedIdents[i].leafIndex = uint32(idents[i % 1024]);
             preparedIdents[i].oldCommitment = idents[i];

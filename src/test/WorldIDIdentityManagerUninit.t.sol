@@ -41,7 +41,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         makeUninitIdentityManager();
-        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities, (actualProof, initialRoot, preparedIdents, postRoot)
@@ -61,7 +61,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         makeUninitIdentityManager();
-        (ManagerImpl.Identity[] memory preparedIdents, uint256[8] memory actualProof) =
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.removeIdentities, (actualProof, initialRoot, preparedIdents, postRoot)

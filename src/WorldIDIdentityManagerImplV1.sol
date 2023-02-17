@@ -118,7 +118,7 @@ contract WorldIDIdentityManagerImplV1 is
     ///        `leafIndex` in the merkle tree.
     /// @param newCommitment The new value of the identity commitment at the provided `leafIndex` in
     ///        the merkle tree.
-    struct Identity {
+    struct IdentityUpdate {
         uint32 leafIndex;
         uint256 oldCommitment;
         uint256 newCommitment;
@@ -383,7 +383,7 @@ contract WorldIDIdentityManagerImplV1 is
     function removeIdentities(
         uint256[8] calldata removalProof,
         uint256 preRoot,
-        Identity[] calldata removedIdentities,
+        IdentityUpdate[] calldata removedIdentities,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyOwner {
         // We need to validate that all of the new commitments for the provided removedIdentities
@@ -425,7 +425,7 @@ contract WorldIDIdentityManagerImplV1 is
     function updateIdentities(
         uint256[8] calldata updateProof,
         uint256 preRoot,
-        Identity[] calldata updatedIdentities,
+        IdentityUpdate[] calldata updatedIdentities,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyOwner {
         // We can only operate on the latest root in reduced form.
@@ -533,11 +533,11 @@ contract WorldIDIdentityManagerImplV1 is
     function calculateIdentityUpdateInputHash(
         uint256 preRoot,
         uint256 postRoot,
-        Identity[] calldata identities
+        IdentityUpdate[] calldata identities
     ) public view virtual onlyProxy onlyInitialized returns (bytes32 hash) {
         bytes memory identityBytes = new bytes(0);
         for (uint256 i = 0; i < identities.length; ++i) {
-            Identity memory ident = identities[i];
+            IdentityUpdate memory ident = identities[i];
             bytes memory newBytes =
                 abi.encodePacked(ident.leafIndex, ident.oldCommitment, ident.newCommitment);
             identityBytes = bytes.concat(identityBytes, newBytes);
@@ -690,13 +690,13 @@ contract WorldIDIdentityManagerImplV1 is
     ///
     /// @custom:reverts UnreducedElement If one or more of the provided commitments is not in
     ////                reduced form.
-    function validateIdentitiesInReducedForm(Identity[] calldata identities)
+    function validateIdentitiesInReducedForm(IdentityUpdate[] calldata identities)
         internal
         view
         virtual
     {
         for (uint256 i = 0; i < identities.length; ++i) {
-            Identity memory identity = identities[i];
+            IdentityUpdate memory identity = identities[i];
             if (!isInputInReducedForm(identity.oldCommitment)) {
                 revert UnreducedElement(
                     UnreducedElementType.IdentityCommitment, identity.oldCommitment
@@ -718,13 +718,13 @@ contract WorldIDIdentityManagerImplV1 is
     ///
     /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid due
     ///                 to being non-zero.
-    function validateIdentityCommitmentsForRemoval(Identity[] calldata identities)
+    function validateIdentityCommitmentsForRemoval(IdentityUpdate[] calldata identities)
         internal
         view
         virtual
     {
         for (uint256 i = 0; i < identities.length; ++i) {
-            Identity memory commitmentValue = identities[i];
+            IdentityUpdate memory commitmentValue = identities[i];
             if (commitmentValue.newCommitment != 0) {
                 revert InvalidCommitment(i);
             }

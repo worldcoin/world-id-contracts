@@ -79,9 +79,11 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
         uint256 newIdent2
     ) public {
         // Setup
-        ManagerImpl.Identity memory ident1 = ManagerImpl.Identity(startIndex1, oldIdent1, newIdent1);
-        ManagerImpl.Identity memory ident2 = ManagerImpl.Identity(startIndex2, oldIdent2, newIdent2);
-        ManagerImpl.Identity[] memory newIdents = new ManagerImpl.Identity[](2);
+        ManagerImpl.IdentityUpdate memory ident1 =
+            ManagerImpl.IdentityUpdate(startIndex1, oldIdent1, newIdent1);
+        ManagerImpl.IdentityUpdate memory ident2 =
+            ManagerImpl.IdentityUpdate(startIndex2, oldIdent2, newIdent2);
+        ManagerImpl.IdentityUpdate[] memory newIdents = new ManagerImpl.IdentityUpdate[](2);
         newIdents[0] = ident1;
         newIdents[1] = ident2;
         bytes32 expectedResult = keccak256(
@@ -116,9 +118,11 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
         uint256 newIdent2
     ) public {
         // Setup
-        ManagerImpl.Identity memory ident1 = ManagerImpl.Identity(startIndex1, oldIdent1, newIdent1);
-        ManagerImpl.Identity memory ident2 = ManagerImpl.Identity(startIndex2, oldIdent2, newIdent2);
-        ManagerImpl.Identity[] memory newIdents = new ManagerImpl.Identity[](2);
+        ManagerImpl.IdentityUpdate memory ident1 =
+            ManagerImpl.IdentityUpdate(startIndex1, oldIdent1, newIdent1);
+        ManagerImpl.IdentityUpdate memory ident2 =
+            ManagerImpl.IdentityUpdate(startIndex2, oldIdent2, newIdent2);
+        ManagerImpl.IdentityUpdate[] memory newIdents = new ManagerImpl.IdentityUpdate[](2);
         newIdents[0] = ident1;
         newIdents[1] = ident2;
         vm.expectRevert("Function must be called through delegatecall");
