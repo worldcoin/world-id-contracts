@@ -1,40 +1,40 @@
 on:
-    push:
-        branches:
-            - main
-    pull_request:
+  push:
+    branches:
+      - main
+  pull_request:
 
 name: Unit Tests
 
 jobs:
-    tests:
-        runs-on: ubuntu-latest
+  tests:
+    runs-on: ubuntu-latest
 
-        steps:
-            - uses: actions/checkout@v2
-              with:
-                  submodules: recursive
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          submodules: recursive
 
-            - name: Install Foundry
-              uses: onbjerg/foundry-toolchain@v1
-              with:
-                  version: nightly
+      - name: Install Foundry
+        uses: onbjerg/foundry-toolchain@v1
+        with:
+          version: nightly
 
-            - uses: actions/setup-node@v2
-              with:
-                  node-version: '17'
-                  cache: 'npm'
+      - uses: actions/setup-node@v2
+        with:
+          node-version: '17'
+          cache: 'npm'
 
-            - name: Install Dependencies
-              run: make install
+      - name: Install Dependencies
+        run: make install
 
-            - name: Build Contracts
-              run: make build
+      - name: Build Contracts
+        run: make build
 
-            - name: Run Tests
-              run: make test
+      - name: Run Tests
+        run: make test
 
-            - name: Run Benchmarks
-              run: |
-                  make bench
-                  make snapshot
+      - name: Run Benchmarks
+        run: |
+          make bench
+          make snapshot
