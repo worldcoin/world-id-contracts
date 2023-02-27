@@ -19,7 +19,7 @@
 
 // 2019 OKIMS
 
-pragma solidity ^0.8.10;
+pragma solidity 0.8.4;
 
 // Worldcoin Modification Begin
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";

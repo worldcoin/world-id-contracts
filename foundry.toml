@@ -30,7 +30,6 @@ via_ir = true
 # We can have quite some control over the optimiser when using the new IR one.
 [profile.default.optimizer_details]
 peephole = true           # Enables the peephole optimisation.
-inliner = true            # Enables the inliner.
 jumpdest_remover = true   # Enables the elimination of jump destinations.
 order_literals = true     # Allows re-ordering literals in commutative ops.
 deduplicate = true        # Removes duplicate code blocks.

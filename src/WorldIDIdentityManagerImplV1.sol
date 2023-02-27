@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity 0.8.4;
 
 import {CheckInitialized} from "./utils/CheckInitialized.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
@@ -93,6 +93,9 @@ contract WorldIDIdentityManagerImplV1 is
 
     /// @notice Boolean flag to enable/disable the state bridge.
     bool internal _isStateBridgeEnabled;
+
+    /// @notice MerkleTree depth
+    uint8 internal treeDepth;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                               PUBLIC TYPES                              ///
@@ -212,7 +215,7 @@ contract WorldIDIdentityManagerImplV1 is
     ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
     ///      replaced by use of setters.
     ///
-    /// @param treeDepths The depth of the MerkeTree
+    /// @param _treeDepth The depth of the MerkeTree
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of the empty tree.
     /// @param _merkleTreeVerifier The initial tree verifier to use.
@@ -222,7 +225,7 @@ contract WorldIDIdentityManagerImplV1 is
     ///
     /// @custom:reverts string If called more than once at the same initalisation number.
     function initialize(
-        uint8 treeDepths,
+        uint8 _treeDepth,
         uint256 initialRoot,
         ITreeVerifier _merkleTreeVerifier,
         bool _enableStateBridge,
@@ -960,14 +963,14 @@ contract WorldIDIdentityManagerImplV1 is
         uint256 externalNullifierHash,
         uint256[8] calldata proof
     ) public view virtual onlyProxy onlyInitialized {
-        uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
-
         if (checkValidRoot(root)) {
             semaphoreVerifier.verifyProof(
-                [proof[0], proof[1]],
-                [[proof[2], proof[3]], [proof[4], proof[5]]],
-                [proof[6], proof[7]],
-                publicSignals
+                root,
+                nullifierHash,
+                signalHash,
+                externalNullifierHash,
+                proof,
+                treeDepth
             );
         }
     }
