@@ -7,7 +7,7 @@ import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
+import {SemaphoreVerifier} from "lib/semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
 import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
 import {WorldIDIdentityManagerImplMock} from "./mock/WorldIDIdentityManagerImplMock.sol";
 import {CheckInitialized} from "../utils/CheckInitialized.sol";

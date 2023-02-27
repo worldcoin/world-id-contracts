@@ -5,7 +5,7 @@ import {CheckInitialized} from "./utils/CheckInitialized.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
 import {UnimplementedTreeVerifier} from "./utils/UnimplementedTreeVerifier.sol";
-import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
+import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
 
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -212,6 +212,7 @@ contract WorldIDIdentityManagerImplV1 is
     ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
     ///      replaced by use of setters.
     ///
+    /// @param treeDepths The depth of the MerkeTree
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of the empty tree.
     /// @param _merkleTreeVerifier The initial tree verifier to use.
@@ -221,6 +222,7 @@ contract WorldIDIdentityManagerImplV1 is
     ///
     /// @custom:reverts string If called more than once at the same initalisation number.
     function initialize(
+        uint8 treeDepths,
         uint256 initialRoot,
         ITreeVerifier _merkleTreeVerifier,
         bool _enableStateBridge,
