@@ -404,6 +404,7 @@ async function deployIdentityManager(plan, config) {
         const iface = new Interface(IdentityManagerImpl.abi);
         const processedStateBridgeAddress = utils.getAddress(config.stateBridgeContractAddress);
         const callData = iface.encodeFunctionData('initialize', [
+            config.treeDepth,
             config.initialRoot,
             config.verifierContractAddress,
             config.enableStateBridge,
