@@ -221,7 +221,7 @@ contract Verifier is ITreeVerifier {
         uint256[2][2] memory b,
         uint256[2] memory c,
         uint256[1] memory input
-    ) public view returns (bool r) {
+    ) public view override returns (bool r) {
         Proof memory proof;
         proof.A = Pairing.G1Point(a[0], a[1]);
         proof.B = Pairing.G2Point([b[0][0], b[0][1]], [b[1][0], b[1][1]]);

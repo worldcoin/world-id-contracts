@@ -8,17 +8,15 @@ import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 /// @notice A dumb verifier to make it easy to fuzz test successes and failures.
 contract SimpleVerifier is ITreeVerifier {
     function verifyProof(
-        uint256 root,
-        uint256 signalHash,
-        uint256 nullifierHash,
-        uint256 externalNullifierHash,
-        uint256[8] calldata proof
+        uint256[2] memory a,
+        uint256[2][2] memory b,
+        uint256[2] memory c,
+        uint256[1] memory input
     ) external pure override returns (bool) {
-        delete root;
-        delete signalHash;
-        delete nullifierHash;
-        delete externalNullifierHash;
-        return proof[0] % 2 == 0;
+        delete b;
+        delete c;
+        delete input;
+        return a[0] % 2 == 0;
     }
 }
 
