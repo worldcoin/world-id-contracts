@@ -67,6 +67,7 @@ contract WorldIDIdentityManagerUpdate is WorldIDIdentityManagerTest {
         address mockUpgradeAddress = address(mockUpgrade);
         bytes memory initCall = abi.encodeWithSelector(
             ManagerImpl.initialize.selector,
+            treeDepth,
             initialRoot,
             verifier,
             isStateBridgeEnabled,

@@ -235,6 +235,7 @@ contract WorldIDIdentityManagerImplV1 is
         __delegateInit();
 
         // Now perform the init logic for this contract.
+        treeDepth = _treeDepth;
         rootHistoryExpiry = 1 hours;
         ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
         _latestRoot = initialRoot;
