@@ -31,8 +31,12 @@ contract WorldIDIdentityManagerConstruction is WorldIDIdentityManagerTest {
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
         managerImpl = new ManagerImpl();
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize, (initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.initialize.selector,
+            initialRoot,
+            verifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
 
         // Test

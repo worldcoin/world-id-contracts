@@ -22,9 +22,13 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallRegisterIdentitiesWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.registerIdentities,
-            (proof, preRoot, startIndex, identityCommitments, postRoot)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.registerIdentities.selector,
+            proof,
+            preRoot,
+            startIndex,
+            identityCommitments,
+            postRoot
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
@@ -43,8 +47,12 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         makeUninitIdentityManager();
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, initialRoot, preparedIdents, postRoot)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.updateIdentities.selector,
+            actualProof,
+            initialRoot,
+            preparedIdents,
+            postRoot
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
@@ -63,8 +71,12 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         makeUninitIdentityManager();
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.removeIdentities, (actualProof, initialRoot, preparedIdents, postRoot)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.removeIdentities.selector,
+            actualProof,
+            initialRoot,
+            preparedIdents,
+            postRoot
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
@@ -78,9 +90,12 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallCalculateInputHash() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.calculateIdentityRegistrationInputHash,
-            (startIndex, preRoot, postRoot, identityCommitments)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.calculateIdentityRegistrationInputHash.selector,
+            startIndex,
+            preRoot,
+            postRoot,
+            identityCommitments
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
@@ -94,7 +109,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallLatestRootWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
+        bytes memory callData = abi.encodeWithSelector(ManagerImpl.latestRoot.selector);
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -107,7 +122,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallQueryRootWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, (preRoot));
+        bytes memory callData = abi.encodeWithSelector(ManagerImpl.queryRoot.selector, preRoot);
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -120,7 +135,8 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallIsInputInReducedFormWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.isInputInReducedForm, (preRoot));
+        bytes memory callData =
+            abi.encodeWithSelector(ManagerImpl.isInputInReducedForm.selector, preRoot);
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -133,7 +149,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallCheckValidRootWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.checkValidRoot, (preRoot));
+        bytes memory callData = abi.encodeWithSelector(ManagerImpl.checkValidRoot.selector, preRoot);
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -146,7 +162,8 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallgetRegisterIdentitiesVerifierAddressWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.getRegisterIdentitiesVerifierAddress, ());
+        bytes memory callData =
+            abi.encodeWithSelector(ManagerImpl.getRegisterIdentitiesVerifierAddress.selector);
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -161,7 +178,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         makeUninitIdentityManager();
         ITreeVerifier newVerifier = new SimpleVerifier();
         bytes memory callData =
-            abi.encodeCall(ManagerImpl.setRegisterIdentitiesVerifier, (newVerifier));
+            abi.encodeWithSelector(ManagerImpl.setRegisterIdentitiesVerifier.selector, newVerifier);
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -174,7 +191,8 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallGetIdentityUpdateVerifierAddressWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierAddress, ());
+        bytes memory callData =
+            abi.encodeWithSelector(ManagerImpl.getIdentityUpdateVerifierAddress.selector);
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -188,7 +206,8 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         // Setup
         makeUninitIdentityManager();
         ITreeVerifier newVerifier = new SimpleVerifier();
-        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityUpdateVerifier, (newVerifier));
+        bytes memory callData =
+            abi.encodeWithSelector(ManagerImpl.setIdentityUpdateVerifier.selector, newVerifier);
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -201,7 +220,8 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallGetSemaphoreVerifierAddressWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.getSemaphoreVerifierAddress, ());
+        bytes memory callData =
+            abi.encodeWithSelector(ManagerImpl.getSemaphoreVerifierAddress.selector);
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -215,7 +235,8 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         // Setup
         makeUninitIdentityManager();
         SemaphoreVerifier newVerifier = new SemaphoreVerifier();
-        bytes memory callData = abi.encodeCall(ManagerImpl.setSemaphoreVerifier, (newVerifier));
+        bytes memory callData =
+            abi.encodeWithSelector(ManagerImpl.setSemaphoreVerifier.selector, newVerifier);
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -228,7 +249,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallGetRootHistoryExpiryWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.getRootHistoryExpiry, ());
+        bytes memory callData = abi.encodeWithSelector(ManagerImpl.getRootHistoryExpiry.selector);
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -241,7 +262,8 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallSetRootHistoryExpiryWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (2 hours));
+        bytes memory callData =
+            abi.encodeWithSelector(ManagerImpl.setRootHistoryExpiry.selector, 2 hours);
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 

@@ -18,8 +18,9 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
     function testCanUpgradeStateBridgeProxy(address newStateBridgeProxy) public {
         vm.assume(newStateBridgeProxy != address(0x0) && newStateBridgeProxy != address(this));
         // Setup
-        bytes memory callData =
-            abi.encodeCall(ManagerImpl.setStateBridgeProxyAddress, (newStateBridgeProxy));
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.setStateBridgeProxyAddress.selector, newStateBridgeProxy
+        );
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));
@@ -28,15 +29,20 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
     /// @notice Tests that it is possible to disable the `stateBridgeProxy`.
     function testCanDisableStateBridgeFunctionality() public {
         // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.disableStateBridge, ());
+        bytes memory callData = abi.encodeWithSelector(ManagerImpl.disableStateBridge.selector);
         ITreeVerifier actualVerifier = new TreeVerifier();
         makeNewIdentityManager(preRoot, actualVerifier, isStateBridgeEnabled, stateBridgeProxy);
-        bytes memory registerCallData = abi.encodeCall(
-            ManagerImpl.registerIdentities,
-            (proof, preRoot, startIndex, identityCommitments, postRoot)
+        bytes memory registerCallData = abi.encodeWithSelector(
+            ManagerImpl.registerIdentities.selector,
+            proof,
+            preRoot,
+            startIndex,
+            identityCommitments,
+            postRoot
         );
-        bytes memory latestRootCallData = abi.encodeCall(ManagerImpl.latestRoot, ());
-        bytes memory queryRootCallData = abi.encodeCall(ManagerImpl.queryRoot, (postRoot));
+        bytes memory latestRootCallData = abi.encodeWithSelector(ManagerImpl.latestRoot.selector);
+        bytes memory queryRootCallData =
+            abi.encodeWithSelector(ManagerImpl.queryRoot.selector, postRoot);
 
         // expect event that state root was sent to state bridge
         vm.expectEmit(true, true, true, true);
@@ -59,7 +65,7 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
         address zeroAddress = address(0x0);
         // Setup
         bytes memory callData =
-            abi.encodeCall(ManagerImpl.setStateBridgeProxyAddress, (zeroAddress));
+            abi.encodeWithSelector(ManagerImpl.setStateBridgeProxyAddress.selector, zeroAddress);
 
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImpl.InvalidStateBridgeProxyAddress.selector);
@@ -74,7 +80,7 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
         vm.assume(nonManager != address(this) && nonManager != address(0x0));
 
         bytes memory callData =
-            abi.encodeCall(ManagerImpl.setStateBridgeProxyAddress, (address(0x1)));
+            abi.encodeWithSelector(ManagerImpl.setStateBridgeProxyAddress.selector, address(0x1));
 
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(nonManager);
@@ -87,7 +93,7 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
     function testCanEnableStateBridgeIfDisabled() public {
         // Setup
         makeNewIdentityManager(preRoot, verifier, false, stateBridgeProxy);
-        bytes memory callData = abi.encodeCall(ManagerImpl.enableStateBridge, ());
+        bytes memory callData = abi.encodeWithSelector(ManagerImpl.enableStateBridge.selector);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));
@@ -97,7 +103,7 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
     ///         enabled.
     function testCannotEnableStateBridgeIfAlreadyEnabled() public {
         // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.enableStateBridge, ());
+        bytes memory callData = abi.encodeWithSelector(ManagerImpl.enableStateBridge.selector);
 
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImpl.StateBridgeAlreadyEnabled.selector);
@@ -109,7 +115,7 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
     ///         disabled.
     function testCannotDisableStateBridgeIfAlreadyDisabled() public {
         // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.disableStateBridge, ());
+        bytes memory callData = abi.encodeWithSelector(ManagerImpl.disableStateBridge.selector);
 
         // disable state bridge
         assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));

@@ -30,6 +30,7 @@ contract WorldIDIdentityManagerTest is Test {
 
     ITreeVerifier internal verifier;
     uint256 internal initialRoot = 0x0;
+    uint8 internal treeDepth = 16;
 
     address internal identityManagerAddress;
     address internal managerImplAddress;
@@ -122,16 +123,20 @@ contract WorldIDIdentityManagerTest is Test {
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
 
-        bytes memory initCallData = abi.encodeCall(
-            ManagerImpl.initialize,
-            (actualPreRoot, actualVerifier, enableStateBridge, actualStateBridgeProxy)
+        bytes memory initCallData = abi.encodeWithSelector(
+            ManagerImpl.initialize.selector,
+            actualPreRoot,
+            actualVerifier,
+            enableStateBridge,
+            actualStateBridgeProxy
         );
 
         identityManager = new IdentityManager(managerImplAddress, initCallData);
         identityManagerAddress = address(identityManager);
 
-        bytes memory updateVerifierCallData =
-            abi.encodeCall(ManagerImpl.setIdentityUpdateVerifier, (new SimpleVerifier()));
+        bytes memory updateVerifierCallData = abi.encodeWithSelector(
+            ManagerImpl.setIdentityUpdateVerifier.selector, new SimpleVerifier()
+        );
         (bool status,) = identityManagerAddress.call(updateVerifierCallData);
         assert(status);
     }

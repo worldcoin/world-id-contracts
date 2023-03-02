@@ -23,8 +23,13 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
 
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize, (initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.initialize.selector,
+            treeDepth,
+            initialRoot,
+            verifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
 
         vm.expectEmit(true, true, true, true);
@@ -37,8 +42,13 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     /// @notice Checks that it is not possible to initialise the contract more than once.
     function testInitializationOnlyOnce() public {
         // Setup
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize, (initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.initialize.selector,
+            treeDepth,
+            initialRoot,
+            verifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
         bytes memory expectedReturn =
             encodeStringRevert("Initializable: contract is already initialized");
@@ -54,6 +64,8 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         vm.expectRevert("Initializable: contract is already initialized");
 
         // Test
-        localImpl.initialize(initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
+        localImpl.initialize(
+            treeDepth, initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy
+        );
     }
 }

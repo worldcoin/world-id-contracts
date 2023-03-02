@@ -29,8 +29,12 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.updateIdentities.selector,
+            actualProof,
+            newPreRoot,
+            preparedIdents,
+            newPostRoot
         );
 
         // Expect that the state root was sent to the state bridge
@@ -54,8 +58,12 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.updateIdentities.selector,
+            actualProof,
+            newPreRoot,
+            preparedIdents,
+            newPostRoot
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
@@ -74,8 +82,8 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         vm.assume(nonManager != address(this) && nonManager != address(0x0));
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, preRoot, preparedIdents, postRoot)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.updateIdentities.selector, actualProof, preRoot, preparedIdents, postRoot
         );
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(nonManager);
@@ -102,8 +110,8 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         makeNewIdentityManager(
             uint256(currentPreRoot), verifier, isStateBridgeEnabled, stateBridgeProxy
         );
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, actualRoot, preparedIdents, postRoot)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.updateIdentities.selector, actualProof, actualRoot, preparedIdents, postRoot
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.NotLatestRoot.selector, actualRoot, uint256(currentPreRoot)
@@ -133,8 +141,8 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         } else {
             preparedIdents[position].newCommitment = SNARK_SCALAR_FIELD + i;
         }
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, postRoot)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.updateIdentities.selector, actualProof, newPreRoot, preparedIdents, postRoot
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -157,8 +165,8 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, postRoot)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.updateIdentities.selector, actualProof, newPreRoot, preparedIdents, postRoot
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -181,8 +189,12 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, initialRoot, preparedIdents, newPostRoot)
+        bytes memory callData = abi.encodeWithSelector(
+            ManagerImpl.updateIdentities.selector,
+            actualProof,
+            initialRoot,
+            preparedIdents,
+            newPostRoot
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,

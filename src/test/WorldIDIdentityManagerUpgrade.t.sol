@@ -18,7 +18,8 @@ contract WorldIDIdentityManagerUpdate is WorldIDIdentityManagerTest {
     function testCanUpgradeImplementationWithoutCall() public {
         // Setup
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
-        bytes memory upgradeCall = abi.encodeCall(UUPSUpgradeable.upgradeTo, (address(mockUpgrade)));
+        bytes memory upgradeCall =
+            abi.encodeWithSelector(UUPSUpgradeable.upgradeTo.selector, address(mockUpgrade));
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
@@ -29,9 +30,11 @@ contract WorldIDIdentityManagerUpdate is WorldIDIdentityManagerTest {
     function testCanUpgradeImplementationWithCall() public {
         // Setup
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
-        bytes memory initCall = abi.encodeCall(WorldIDIdentityManagerImplMock.initialize, (320));
-        bytes memory upgradeCall =
-            abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(mockUpgrade), initCall));
+        bytes memory initCall =
+            abi.encodeWithSelector(WorldIDIdentityManagerImplMock.initialize.selector, 320);
+        bytes memory upgradeCall = abi.encodeWithSelector(
+            UUPSUpgradeable.upgradeToAndCall.selector, address(mockUpgrade), initCall
+        );
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
@@ -42,9 +45,11 @@ contract WorldIDIdentityManagerUpdate is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(naughty != address(this) && naughty != address(0x0));
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
-        bytes memory initCall = abi.encodeCall(WorldIDIdentityManagerImplMock.initialize, (320));
-        bytes memory upgradeCall =
-            abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(mockUpgrade), initCall));
+        bytes memory initCall =
+            abi.encodeWithSelector(WorldIDIdentityManagerImplMock.initialize.selector, 320);
+        bytes memory upgradeCall = abi.encodeWithSelector(
+            UUPSUpgradeable.upgradeToAndCall.selector, address(mockUpgrade), initCall
+        );
         vm.prank(naughty);
 
         // Test
@@ -60,8 +65,12 @@ contract WorldIDIdentityManagerUpdate is WorldIDIdentityManagerTest {
         // Setup
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
         address mockUpgradeAddress = address(mockUpgrade);
-        bytes memory initCall = abi.encodeCall(
-            ManagerImpl.initialize, (initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy)
+        bytes memory initCall = abi.encodeWithSelector(
+            ManagerImpl.initialize.selector,
+            initialRoot,
+            verifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
         vm.expectRevert("Function must be called through delegatecall");
 
