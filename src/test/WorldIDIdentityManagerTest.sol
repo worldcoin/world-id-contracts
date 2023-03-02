@@ -93,7 +93,7 @@ contract WorldIDIdentityManagerTest is Test {
         verifier = new SimpleVerifier();
         stateBridge = new SimpleStateBridge();
         stateBridgeProxy = address(stateBridge);
-        makeNewIdentityManager(initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
+        makeNewIdentityManager(treeDepth, initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
 
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
@@ -115,6 +115,7 @@ contract WorldIDIdentityManagerTest is Test {
     ///        bridge enabled.
     /// @param actualStateBridgeProxy The address of the state bridge.
     function makeNewIdentityManager(
+        uint8 actualTreePath,
         uint256 actualPreRoot,
         ITreeVerifier actualVerifier,
         bool enableStateBridge,
@@ -125,6 +126,7 @@ contract WorldIDIdentityManagerTest is Test {
 
         bytes memory initCallData = abi.encodeWithSelector(
             ManagerImpl.initialize.selector,
+            actualTreePath,
             actualPreRoot,
             actualVerifier,
             enableStateBridge,

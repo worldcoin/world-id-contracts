@@ -14,7 +14,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
     /// @notice Tests whether it is possible to correctly calculate the `inputHash` to the merkle
     ///         tree verifier.
     function testCalculateIdentityRegistrationInputHashFromParametersOnKnownInput() public {
-        // Setup
+        // Setup0
         bytes memory callData = abi.encodeWithSelector(
             ManagerImpl.calculateIdentityRegistrationInputHash.selector,
             startIndex,
