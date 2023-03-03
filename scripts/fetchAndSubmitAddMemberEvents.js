@@ -1,9 +1,9 @@
 import dotenv from 'dotenv'
-import { JsonRpcProvider } from '@ethersproject/providers'
 import ora from 'ora'
 import * as ethers from 'ethers'
 import * as fs from 'fs/promises'
 import yargs from 'yargs/yargs'
+import axios from 'axios';
 
 dotenv.config()
 
@@ -13,6 +13,11 @@ const argv = yargs(process.argv.slice(2))
         alias: 'rpc-url',
         default: 'http://localhost:8545',
         desc: 'The RPC URL to connect to (supports RPC_URL env var)'
+    })
+    .option('s', {
+        alias: 'sequencer-url',
+        default: 'http://localhost:8080',
+        desc: 'The sequencer url to use'
     })
     .option('a', {
         alias: 'address',
@@ -28,48 +33,29 @@ const argv = yargs(process.argv.slice(2))
         alias: 'to-block',
         desc: 'If not set, will fetch the current block'
     })
-    .option('o', {
-        alias: 'output',
-        default: 'events.json',
-        desc: 'The file to write the events to'
-    })
     .argv
 
-const eventsFile = argv.output;
+const semaphoreContract = new ethers.Interface(
+    [
+        // This is the MemberAdded from ISemaphoreGroups.sol
+        // it seems to be the one we're actually emitting on the deployed smart contract
+        "event MemberAdded(uint256 indexed groupId, uint256 identityCommitment, uint256 root)",
+    ],
+);
 
-async function updateEventsFile(newEvents) {
-    let events = [];
-    try {
-        const eventsString = await fs.readFile(eventsFile, 'utf8');
-        events = JSON.parse(eventsString);
-    } catch (e) {
-        // file doesn't exist
-    }
+async function sendCommitmentsToSequencer(events) {
+    let commitments = events.map(e => {
+        const parsed = semaphoreContract.parseLog(e);
+        const identityCommitment = parsed.args[1];
 
-    newEvents = newEvents.map(e => {
-        return {
-            address: e.address,
-            data: e.data,
-            topics: e.topics,
-            transactionHash: e.transactionHash,
-            blockNumber: e.blockNumber,
-        }
+        return identityCommitment.toString();
     });
-    events = events.concat(newEvents);
 
-    await fs.writeFile(eventsFile, JSON.stringify(events, null, 4));
+    await axios.post(`${argv.sequencerUrl}/tmp/insertIdentities`, { identityCommitments: commitments });
 }
 
 async function main() {
-    const provider = new JsonRpcProvider(argv.rpcUrl)
-
-    const semaphoreContract = new ethers.Interface(
-        [
-            // This is the MemberAdded from ISemaphoreGroups.sol
-            // it seems to be the one we're actually emitting on the deployed smart contract
-            "event MemberAdded(uint256 indexed groupId, uint256 identityCommitment, uint256 root)",
-        ],
-    );
+    const provider = new ethers.JsonRpcProvider(argv.rpcUrl)
 
     const topic = semaphoreContract.getEvent("MemberAdded").topicHash;
     const address = argv.address;
@@ -78,6 +64,13 @@ async function main() {
 
     let firstBlock = argv.fromBlock;
     let step = 1_000;
+    let lastFullyProcessedBlock = 0;
+
+    process.on('SIGINT', async () => {
+        console.log(`Interrupted, last fully processed block: ${lastFullyProcessedBlock}`);
+        process.exit();
+    });
+
     const currentBlock = await provider.getBlockNumber();
 
     let n = 0;
@@ -85,8 +78,9 @@ async function main() {
     console.log(`Going to read events from ${address} with topic ${topic} up to block ${currentBlock}`)
     const spinner = ora(`Waiting for events...`).start()
 
-    while (true) {
+    let serverCommitmentPromise = null;
 
+    while (true) {
         let fromBlock = firstBlock + (n * step);
         let toBlock = fromBlock + step;
         if (toBlock > currentBlock) {
@@ -97,7 +91,6 @@ async function main() {
             break;
         }
 
-        spinner.text = `Waiting for events... (blocks ${fromBlock} to ${toBlock} / ${currentBlock}, found ${totalEventsFound} events)`
 
         const events = await provider.getLogs({
             fromBlock,
@@ -106,7 +99,16 @@ async function main() {
             topics: [topic],
         });
 
-        updateEventsFile(events);
+        if (serverCommitmentPromise !== null) {
+            spinner.text = `Waiting to finish submitting commitments to sequencer`;
+            await serverCommitmentPromise;
+        }
+
+        lastFullyProcessedBlock = fromBlock;
+
+        spinner.text = `Waiting for events... ${n} (blocks ${fromBlock} to ${toBlock} / ${currentBlock}, found ${totalEventsFound} events)`
+
+        serverCommitmentPromise = sendCommitmentsToSequencer(events);
 
         totalEventsFound += events.length;
         n += 1;
