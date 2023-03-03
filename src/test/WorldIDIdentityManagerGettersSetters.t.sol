@@ -21,7 +21,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         // Setup
         bytes memory callData =
             abi.encodeWithSelector(ManagerImpl.getRegisterIdentitiesVerifierAddress.selector);
-        bytes memory expectedReturn = abi.encode(address(verifier));
+        bytes memory expectedReturn = abi.encode(address(treeVerifier));
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, expectedReturn);

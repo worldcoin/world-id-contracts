@@ -7,6 +7,7 @@ import {Test} from "forge-std/Test.sol";
 import "forge-std/console.sol";
 
 import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
+import {ISemaphoreVerifier} from "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
 import {SimpleStateBridge} from "./mock/SimpleStateBridge.sol";
 import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
 
@@ -28,7 +29,8 @@ contract WorldIDIdentityManagerTest is Test {
     IdentityManager internal identityManager;
     ManagerImpl internal managerImpl;
 
-    ITreeVerifier internal verifier;
+    ITreeVerifier internal treeVerifier;
+    ISemaphoreVerifier internal semaphoreVerifier;
     uint256 internal initialRoot = 0x0;
     uint8 internal treeDepth = 16;
 
@@ -90,10 +92,10 @@ contract WorldIDIdentityManagerTest is Test {
     /// @notice This function runs before every single test.
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
-        verifier = new SimpleVerifier();
+        treeVerifier = new SimpleVerifier();
         stateBridge = new SimpleStateBridge();
         stateBridgeProxy = address(stateBridge);
-        makeNewIdentityManager(treeDepth, initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
+        makeNewIdentityManager(treeDepth, initialRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy);
 
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
@@ -110,14 +112,16 @@ contract WorldIDIdentityManagerTest is Test {
     /// @dev It is initialised in the globals.
     ///
     /// @param actualPreRoot The pre-root to use.
-    /// @param actualVerifier The verifier instance to use.
+    /// @param actualTreeVerifier The tree verifier instance to use.
+    /// @param actualSemaphoreVerifier The Semaphore verifier instance to use.
     /// @param enableStateBridge Whether or not the new identity manager should have the state
     ///        bridge enabled.
     /// @param actualStateBridgeProxy The address of the state bridge.
     function makeNewIdentityManager(
         uint8 actualTreePath,
         uint256 actualPreRoot,
-        ITreeVerifier actualVerifier,
+        ITreeVerifier actualTreeVerifier,
+        ISemaphoreVerifier actualSemaphoreVerifier,
         bool enableStateBridge,
         address actualStateBridgeProxy
     ) public {
@@ -128,7 +132,8 @@ contract WorldIDIdentityManagerTest is Test {
             ManagerImpl.initialize.selector,
             actualTreePath,
             actualPreRoot,
-            actualVerifier,
+            actualTreeVerifier,
+            actualSemaphoreVerifier,
             enableStateBridge,
             actualStateBridgeProxy
         );

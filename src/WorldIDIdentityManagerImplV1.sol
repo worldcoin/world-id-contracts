@@ -5,6 +5,7 @@ import {CheckInitialized} from "./utils/CheckInitialized.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
 import {UnimplementedTreeVerifier} from "./utils/UnimplementedTreeVerifier.sol";
+import {ISemaphoreVerifier} from "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
 import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
 
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -86,7 +87,7 @@ contract WorldIDIdentityManagerImplV1 is
     ITreeVerifier internal identityUpdateVerifier;
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
-    SemaphoreVerifier internal semaphoreVerifier;
+    ISemaphoreVerifier internal semaphoreVerifier;
 
     /// @notice The interface of the bridge contract from L1 to supported target chains.
     address internal _stateBridgeProxyAddress;
@@ -219,6 +220,7 @@ contract WorldIDIdentityManagerImplV1 is
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of the empty tree.
     /// @param _merkleTreeVerifier The initial tree verifier to use.
+    /// @param _semaphoreVerifier The initial semaphore verifier to use.
     /// @param _enableStateBridge Whether or not the state bridge should be enabled when
     ///        initialising the identity manager.
     /// @param initialStateBridgeProxyAddress The initial state bridge proxy address to use.
@@ -228,6 +230,7 @@ contract WorldIDIdentityManagerImplV1 is
         uint8 _treeDepth,
         uint256 initialRoot,
         ITreeVerifier _merkleTreeVerifier,
+        ISemaphoreVerifier _semaphoreVerifier,
         bool _enableStateBridge,
         address initialStateBridgeProxyAddress
     ) public reinitializer(1) {
@@ -241,7 +244,7 @@ contract WorldIDIdentityManagerImplV1 is
         _latestRoot = initialRoot;
         batchInsertionVerifier = _merkleTreeVerifier;
         identityUpdateVerifier = unimplementedVerifier;
-        semaphoreVerifier = new SemaphoreVerifier();
+        semaphoreVerifier = _semaphoreVerifier;
         _stateBridgeProxyAddress = initialStateBridgeProxyAddress;
         _isStateBridgeEnabled = _enableStateBridge;
 

@@ -69,7 +69,8 @@ contract WorldIDIdentityManagerUpdate is WorldIDIdentityManagerTest {
             ManagerImpl.initialize.selector,
             treeDepth,
             initialRoot,
-            verifier,
+            treeVerifier,
+            semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
         );
