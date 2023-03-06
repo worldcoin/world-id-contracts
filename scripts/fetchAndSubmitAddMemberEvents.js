@@ -3,7 +3,7 @@ import ora from 'ora'
 import * as ethers from 'ethers'
 import * as fs from 'fs/promises'
 import yargs from 'yargs/yargs'
-import axios from 'axios';
+import axios from 'axios'
 
 dotenv.config()
 
@@ -16,7 +16,6 @@ const argv = yargs(process.argv.slice(2))
     })
     .option('s', {
         alias: 'sequencer-url',
-        default: 'http://localhost:8080',
         desc: 'The sequencer url to use'
     })
     .option('a', {
@@ -33,62 +32,91 @@ const argv = yargs(process.argv.slice(2))
         alias: 'to-block',
         desc: 'If not set, will fetch the current block'
     })
+    .option('b', {
+        alias: 'block-span',
+        default: 10_000,
+        desc: 'The number of blocks to read events from at a time'
+    })
+    .option('o', {
+        alias: 'output-file',
+        desc: 'If set, will write the events to a file'
+    })
+    .option('e', {
+        alias: 'error-output-file',
+        desc: 'If set, will errors that occurred during submission to a file'
+    })
     .argv
 
-const semaphoreContract = new ethers.Interface(
+const semaphoreContract = new ethers.utils.Interface(
     [
         // This is the MemberAdded from ISemaphoreGroups.sol
         // it seems to be the one we're actually emitting on the deployed smart contract
         "event MemberAdded(uint256 indexed groupId, uint256 identityCommitment, uint256 root)",
     ],
-);
+)
 
 async function sendCommitmentsToSequencer(events) {
     let commitments = events.map(e => {
-        const parsed = semaphoreContract.parseLog(e);
-        const identityCommitment = parsed.args[1];
+        const parsed = semaphoreContract.parseLog(e)
+        const identityCommitment = parsed.args[1]
 
-        return identityCommitment.toString();
-    });
+        return identityCommitment.toHexString()
+    })
 
-    await axios.post(`${argv.sequencerUrl}/tmp/insertIdentities`, { identityCommitments: commitments });
+    return Promise.all(commitments.map(async (commitment) => {
+        try {
+            if (argv.sequencerUrl !== undefined) {
+                await axios.post(`${argv.sequencerUrl}/insertIdentity`, { identityCommitment: commitment })
+            }
+
+            if (argv.outputFile !== undefined) {
+                await fs.appendFile(argv.outputFile, `${commitment}\n`)
+            }
+        } catch (err) {
+            if (argv.errorOutputFile !== undefined) {
+                await fs.appendFile(argv.errorOutputFile, `${commitment}\n${JSON.stringify(err.toJSON())}\n`)
+            } else {
+                console.error(`Error while submitting commitment ${commitment}: ${err}`)
+            }
+        }
+    }))
 }
 
 async function main() {
-    const provider = new ethers.JsonRpcProvider(argv.rpcUrl)
+    const provider = new ethers.providers.JsonRpcProvider(argv.rpcUrl)
 
-    const topic = semaphoreContract.getEvent("MemberAdded").topicHash;
-    const address = argv.address;
+    const topic = semaphoreContract.getEvent("MemberAdded").topicHash
+    const address = argv.address
 
-    let totalEventsFound = 0;
+    let totalEventsFound = 0
 
-    let firstBlock = argv.fromBlock;
-    let step = 1_000;
-    let lastFullyProcessedBlock = 0;
+    let firstBlock = argv.fromBlock
+    let step = argv.blockSpan
+    let lastFullyProcessedBlock = 0
 
     process.on('SIGINT', async () => {
-        console.log(`Interrupted, last fully processed block: ${lastFullyProcessedBlock}`);
-        process.exit();
-    });
+        console.log(`Interrupted, last fully processed block: ${lastFullyProcessedBlock}`)
+        process.exit()
+    })
 
-    const currentBlock = await provider.getBlockNumber();
+    const currentBlock = await provider.getBlockNumber()
 
-    let n = 0;
+    let n = 0
 
     console.log(`Going to read events from ${address} with topic ${topic} up to block ${currentBlock}`)
     const spinner = ora(`Waiting for events...`).start()
 
-    let serverCommitmentPromise = null;
+    let serverCommitmentPromise = null
 
     while (true) {
-        let fromBlock = firstBlock + (n * step);
-        let toBlock = fromBlock + step;
+        let fromBlock = firstBlock + (n * step)
+        let toBlock = fromBlock + step
         if (toBlock > currentBlock) {
-            toBlock = currentBlock;
+            toBlock = currentBlock
         }
 
         if (fromBlock > currentBlock) {
-            break;
+            break
         }
 
 
@@ -97,24 +125,24 @@ async function main() {
             toBlock,
             address,
             topics: [topic],
-        });
+        })
 
         if (serverCommitmentPromise !== null) {
-            spinner.text = `Waiting to finish submitting commitments to sequencer`;
-            await serverCommitmentPromise;
+            spinner.text = `Waiting to finish submitting commitments to sequencer`
+            await serverCommitmentPromise
         }
 
-        lastFullyProcessedBlock = fromBlock;
+        lastFullyProcessedBlock = fromBlock
 
         spinner.text = `Waiting for events... ${n} (blocks ${fromBlock} to ${toBlock} / ${currentBlock}, found ${totalEventsFound} events)`
 
-        serverCommitmentPromise = sendCommitmentsToSequencer(events);
+        serverCommitmentPromise = sendCommitmentsToSequencer(events)
 
-        totalEventsFound += events.length;
-        n += 1;
+        totalEventsFound += events.length
+        n += 1
     }
 
     spinner.succeed(`Found ${totalEventsFound} events`)
 }
 
-main();
+main()
