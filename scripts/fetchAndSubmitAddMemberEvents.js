@@ -8,15 +8,20 @@ import axios from 'axios'
 dotenv.config()
 
 const argv = yargs(process.argv.slice(2))
+    // All the options can be replaced with a SCREAMING_SNAKE_CASE environment variables
+    // e.g. --rpc-url can be replaced with RPC_URL
     .env(true)
     .option('r', {
         alias: 'rpc-url',
-        default: 'http://localhost:8545',
         desc: 'The RPC URL to connect to (supports RPC_URL env var)'
     })
     .option('s', {
         alias: 'sequencer-url',
         desc: 'The sequencer url to use'
+    })
+    .option('i', {
+        alias: 'input-file',
+        desc: 'If set, will read the events from a file'
     })
     .option('a', {
         alias: 'address',
@@ -55,14 +60,10 @@ const semaphoreContract = new ethers.utils.Interface(
     ],
 )
 
-async function sendCommitmentsToSequencer(events) {
-    let commitments = events.map(e => {
-        const parsed = semaphoreContract.parseLog(e)
-        const identityCommitment = parsed.args[1]
-
-        return identityCommitment.toHexString()
-    })
-
+// Takes in a list of commitments (as hex strings) and submits them to the sequencer and/or writes them to the output file
+//
+// if submitting a commitment fails - it will write the commitment and the error to the error output file or to the console if the error file is not set
+async function handleCommitments(commitments) {
     return Promise.all(commitments.map(async (commitment) => {
         try {
             if (argv.sequencerUrl !== undefined) {
@@ -82,10 +83,30 @@ async function sendCommitmentsToSequencer(events) {
     }))
 }
 
-async function main() {
+// Extracts the identity commitments from the events and returns them as an array of hex strings
+function parseLogs(eventLogs) {
+    return eventLogs.map(e => {
+        const parsed = semaphoreContract.parseLog(e)
+        const identityCommitment = parsed.args[1]
+
+        return identityCommitment.toHexString()
+    })
+}
+
+async function getLastBlock(provider) {
+    if (argv.toBlock !== undefined) {
+        return argv.toBlock
+    } else {
+        return await provider.getBlockNumber()
+    }
+}
+
+const spinner = ora(`Fetching commitments...`).start()
+
+async function fetchEventsFromBlockchain(handler) {
     const provider = new ethers.providers.JsonRpcProvider(argv.rpcUrl)
 
-    const topic = semaphoreContract.getEvent("MemberAdded").topicHash
+    const topic = semaphoreContract.getEventTopic("MemberAdded")
     const address = argv.address
 
     let totalEventsFound = 0
@@ -94,29 +115,31 @@ async function main() {
     let step = argv.blockSpan
     let lastFullyProcessedBlock = 0
 
+    // Prints out the last fully processed block so that we can resume from there in case of an interruption
     process.on('SIGINT', async () => {
         console.log(`Interrupted, last fully processed block: ${lastFullyProcessedBlock}`)
         process.exit()
     })
 
-    const currentBlock = await provider.getBlockNumber()
+    const lastBlock = await getLastBlock(provider)
 
-    let n = 0
+    const maxN = lastBlock / step
 
-    console.log(`Going to read events from ${address} with topic ${topic} up to block ${currentBlock}`)
-    const spinner = ora(`Waiting for events...`).start()
+    console.log(`Going to read events from ${address} with topic ${topic} up to block ${lastBlock}`)
 
+    // We'll likely be bottlenecked by the time it takes to submit the commitments to the sequencer
+    // and we don't want to fetch too many events ahead of time
+    // so we keep a promise that will resolve when the last batch of commitments has been submitted
+    // and we wait for it to resolve before fetching the next batch of events
     let serverCommitmentPromise = null
 
-    while (true) {
+    for (let n = 0; n < maxN; n++) {
         let fromBlock = firstBlock + (n * step)
         let toBlock = fromBlock + step
-        if (toBlock > currentBlock) {
-            toBlock = currentBlock
-        }
 
-        if (fromBlock > currentBlock) {
-            break
+        // Cap blocks to the last one
+        if (toBlock > lastBlock) {
+            toBlock = lastBlock
         }
 
         const events = await provider.getLogs({
@@ -126,22 +149,46 @@ async function main() {
             topics: [topic],
         })
 
+        // Waiting to resolve the last batch of commitments
         if (serverCommitmentPromise !== null) {
             spinner.text = `Waiting to finish submitting commitments to sequencer`
             await serverCommitmentPromise
         }
 
+        // We keep track of the last fully processed block in case we need to interrupt
         lastFullyProcessedBlock = fromBlock
 
-        spinner.text = `Waiting for events... ${n} (blocks ${fromBlock} to ${toBlock} / ${currentBlock}, found ${totalEventsFound} events)`
+        spinner.text = `Waiting for events... ${n} (blocks ${fromBlock} to ${toBlock} / ${lastBlock}, found ${totalEventsFound} events)`
 
-        serverCommitmentPromise = sendCommitmentsToSequencer(events)
+        const commitments = parseLogs(events)
+        serverCommitmentPromise = handler(commitments)
 
         totalEventsFound += events.length
-        n += 1
     }
 
     spinner.succeed(`Found ${totalEventsFound} events`)
+}
+
+async function fetchCommitmentsFromFile() {
+    const commitments = await fs.readFile(argv.inputFile, 'utf-8')
+        .then(data => data.split('\n').filter(x => x !== ''))
+
+    await handleCommitments(commitments)
+
+    spinner.succeed(`Found ${commitments.length} events`)
+}
+
+async function main() {
+    if (argv.inputFile !== undefined && argv.rpcUrl !== undefined) {
+        spinner.warn("Cannot fetch from both the blockchain and file, use only one of --input-file or --rpc-url")
+        return
+    }
+
+    if (argv.inputFile !== undefined) {
+        await fetchCommitmentsFromFile()
+    } else {
+        await fetchEventsFromBlockchain(handleCommitments)
+    }
 }
 
 main()
