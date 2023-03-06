@@ -119,7 +119,6 @@ async function main() {
             break
         }
 
-
         const events = await provider.getLogs({
             fromBlock,
             toBlock,
