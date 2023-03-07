@@ -131,6 +131,18 @@ contract WorldIDRouterImplV1 is OwnableUpgradeable, UUPSUpgradeable, CheckInitia
     ///                                 ROUTING                                 ///
     ///////////////////////////////////////////////////////////////////////////////
 
+    /// @notice Gets the route for the provided group number.
+    ///
+    /// @param groupNumber The number of the group to get the route for.
+    ///
+    /// @return target The target address for the group number.
+    ///
+    /// @custom:reverts NoSuchGroup If the requested `groupNumber` does not exist.
+    /// @custom:reverts NullRoute If there is no valid route for the requested `groupNumber`.
+    function routeFor(uint256 groupNumber) public view onlyProxy onlyInitialized returns (address target) {
+
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             GROUP MANAGEMENT                            ///
     ///////////////////////////////////////////////////////////////////////////////

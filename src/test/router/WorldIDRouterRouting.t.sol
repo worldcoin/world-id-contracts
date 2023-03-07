@@ -13,6 +13,15 @@ import {WorldIDRouterImplV1 as RouterImpl} from "../../WorldIDRouterImplV1.sol";
 ///      so as to test everything in the context of how it will be deployed.
 contract WorldIDRouterRouting is WorldIDRouterTest {
     ///////////////////////////////////////////////////////////////////////////////
+    ///                          GROUP ROUTING TESTS                            ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    // TODO testCanGetRoute
+    // TODO testErrorsOnNullRoute
+    // TODO testCannotGetRouteUnlessViaProxy
+    // TODO testCannotGetRouteWhileUninit
+
+    ///////////////////////////////////////////////////////////////////////////////
     ///                           GROUP ADDING TESTS                            ///
     ///////////////////////////////////////////////////////////////////////////////
 
