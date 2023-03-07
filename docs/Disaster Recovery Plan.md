@@ -279,9 +279,6 @@ while performing the [above](#fix-the-problem) tasks.
 > 3. Answer `n` to the question about reusing configuration.
 > 4. Provide the relay address when asked.
 > 5. Provide the WorldID identity manager address when asked.
-> 6. Carefully record the relay address below.
->
-> **OpenZeppelin Relay Address:**
 
 At this stage the deployed contract is now installed behind the OpenZeppelin relay contract. This
 means that it is ready for use with the signup sequencer, and hence that identity operations can be
@@ -298,7 +295,7 @@ from that point.
 > #### Restart: Task 1
 >
 > 1. Update the `batching-main-stage.values.yaml` file to hold the relay address for the identity
->    manager as `IDENTITY_MANAGER_ADDRESS`. This is the OpenZeppelin Relay address obtained above.
+>    manager as `IDENTITY_MANAGER_ADDRESS`. This is the contract address obtained above.
 > 2. Push to `batching/main` to trigger a deploy.
 > 3. Approve the deploy to production via Datadog.
 
