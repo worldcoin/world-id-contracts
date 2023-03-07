@@ -36,7 +36,7 @@ const DEFAULT_BATCH_SIZE = 3;
 const MTB_VERSION = '1.0.2';
 const VERIFIER_SOURCE_PATH = MTB_CONTRACTS_DIR + '/Verifier.sol';
 const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json';
-const SEMAPHORE_VERIFIER_SOURCE_PATH = MTB_CONTRACTS_DIR + '/SemaphoreVerifier.sol';
+const SEMAPHORE_VERIFIER_SOURCE_PATH = 'lib/semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol';
 const SEMAPHORE_VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/SemaphoreVerifier.json';
 const DEFAULT_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerImplMock';
 const DEFAULT_UPGRADE_FUNCTION_SPEC = 'initialize(uint32)';
@@ -363,57 +363,81 @@ async function ensureMtbVerifierDeployment(plan, config) {
 // semaphore
 async function ensureSemaphoreVerifierDeployment(plan, config) {
     await ensureMtbBinary(plan, config);
-    config.semaphoreVerifierContractFile = SEMAPHORE_VERIFIER_SOURCE_PATH;
-    await generateSemaphoreVerifierContract(plan, config);
-
-    config.semaphoreVerifierContractOutFile = SEMAPHORE_VERIFIER_ABI_PATH;
+    fs.mkdirSync(MTB_CONTRACTS_DIR, { recursive: true });
     await compileSemaphoreVerifierContract(plan, config);
     await deploySemaphoreVerifierContract(plan, config);
 }
 
-async function generateSemaphoreVerifierContract(plan, config) {
-    await ensureKeysFile(plan, config);
-    plan.add('Generate Semaphore verifier contract', async () => {
-        const spinner = ora('Generating semaphore verifier contract').start();
-        fs.mkdirSync(MTB_CONTRACTS_DIR, { recursive: true });
-        let result = spawnSync(
-            config.mtbBinary,
-            [
-                'export-solidity',
-                '--keys-file',
-                config.keysFile,
-                '--output',
-                config.semaphoreVerifierContractFile,
-            ],
-            { stdio: 'inherit' }
-        );
-        if (result.status != 0) {
-            throw new Error('Failed to generate verifier contract');
-        }
-        spinner.succeed('Semaphore verifier contract generated');
-    });
+async function compileAndDeploySemaphorePairingLibratry(plan, config) {
+    let input = {
+        language: 'Solidity',
+        sources: {
+            'Pairing.sol': {
+                content: fs.readFileSync('lib/semaphore/packages/contracts/contracts/base/Pairing.sol').toString(),
+            }
+        },
+        settings: {
+            outputSelection: {
+                'Pairing.sol': {
+                  Pairing: ['evm.bytecode.object']
+                }
+            },
+        },
+    };
+    let bytecode = JSON.parse(solc.compile(JSON.stringify(input)));
+
+    let factory = new ContractFactory(
+        [],
+        bytecode.contracts['Pairing.sol'].Pairing.evm.bytecode.object,
+        config.wallet
+    );
+    let contract = await factory.deploy();
+    config.pairingLibraryAddress = contract.address.substring(2);
+    await contract.deployTransaction.wait();
 }
 
 async function compileSemaphoreVerifierContract(plan, config) {
     plan.add('Compile Semaphore verifier contract', async config => {
+        await compileAndDeploySemaphorePairingLibratry(plan, config);
+
+        function findImports(path) {
+            if (path === 'base/Pairing.sol')
+              return {
+                contents: fs.readFileSync('lib/semaphore/packages/contracts/contracts/base/Pairing.sol').toString(),
+              };
+            else if (path === 'interfaces/ISemaphoreVerifier.sol')
+                return {
+                contents: fs.readFileSync('lib/semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol').toString(),
+                };
+            else return { error: 'File not found' };
+        }
+
         let input = {
             language: 'Solidity',
             sources: {
                 'SemaphoreVerifier.sol': {
-                    content: fs.readFileSync(config.semaphoreVerifierContractFile).toString(),
-                },
+                    content: fs.readFileSync(SEMAPHORE_VERIFIER_SOURCE_PATH).toString(),
+                }
             },
             settings: {
                 outputSelection: {
-                    'SemaphoreVerifier.sol': {
-                        Verifier: ['evm.bytecode.object'],
-                    },
+                    '*': {
+                      '*': ['*']
+                    }
                 },
             },
         };
-        let output = solc.compile(JSON.stringify(input));
+
+        let output = JSON.parse(
+            solc.compile(JSON.stringify(input), { import: findImports })
+        );
+
+        // link Pairing library
+        let pairingPointer = '__$c3727049c0bbe32374ed9d5522c13a9bf7$__';
+        let withLinkedLibrary = JSON.stringify(output).replaceAll(pairingPointer, config.pairingLibraryAddress);
+
         fs.mkdirSync(MTB_CONTRACTS_DIR, { recursive: true });
-        fs.writeFileSync(config.semaphoreVerifierContractOutFile, output);
+        fs.writeFileSync(SEMAPHORE_VERIFIER_ABI_PATH, withLinkedLibrary);
     });
 }
 
@@ -421,11 +445,12 @@ async function deploySemaphoreVerifierContract(plan, config) {
     plan.add('Deploy Semaphore verifier contract', async () => {
         const spinner = ora(`Deploying Semaphore Verifier contract...`).start();
         let verifierBytecode = JSON.parse(
-            fs.readFileSync(config.semaphoreVerifierContractOutFile).toString()
+            fs.readFileSync(SEMAPHORE_VERIFIER_ABI_PATH).toString()
         );
+        console.log()
         let factory = new ContractFactory(
             [],
-            verifierBytecode.contracts['SemaphoreVerifier.sol'].Verifier.evm.bytecode.object,
+            verifierBytecode.contracts['SemaphoreVerifier.sol'].SemaphoreVerifier.evm.bytecode.object,
             config.wallet
         );
         let contract = await factory.deploy();
