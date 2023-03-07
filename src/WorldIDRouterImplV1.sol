@@ -44,17 +44,41 @@ contract WorldIDRouterImplV1 is OwnableUpgradeable, UUPSUpgradeable, CheckInitia
     ///                    !!!!! DATA: DO NOT REORDER !!!!!                     ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                               PUBLIC TYPES                              ///
-    ///////////////////////////////////////////////////////////////////////////////
+    /// The default size of the internal routing table.
+    uint256 internal constant DEFAULT_ROUTING_TABLE_SIZE = 10;
 
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                             CONSTANT FUNCTIONS                          ///
-    ///////////////////////////////////////////////////////////////////////////////
+    /// How much the routing table grows when it runs out of space.
+    uint256 internal constant DEFAULT_ROUTING_TABLE_GROWTH = 5;
+
+    /// The routing table used to dispatch from groups to addresses.
+    address[] internal routingTable;
+
+    /// The number of groups currently set in the routing table.
+    uint256 internal _groupCount;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  ERRORS                                 ///
     ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice An error raised when routing is requested for a group that does not exist.
+    ///
+    /// @param groupId The group identifier that was requested but does not exist.
+    error NoSuchGroup(uint256 groupId);
+
+    /// @notice An error raised when an attempt is made to add a group that already exists in the
+    ///         router.
+    ///
+    /// @param groupId The group identifier that is duplicated.
+    error DuplicateGroup(uint256 groupId);
+
+    /// @notice An error raised when an attempt is made to add a group that is not sequentially next
+    ///         in the group order.
+    ///
+    /// @param groupId The group identifier that is duplicated.
+    error NonSequentialGroup(uint256 groupId);
+
+    /// @notice The requested group has does not have an associated identity manager instance.
+    error NullRoute();
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
@@ -75,12 +99,21 @@ contract WorldIDRouterImplV1 is OwnableUpgradeable, UUPSUpgradeable, CheckInitia
     ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
     ///      replaced by use of setters.
     ///
+    /// @param initialGroupIdentityManager The address of the identity manager to be used for the
+    ///        initial group (group ID 0) when instantiating the router.
+    ///
     /// @custom:reverts string If called more than once at the same initalisation number.
-    function initialize() public reinitializer(1) {
+    function initialize(address initialGroupIdentityManager) public reinitializer(1) {
         // Initialize the sub-contracts.
         __delegateInit();
 
         // Now we can perform our own internal initialisation.
+        routingTable = new address[](DEFAULT_ROUTING_TABLE_SIZE);
+        routingTable[0] = initialGroupIdentityManager;
+        _groupCount = 1;
+
+        // Mark the contract as initialized.
+        __setInitialized();
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -95,8 +128,97 @@ contract WorldIDRouterImplV1 is OwnableUpgradeable, UUPSUpgradeable, CheckInitia
     }
 
     ///////////////////////////////////////////////////////////////////////////////
+    ///                                 ROUTING                                 ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    ///////////////////////////////////////////////////////////////////////////////
     ///                             GROUP MANAGEMENT                            ///
     ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Adds a group to the router.
+    /// @dev It is perfectly valid to add a group to be null-routed.
+    /// @dev While it reverts if the group identifier is not sequential, this is due to the fact
+    ///      that group identifiers are allocated externally. As a result, they cannot just be
+    ///      allocated by the router.
+    ///
+    /// @param groupId The identifier for the new group.
+    /// @param groupIdentityManager The address of the identity manager instance to be used for the
+    ///        group.
+    ///
+    /// @custom:reverts DuplicateGroup If the `groupId` already exists in the routing table.
+    /// @custom:reverts NonSequentialGroup If the `groupId` is not the sequentially next group based
+    ///                 on the known groups.
+    function addGroup(uint256 groupId, address groupIdentityManager)
+        public
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+    {
+        // Duplicate groups cannot be added.
+        if (groupId < _groupCount) {
+            revert DuplicateGroup(groupId);
+        }
+
+        // Groups should be added sequentially.
+        if (groupId != nextGroupId()) {
+            revert NonSequentialGroup(groupId);
+        }
+
+        // Insert the entry into the routing table.
+        insertNewTableEntry(groupId, groupIdentityManager);
+    }
+
+    // TODO updateGroup
+    // TODO removeGroup (doesn't actually remove, just null reverts);
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                              DATA QUERYING                              ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Gets the number of groups in the routing table.
+    ///
+    /// @return count The number of groups in the table.
+    function groupCount() public view onlyProxy onlyInitialized returns (uint256 count) {
+        return _groupCount;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                            INTERNAL FUNCTIONS                           ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Inserts the `targetAddress` into the routing table for the provided `groupId`.
+    /// @dev Grows the routing table if necessary to accommodate the provided entry.
+    ///
+    /// @param groupId The group identifier to add to the routing table.
+    /// @param targetAddress The address to be routed to for the provided `groupId`.
+    function insertNewTableEntry(uint256 groupId, address targetAddress)
+        internal
+        onlyProxy
+        onlyInitialized
+    {
+        while (groupId >= routingTable.length) {
+            uint256 existingTableLength = routingTable.length;
+            address[] memory newRoutingTable =
+                new address[](existingTableLength + DEFAULT_ROUTING_TABLE_GROWTH);
+
+            for (uint256 i = 0; i < existingTableLength; ++i) {
+                newRoutingTable[i] = routingTable[i];
+            }
+
+            routingTable = newRoutingTable;
+        }
+
+        routingTable[groupId] = targetAddress;
+        _groupCount++;
+    }
+
+    /// @notice Gets the group identifier for the group with the highest group identifier known to
+    ///         the router.
+    ///
+    /// @return groupId The highest group identifier known.
+    function nextGroupId() internal view onlyProxy onlyInitialized returns (uint256 groupId) {
+        return _groupCount;
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             AUTHENTICATION                              ///

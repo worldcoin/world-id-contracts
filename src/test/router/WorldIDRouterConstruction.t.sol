@@ -26,12 +26,12 @@ contract WorldIDRouterConstruction is WorldIDRouterTest {
     }
 
     /// @notice Tests that it is possible to properly construct and initialise a router.
-    function testCanConstructRouterWithDelegate() public {
+    function testCanConstructRouterWithDelegate(address dummy) public {
         // Setup
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
         routerImpl = new RouterImpl();
-        bytes memory callData = abi.encodeCall(RouterImpl.initialize, ());
+        bytes memory callData = abi.encodeCall(RouterImpl.initialize, (dummy));
 
         // Test
         router = new Router(address(routerImpl), callData);

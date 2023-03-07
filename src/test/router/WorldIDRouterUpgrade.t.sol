@@ -54,11 +54,11 @@ contract WorldIDRouterUpgrade is WorldIDRouterTest {
     }
 
     /// @notice Tests that an upgrade cannot be performed unless done through the proxy.
-    function testCannotUpgradeWithoutProxy() public {
+    function testCannotUpgradeWithoutProxy(address dummy) public {
         // Setup
         WorldIDRouterImplMock mockUpgrade = new WorldIDRouterImplMock();
         address mockUpgradeAddress = address(mockUpgrade);
-        bytes memory initCall = abi.encodeCall(RouterImpl.initialize, ());
+        bytes memory initCall = abi.encodeCall(RouterImpl.initialize, (dummy));
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test

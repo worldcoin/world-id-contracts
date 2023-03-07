@@ -29,7 +29,7 @@ contract WorldIDRouterTest is WorldIDTest {
     /// @notice This function runs before every single test.
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
-        makeNewRouter();
+        makeNewRouter(thisAddress);
 
         // Label the addresses for better errors.
         hevm.label(thisAddress, "Sender");
@@ -43,11 +43,13 @@ contract WorldIDRouterTest is WorldIDTest {
 
     /// @notice Initializes a new router.
     /// @dev It is constructed in the globals.
-    function makeNewRouter() public {
+    ///
+    /// @param initialGroupAddress()
+    function makeNewRouter(address initialGroupAddress) public {
         routerImpl = new RouterImpl();
         routerImplAddress = address(routerImpl);
 
-        bytes memory initCallData = abi.encodeCall(RouterImpl.initialize, ());
+        bytes memory initCallData = abi.encodeCall(RouterImpl.initialize, (initialGroupAddress));
 
         router = new Router(routerImplAddress, initCallData);
         routerAddress = address(router);
