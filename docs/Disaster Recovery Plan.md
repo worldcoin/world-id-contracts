@@ -96,23 +96,29 @@ good state is.
 > #### Record State: Task 1
 >
 > 1. Obtain read access to the production database via the VPN already obtained.
-> 2. Find the row in the signup sequencer database that corresponds to the last correct root on
->    chain (hereafter `rootValue`). Note that this may not be the same as `latestRoot` as data may
->    have become corrupt.
+> 2. Finding the latest correct root is situationally dependent.
+>    - An obvious method is to identify the block where the issue occurred and pick the last root
+>      from the block _before_ that happened using the `mined_at` column in the database. This will
+>      always be safe.
+>    - Note that an issue may occur without data-integrity impact for some time, and hence the above
+>      option may be overly-conservative.
+>    - We call the established root value `lastGoodRoot`.
+> 3. Find the row in the signup sequencer database that corresponds to the last correct root on
+>    chain (`lastGoodRoot` found above).
 >
 > ```sql
-> SELECT *                -- Select all columns
-> FROM root_history       -- From the root history table
-> WHERE root = rootValue; -- In rows that match the root value
+> SELECT (root, last_identity, status, created_at, mined_at) -- Select all columns
+> FROM root_history                                          -- From the root history table
+> WHERE root = lastGoodRoot;                                 -- In rows that match the root value
 > ```
 >
 > 3. Find the last identity inserted as part of the root returned from the above.
 >
 > ```sql
-> SELECT *                          -- Select all columns
-> FROM identities                   -- From the identities table
-> WHERE commitment = last_identity; -- In rows where commitment matches the last_identity from the
->                                   -- previous query
+> SELECT (commitment, leaf_index, status) -- Select all columns
+> FROM identities                         -- From the identities table
+> WHERE commitment = last_identity;       -- In rows where commitment matches the last_identity from
+>                                         -- the previous query
 > ```
 
 This gives us the last known good state that the contract was in, and hence the point from which any
@@ -253,6 +259,12 @@ must be taken when testing the fix, undue time cannot be spent deploying the fix
 > 11. Leave the "batch insert verifier" address as blank.
 > 12. Set the initial root to the `rootValue` obtained above.
 > 13. Enter the tree depth to match that used by the signup sequencer.
+> 14. Store the contract addresses in the fields below:
+>
+> **Batch Verifier Contract Address:**  
+> **State Bridge Contract Address:**  
+> **WorldID Identity Manager Implementation Address:**  
+> **WorldID Identity Manager Address:**
 
 There is now a deployment of the fixed contract in production. Care must be taken to ensure that the
 newly-deployed contract has been initialized properly so that it is ready to accept new identity
@@ -266,7 +278,10 @@ while performing the [above](#fix-the-problem) tasks.
 > 2. `make transfer-ownership`
 > 3. Answer `n` to the question about reusing configuration.
 > 4. Provide the relay address when asked.
-> 5. Carefully record the relay address.
+> 5. Provide the WorldID identity manager address when asked.
+> 6. Carefully record the relay address below.
+>
+> **OpenZeppelin Relay Address:**
 
 At this stage the deployed contract is now installed behind the OpenZeppelin relay contract. This
 means that it is ready for use with the signup sequencer, and hence that identity operations can be
@@ -283,7 +298,7 @@ from that point.
 > #### Restart: Task 1
 >
 > 1. Update the `batching-main-stage.values.yaml` file to hold the relay address for the identity
->    manager as `IDENTITY_MANAGER_ADDRESS`. This is the address obtained above.
+>    manager as `IDENTITY_MANAGER_ADDRESS`. This is the OpenZeppelin Relay address obtained above.
 > 2. Push to `batching/main` to trigger a deploy.
 > 3. Approve the deploy to production via Datadog.
 
