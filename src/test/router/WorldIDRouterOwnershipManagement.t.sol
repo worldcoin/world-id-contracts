@@ -1,26 +1,21 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
+import {WorldIDRouterTest} from "./WorldIDRouterTest.sol";
 
-import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
-import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
-import {WorldIDIdentityManagerImplMock} from "../mock/WorldIDIdentityManagerImplMock.sol";
 import {CheckInitialized} from "../../utils/CheckInitialized.sol";
 
-import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDRouter as Router} from "../../WorldIDRouter.sol";
+import {WorldIDRouterImplV1 as RouterImpl} from "../../WorldIDRouterImplV1.sol";
 
-/// @title World ID Identity Manager Ownership Management Tests
-/// @notice Contains tests for the WorldID identity manager.
+/// @title World ID Router Ownership Management Tests
+/// @notice Contains tests for the WorldID router
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
-contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest {
+contract WorldIDRouterOwnershipManagement is WorldIDRouterTest {
     /// @notice Taken from OwnableUpgradable.sol
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
@@ -32,7 +27,7 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         bytes memory expectedReturn = abi.encode(address(this));
 
         // Test
-        assertCallSucceedsOn(identityManagerAddress, callData, expectedReturn);
+        assertCallSucceedsOn(routerAddress, callData, expectedReturn);
     }
 
     /// @notice Tests that it is possible to transfer ownership of the contract.
@@ -46,8 +41,8 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         emit OwnershipTransferred(thisAddress, newOwner);
 
         // Test
-        assertCallSucceedsOn(identityManagerAddress, transferCallData, new bytes(0x0));
-        assertCallSucceedsOn(identityManagerAddress, ownerCallData, abi.encode(newOwner));
+        assertCallSucceedsOn(routerAddress, transferCallData, new bytes(0x0));
+        assertCallSucceedsOn(routerAddress, ownerCallData, abi.encode(newOwner));
     }
 
     /// @notice Ensures that it is impossible to transfer ownership without being the owner.
@@ -59,7 +54,7 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         vm.prank(naughty);
 
         // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
+        assertCallFailsOn(routerAddress, callData, expectedReturn);
     }
 
     /// @notice Tests that it is possible to renounce ownership.
@@ -69,8 +64,8 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         bytes memory ownerData = abi.encodeCall(OwnableUpgradeable.owner, ());
 
         // Test
-        assertCallSucceedsOn(identityManagerAddress, renounceData);
-        assertCallSucceedsOn(identityManagerAddress, ownerData, abi.encode(nullAddress));
+        assertCallSucceedsOn(routerAddress, renounceData);
+        assertCallSucceedsOn(routerAddress, ownerData, abi.encode(nullAddress));
     }
 
     /// @notice Ensures that ownership cannot be renounced by anybody other than the owner.
@@ -82,6 +77,6 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         vm.prank(naughty);
 
         // Test
-        assertCallFailsOn(identityManagerAddress, callData, returnData);
+        assertCallFailsOn(routerAddress, callData, returnData);
     }
 }

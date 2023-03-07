@@ -25,7 +25,7 @@ contract WorldIDIdentityManagerConstruction is WorldIDIdentityManagerTest {
         identityManager = new IdentityManager(dummy, data);
     }
 
-    /// @notice Tests that it is possible to properly construct and initialise
+    /// @notice Tests that it is possible to properly construct and initialise an identity manager.
     function testCanConstructIdentityManagerWithDelegate() public {
         // Setup
         vm.expectEmit(true, true, true, true);

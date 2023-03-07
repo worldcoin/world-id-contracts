@@ -5,7 +5,7 @@ import {ERC1967Proxy} from "openzeppelin-contracts/proxy/ERC1967/ERC1967Proxy.so
 
 /// @title WorldID Router
 /// @author Worldcoin
-/// @notice A router component to allow external clients to get group addresses from a trusted 
+/// @notice A router component to allow external clients to get group addresses from a trusted
 ///         source.
 contract WorldIDRouter is ERC1967Proxy {
     ///////////////////////////////////////////////////////////////////////////////

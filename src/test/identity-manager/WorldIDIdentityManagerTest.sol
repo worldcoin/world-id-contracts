@@ -1,10 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {Vm} from "forge-std/Vm.sol";
-import {Test} from "forge-std/Test.sol";
-
-import "forge-std/console.sol";
+import {WorldIDTest} from "../WorldIDTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleStateBridge} from "../mock/SimpleStateBridge.sol";
@@ -18,12 +15,10 @@ import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentity
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
-contract WorldIDIdentityManagerTest is Test {
+contract WorldIDIdentityManagerTest is WorldIDTest {
     ///////////////////////////////////////////////////////////////////////////////
     ///                                TEST DATA                                ///
     ///////////////////////////////////////////////////////////////////////////////
-
-    Vm internal hevm = Vm(HEVM_ADDRESS);
 
     IdentityManager internal identityManager;
     ManagerImpl internal managerImpl;
@@ -35,9 +30,6 @@ contract WorldIDIdentityManagerTest is Test {
     address internal managerImplAddress;
 
     uint256 internal slotCounter = 0;
-
-    address internal nullAddress = address(0x0);
-    address internal thisAddress = address(this);
 
     // All hardcoded test data taken from `src/test/data/TestParams.json`. This will be dynamically
     // generated at some point in the future.
@@ -106,7 +98,6 @@ contract WorldIDIdentityManagerTest is Test {
 
     /// @notice Initialises a new identity manager using the provided information.
     /// @dev It is initialised in the globals.
-    /// @dev It is initialised in the globals.
     ///
     /// @param actualPreRoot The pre-root to use.
     /// @param actualVerifier The verifier instance to use.
@@ -137,74 +128,12 @@ contract WorldIDIdentityManagerTest is Test {
     }
 
     /// @notice Creates a new identity manager without initializing the delegate.
-    /// @dev Uses the global variables.
+    /// @dev It is constructed in the globals.
     function makeUninitIdentityManager() public {
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
         identityManager = new IdentityManager(managerImplAddress, new bytes(0x0));
         identityManagerAddress = address(identityManager);
-    }
-
-    /// @notice Asserts that making the external call using `callData` on `identityManager`
-    ///         succeeds.
-    ///
-    /// @param target The target at which to make the call.
-    /// @param callData The ABI-encoded call to a function.
-    function assertCallSucceedsOn(address target, bytes memory callData) public {
-        (bool status,) = target.call(callData);
-        assert(status);
-    }
-
-    /// @notice Asserts that making the external call using `callData` on `identityManager`
-    ///         succeeds.
-    ///
-    /// @param target The target at which to make the call.
-    /// @param callData The ABI-encoded call to a function.
-    /// @param expectedReturnData The expected return data from the function.
-    function assertCallSucceedsOn(
-        address target,
-        bytes memory callData,
-        bytes memory expectedReturnData
-    ) public {
-        (bool status, bytes memory returnData) = target.call(callData);
-        assert(status);
-        assertEq(expectedReturnData, returnData);
-    }
-
-    /// @notice Asserts that making the external call using `callData` on `identityManager`
-    ///         fails.
-    ///
-    /// @param target The target at which to make the call.
-    /// @param callData The ABI-encoded call to a function.
-    function assertCallFailsOn(address target, bytes memory callData) public {
-        (bool status,) = target.call(callData);
-        assert(!status);
-    }
-
-    /// @notice Asserts that making the external call using `callData` on `identityManager`
-    ///         fails.
-    ///
-    /// @param target The target at which to make the call.
-    /// @param callData The ABI-encoded call to a function.
-    /// @param expectedReturnData The expected return data from the function.
-    function assertCallFailsOn(
-        address target,
-        bytes memory callData,
-        bytes memory expectedReturnData
-    ) public {
-        (bool status, bytes memory returnData) = target.call(callData);
-        assert(!status);
-        assertEq(expectedReturnData, returnData);
-    }
-
-    /// @notice Performs the low-level encoding of the `revert(string)` call's return data.
-    /// @dev Equivalent to `abi.encodeWithSignature("Error(string)", reason)`.
-    ///
-    /// @param reason The string reason for the revert.
-    ///
-    /// @return data The ABI encoding of the revert.
-    function encodeStringRevert(string memory reason) public pure returns (bytes memory data) {
-        return abi.encodeWithSignature("Error(string)", reason);
     }
 
     /// @notice Moves through the slots in the identity commitments array _without_ resetting
