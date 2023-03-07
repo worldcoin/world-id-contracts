@@ -4,9 +4,9 @@ pragma solidity ^0.8.10;
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {WorldIDIdentityManagerImplMock} from "./mock/WorldIDIdentityManagerImplMock.sol";
+import {WorldIDIdentityManagerImplMock} from "../mock/WorldIDIdentityManagerImplMock.sol";
 
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Upgrade Test
 /// @notice Contains tests for the WorldID identity manager.

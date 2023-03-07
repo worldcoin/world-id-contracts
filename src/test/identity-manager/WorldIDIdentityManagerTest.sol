@@ -6,12 +6,12 @@ import {Test} from "forge-std/Test.sol";
 
 import "forge-std/console.sol";
 
-import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
-import {SimpleStateBridge} from "./mock/SimpleStateBridge.sol";
-import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
+import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
+import {SimpleStateBridge} from "../mock/SimpleStateBridge.sol";
+import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 
-import {WorldIDIdentityManager as IdentityManager} from "../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Test.
 /// @notice Contains tests for the WorldID identity manager.
