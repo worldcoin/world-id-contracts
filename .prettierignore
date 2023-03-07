@@ -6,3 +6,6 @@ mtb/
 
 # Solidity
 *.sol
+
+# JS
+package-lock.json
