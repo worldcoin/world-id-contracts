@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {ERC1967Proxy} from "openzeppelin-contracts/proxy/ERC1967/ERC1967Proxy.sol";
+import {WorldIDProxy} from "./abstract/WorldIDProxy.sol";
 
 /// @title WorldID Identity Manager
 /// @author Worldcoin
@@ -9,7 +9,7 @@ import {ERC1967Proxy} from "openzeppelin-contracts/proxy/ERC1967/ERC1967Proxy.so
 /// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs
 ///      to perform the insertions. This contract is a proxy contract that delegates actual logic to
 ///      the implementation.
-contract WorldIDIdentityManager is ERC1967Proxy {
+contract WorldIDIdentityManager is WorldIDProxy {
     ///////////////////////////////////////////////////////////////////////////////
     ///                    !!!! DO NOT ADD MEMBERS HERE !!!!                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -27,7 +27,7 @@ contract WorldIDIdentityManager is ERC1967Proxy {
     /// @param _data If this is non-empty, it is used as the data for a `delegatecall` to `_logic`.
     ///        This is usually an encoded function call, and allows for initialising the storage of
     ///        the proxy in a way similar to a traditional solidity constructor.
-    constructor(address _logic, bytes memory _data) payable ERC1967Proxy(_logic, _data) {
+    constructor(address _logic, bytes memory _data) payable WorldIDProxy(_logic, _data) {
         // !!!! DO NOT PUT PROGRAM LOGIC HERE !!!!
         // It should go in the `initialize` function of the delegate instead.
     }

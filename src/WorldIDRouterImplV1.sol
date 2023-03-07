@@ -1,17 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {CheckInitialized} from "./utils/CheckInitialized.sol";
-
-import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import {WorldIDImpl} from "./abstract/WorldIDImpl.sol";
 
 /// @title WorldID Router Implementation Version 1
 /// @author Worldcoin
 /// @notice A router component that can dispatch group numbers to the correct identity manager
 ///         implementation.
 /// @dev This is the implementation delegated to by a proxy.
-contract WorldIDRouterImplV1 is OwnableUpgradeable, UUPSUpgradeable, CheckInitialized {
+contract WorldIDRouterImplV1 is WorldIDImpl {
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -139,9 +136,13 @@ contract WorldIDRouterImplV1 is OwnableUpgradeable, UUPSUpgradeable, CheckInitia
     ///
     /// @custom:reverts NoSuchGroup If the requested `groupNumber` does not exist.
     /// @custom:reverts NullRoute If there is no valid route for the requested `groupNumber`.
-    function routeFor(uint256 groupNumber) public view onlyProxy onlyInitialized returns (address target) {
-
-    }
+    function routeFor(uint256 groupNumber)
+        public
+        view
+        onlyProxy
+        onlyInitialized
+        returns (address target)
+    {}
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             GROUP MANAGEMENT                            ///
@@ -230,24 +231,5 @@ contract WorldIDRouterImplV1 is OwnableUpgradeable, UUPSUpgradeable, CheckInitia
     /// @return groupId The highest group identifier known.
     function nextGroupId() internal view onlyProxy onlyInitialized returns (uint256 groupId) {
         return _groupCount;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                             AUTHENTICATION                              ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Is called when upgrading the contract to check whether it should be performed.
-    ///
-    /// @param newImplementation The address of the implementation being upgraded to.
-    ///
-    /// @custom:reverts string If the upgrade should not be performed.
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        virtual
-        override
-        onlyProxy
-        onlyOwner
-    {
-        // No body needed as `onlyOwner` handles it.
     }
 }

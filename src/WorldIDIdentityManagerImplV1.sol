@@ -1,14 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.10;
 
-import {CheckInitialized} from "./utils/CheckInitialized.sol";
+import {WorldIDImpl} from "./abstract/WorldIDImpl.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
 import {UnimplementedTreeVerifier} from "./utils/UnimplementedTreeVerifier.sol";
 import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
-
-import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title WorldID Identity Manager Implementation Version 1
 /// @author Worldcoin
@@ -16,12 +13,7 @@ import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable
 /// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs
 ///      to perform the insertions.
 /// @dev This is the implementation delegated to by a proxy.
-contract WorldIDIdentityManagerImplV1 is
-    OwnableUpgradeable,
-    UUPSUpgradeable,
-    IWorldID,
-    CheckInitialized
-{
+contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -915,25 +907,6 @@ contract WorldIDIdentityManagerImplV1 is
             revert("Expiry time cannot be zero.");
         }
         rootHistoryExpiry = newExpiryTime;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                             AUTHENTICATION                              ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Is called when upgrading the contract to check whether it should be performed.
-    ///
-    /// @param newImplementation The address of the implementation being upgraded to.
-    ///
-    /// @custom:reverts string If the upgrade should not be performed.
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        virtual
-        override
-        onlyProxy
-        onlyOwner
-    {
-        // No body needed as `onlyOwner` handles it.
     }
 
     ///////////////////////////////////////////////////////////////////////////////
