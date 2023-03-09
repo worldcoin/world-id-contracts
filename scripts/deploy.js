@@ -587,6 +587,35 @@ async function runRouteUpdate(plan, config) {
   });
 }
 
+async function runRouteDisable(plan, config) {
+  plan.add('Disable route in WorldID Router', async () => {
+    const spinner = ora('Building route disable call...').start();
+    const contractWithAbi = new Contract(
+      config.routerContractAddress,
+      RouterImpl.abi,
+      config.wallet
+    );
+    spinner.text = `Disabling group ${config.routerGroupNumber}...`;
+    try {
+      await contractWithAbi.disableGroup(config.routerGroupNumber);
+      spinner.succeed(`Disabled group ${config.routerGroupNumber}`);
+    } catch (e) {
+      const body = JSON.parse(e.error.error.body);
+      const decodedError = decodeContractError(contractWithAbi.interface, body.error.data);
+      if (decodedError.name === 'NoSuchGroup') {
+        spinner.fail(
+          `Unable to disable group ${config.routerGroupNumber}: it does not exist in the router at ${config.routerContractAddress}`
+        );
+      } else {
+        spinner.fail(
+          `Could not disable group ${config.routerGroupNumber} in the router at ${config.routerContractAddress}`
+        );
+        console.error(e);
+      }
+    }
+  });
+}
+
 /** Decodes a contract error given a contract interface.
  *
  * Note that if the returned error is not part of the interface of the contract then the decoding
@@ -694,7 +723,7 @@ async function getRouterAddress(config) {
   }
 }
 
-async function getRouteConfiguration(config) {
+async function getRouteConfiguration(config, isDisable = false) {
   if (!config.routerGroupNumber) {
     config.routerGroupNumber = process.env.ROUTER_UPDATE_GROUP_NUMBER;
   }
@@ -711,19 +740,21 @@ async function getRouteConfiguration(config) {
     process.exit(1);
   }
 
-  if (!config.routerTargetAddress) {
-    config.routerTargetAddress = process.env.ROUTER_UPDATE_TARGET_ADDRESS;
-  }
+  if (!isDisable) {
+    if (!config.routerTargetAddress) {
+      config.routerTargetAddress = process.env.ROUTER_UPDATE_TARGET_ADDRESS;
+    }
 
-  if (!config.routerTargetAddress) {
-    config.routerTargetAddress = await ask(
-      `Please provide the new target address for the router: `
-    );
-  }
+    if (!config.routerTargetAddress) {
+      config.routerTargetAddress = await ask(
+        `Please provide the new target address for the router: `
+      );
+    }
 
-  if (!config.routerTargetAddress) {
-    console.error('No target for the update provided but such one is required.');
-    process.exit(1);
+    if (!config.routerTargetAddress) {
+      console.error('No target for the update provided but such one is required.');
+      process.exit(1);
+    }
   }
 }
 
@@ -1084,7 +1115,7 @@ async function buildRouteAddActionPlan(plan, config) {
   await getProvider(config);
   await getWallet(config);
   await getRouterAddress(config);
-  await getRouteConfiguration(config);
+  await getRouteConfiguration(config, false);
 
   await runRouteAdd(plan, config);
 }
@@ -1097,9 +1128,22 @@ async function buildRouteUpdateActionPlan(plan, config) {
   await getProvider(config);
   await getWallet(config);
   await getRouterAddress(config);
-  await getRouteConfiguration(config);
+  await getRouteConfiguration(config, false);
 
   await runRouteUpdate(plan, config);
+}
+
+async function buildRouteDisableActionPlan(plan, config) {
+  dotenv.config();
+
+  await getPrivateKey(config);
+  await getRpcUrl(config);
+  await getProvider(config);
+  await getWallet(config);
+  await getRouterAddress(config);
+  await getRouteConfiguration(config, true);
+
+  await runRouteDisable(plan, config);
 }
 
 /** Builds a plan using the provided function and then executes the plan.
@@ -1167,7 +1211,15 @@ async function main() {
       await saveConfiguration(config);
     });
 
-  // TODO route-disable
+  program
+    .command('route-disable')
+    .description('Interactively disables a group in the router.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildRouteDisableActionPlan, config);
+      await saveConfiguration(config);
+    });
 
   // TODO upgrade-router
 
