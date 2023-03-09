@@ -26,7 +26,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
+        makeNewIdentityManager(treeDepth, newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
@@ -51,7 +51,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
+        makeNewIdentityManager(treeDepth, newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
@@ -100,7 +100,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
         makeNewIdentityManager(
-            uint256(currentPreRoot), verifier, isStateBridgeEnabled, stateBridgeProxy
+            treeDepth, uint256(currentPreRoot), verifier, isStateBridgeEnabled, stateBridgeProxy
         );
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities, (actualProof, actualRoot, preparedIdents, postRoot)
@@ -127,7 +127,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         vm.assume(position < identities.length);
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
-        makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
+        makeNewIdentityManager(treeDepth, newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         if (changeOld) {
             preparedIdents[position].oldCommitment = SNARK_SCALAR_FIELD + i;
         } else {

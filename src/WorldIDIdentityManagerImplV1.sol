@@ -95,6 +95,9 @@ contract WorldIDIdentityManagerImplV1 is
     /// @notice Boolean flag to enable/disable the state bridge.
     bool internal _isStateBridgeEnabled;
 
+    /// @notice MerkleTree depth
+    uint8 internal treeDepth;
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                               PUBLIC TYPES                              ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -213,6 +216,7 @@ contract WorldIDIdentityManagerImplV1 is
     ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
     ///      replaced by use of setters.
     ///
+    /// @param _treeDepth The depth of the MerkeTree
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of the empty tree.
     /// @param _merkleTreeVerifier The initial tree verifier to use.
@@ -222,6 +226,7 @@ contract WorldIDIdentityManagerImplV1 is
     ///
     /// @custom:reverts string If called more than once at the same initalisation number.
     function initialize(
+        uint8 _treeDepth,
         uint256 initialRoot,
         ITreeVerifier _merkleTreeVerifier,
         bool _enableStateBridge,
@@ -231,6 +236,7 @@ contract WorldIDIdentityManagerImplV1 is
         __delegateInit();
 
         // Now perform the init logic for this contract.
+        treeDepth = _treeDepth;
         rootHistoryExpiry = 1 hours;
         ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
         _latestRoot = initialRoot;
@@ -961,7 +967,7 @@ contract WorldIDIdentityManagerImplV1 is
     ) public view virtual onlyProxy onlyInitialized {
         if (checkValidRoot(root)) {
             semaphoreVerifier.verifyProof(
-                root, nullifierHash, signalHash, externalNullifierHash, proof, 16
+                root, nullifierHash, signalHash, externalNullifierHash, proof, treeDepth
             );
         }
     }

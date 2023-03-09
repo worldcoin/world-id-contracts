@@ -16,7 +16,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     /// @notice Tests whether it is possible to query accurate information about the current root.
     function testQueryCurrentRoot(uint128 newPreRoot) public {
         // Setup
-        makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
+        makeNewIdentityManager(treeDepth, newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, newPreRoot);
         bytes memory returnData = abi.encode(ManagerImpl.RootInfo(newPreRoot, 0, true));
 
@@ -35,7 +35,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
+        makeNewIdentityManager(treeDepth, newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
         bytes memory registerCallData = abi.encodeCall(
@@ -67,7 +67,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
-        makeNewIdentityManager(newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
+        makeNewIdentityManager(treeDepth, newPreRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
         uint256 originalTimestamp = block.timestamp;
@@ -117,7 +117,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     /// @notice Checks that it is possible to get the latest root from the contract.
     function testCanGetLatestRoot(uint256 actualRoot) public {
         // Setup
-        makeNewIdentityManager(actualRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
+        makeNewIdentityManager(treeDepth, actualRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
         bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory returnData = abi.encode(actualRoot);
 

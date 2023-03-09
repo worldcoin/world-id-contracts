@@ -32,7 +32,7 @@ contract WorldIDIdentityManagerConstruction is WorldIDIdentityManagerTest {
         emit Initialized(1);
         managerImpl = new ManagerImpl();
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize, (initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy)
+            ManagerImpl.initialize, (treeDepth, initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy)
         );
 
         // Test
