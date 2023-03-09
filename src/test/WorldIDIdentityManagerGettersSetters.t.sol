@@ -5,7 +5,7 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
-import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
+import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
 
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
 

@@ -5,7 +5,8 @@ import {CheckInitialized} from "./utils/CheckInitialized.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
 import {UnimplementedTreeVerifier} from "./utils/UnimplementedTreeVerifier.sol";
-import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
+import {ISemaphoreVerifier} from "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
+import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
 
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -958,14 +959,9 @@ contract WorldIDIdentityManagerImplV1 is
         uint256 externalNullifierHash,
         uint256[8] calldata proof
     ) public view virtual onlyProxy onlyInitialized {
-        uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
-
         if (checkValidRoot(root)) {
             semaphoreVerifier.verifyProof(
-                [proof[0], proof[1]],
-                [[proof[2], proof[3]], [proof[4], proof[5]]],
-                [proof[6], proof[7]],
-                publicSignals
+                root, nullifierHash, signalHash, externalNullifierHash, proof, 16
             );
         }
     }
