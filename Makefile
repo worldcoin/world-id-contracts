@@ -6,11 +6,14 @@ all: install build
 # Install forge dependencies (not needed if submodules are already initialized).
 install:; forge install && npm install
 
-# Build contracts and inject the Poseidon library.
+# Build contracts.
 build:; forge build
 
 # Run tests, with debug information and gas reports.
 test:; FOUNDRY_PROFILE=debug forge test
+
+# Clean the solidity build directory.
+clean:; rm -rf out/
 
 # ===== Profiling Rules ===============================================================================================
 
