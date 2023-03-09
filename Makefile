@@ -31,6 +31,20 @@ deploy: install build; node --no-warnings scripts/deploy.js deploy
 # Upgrade contracts
 upgrade: install build; node --no-warnings scripts/deploy.js upgrade
 
+# ===== Router Management Rules =======================================================================================
+
+# Upgrades the router contract.
+upgrade-router: install build; node --no-warnings scripts/deploy.js upgrade-router
+
+# Add routes in the router.
+route-add: install build; node --no-warnings scripts/deploy.js route-add
+
+# Update routes in the router.
+route-update: install build; node --no-warnings scripts/deploy.js route-update
+
+# Disable routes in the router.
+route-disable: install build; node --no-warnings scripts/deploy.js route-disable
+
 # ===== Utility Rules =================================================================================================
 
 # Format the solidity code.

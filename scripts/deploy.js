@@ -9,7 +9,7 @@ import { Command } from 'commander';
 
 import solc from 'solc';
 import { Contract, ContractFactory, providers, utils, Wallet } from 'ethers';
-import { Interface } from 'ethers/lib/utils.js';
+import { ErrorFragment, Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
 import IdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
@@ -521,6 +521,91 @@ async function deployIdentityManager(plan, config) {
   });
 }
 
+async function runRouteUpdate(plan, config) {
+  plan.add('Update route in WorldID Router', async () => {
+    const spinner = ora('Building route update call...').start();
+    const contractWithAbi = new Contract(
+      config.routerContractAddress,
+      RouterImpl.abi,
+      config.wallet
+    );
+    spinner.text = `Updating group ${config.routerUpdateGroupNumber} to route to ${config.routerUpdateTargetAddress}...`;
+    try {
+      await contractWithAbi.updateGroup(
+        config.routerUpdateGroupNumber,
+        config.routerUpdateTargetAddress
+      );
+      spinner.succeed(
+        `Updated group ${config.routerUpdateGroupNumber} to route to ${config.routerUpdateTargetAddress}`
+      );
+    } catch (e) {
+      const body = JSON.parse(e.error.error.body);
+      const decodedError = decodeContractError(contractWithAbi.interface, body.error.data);
+      if (decodedError.name === 'NoSuchGroup') {
+        spinner.fail(
+          `Unable to update: group ${config.routerUpdateGroupNumber} does not exist in the router at ${config.routerContractAddress}`
+        );
+      } else {
+        spinner.fail(
+          `Could not update group ${config.routerUpdateGroupNumber} in the router at ${config.routerContractAddress}`
+        );
+        console.error(e);
+      }
+    }
+  });
+}
+
+/** Decodes a contract error given a contract interface.
+ *
+ * Note that if the returned error is not part of the interface of the contract then the decoding
+ * will fail. Note that errors defined in superclasses are considered to be part of the interface of
+ * the contract. It will, however, decode string-encoded reverts.
+ *
+ * Note that errors in library code are not considered to be part of the interface. This means that
+ * any strongly-typed errors that libraries revert with will not be decoded successfully here.
+ *
+ * @param {Interface} iface The interface that the call is decoding errors from.
+ * @param {String} errorData The string containing the ABI-encoded return data.
+ * @returns {{name: string, sig: string, payload: Object, error: ErrorFragment}|undefined} The
+ *          decoded error if decoding is successful, otherwise `undefined`.
+ */
+function decodeContractError(iface, errorData) {
+  const availableErrors = iface.errors;
+
+  // The string revert is not part of the errors object by default, so we have to manually construct
+  // it and add it to the object to allow decoding these.
+  availableErrors['Error(string)'] = {
+    type: 'error',
+    name: 'Error',
+    inputs: [
+      {
+        name: 'message',
+        type: 'string',
+        indexed: null,
+        components: null,
+        arrayLength: null,
+        arrayChildren: null,
+        baseType: 'string',
+        _isParamType: true,
+      },
+    ],
+    _isFragment: true,
+  };
+
+  for (let error of Object.entries(availableErrors)) {
+    let errorSignature = error[0];
+    let errorFragment = availableErrors[errorSignature];
+
+    try {
+      const decoded = iface.decodeErrorResult(errorFragment, errorData);
+      const name = errorSignature.replace(/\(.*\)$/, '');
+      return { name: name, sig: errorSignature, error: errorFragment, payload: decoded };
+    } catch (e) {}
+  }
+
+  return undefined;
+}
+
 async function getPrivateKey(config) {
   if (!config.privateKey) {
     config.privateKey = process.env.PRIVATE_KEY;
@@ -562,7 +647,51 @@ async function getEnableStateBridge(config) {
   }
 }
 
-async function getRouterUpdateConfiguration(config) {}
+async function getRouteUpdateConfiguration(config) {
+  if (!config.routerContractAddress) {
+    config.routerContractAddress = process.env.ROUTER_CONTRACT_ADDRESS;
+  }
+
+  if (!config.routerContractAddress) {
+    config.routerContractAddress = await ask('Please provide the address of the router: ');
+  }
+
+  if (!config.routerContractAddress) {
+    console.error('No router address provided.');
+    process.exit(1);
+  }
+
+  if (!config.routerUpdateGroupNumber) {
+    config.routerUpdateGroupNumber = process.env.ROUTER_UPDATE_GROUP_NUMBER;
+  }
+
+  if (!config.routerUpdateGroupNumber) {
+    config.routerUpdateGroupNumber = await ask(
+      'Which group should be updated in the router? ',
+      'number'
+    );
+  }
+
+  if (!config.routerUpdateGroupNumber) {
+    console.error('No group number to update provided but such a number is required.');
+    process.exit(1);
+  }
+
+  if (!config.routerUpdateTargetAddress) {
+    config.routerUpdateTargetAddress = process.env.ROUTER_UPDATE_TARGET_ADDRESS;
+  }
+
+  if (!config.routerUpdateTargetAddress) {
+    config.routerUpdateTargetAddress = await ask(
+      `Please provide the new target address for the router: `
+    );
+  }
+
+  if (!config.routerUpdateTargetAddress) {
+    console.error('No target for the update provided but such one is required.');
+    process.exit(1);
+  }
+}
 
 async function getRouterDeployConfiguration(config) {
   if (!config.enableRouter) {
@@ -578,9 +707,15 @@ async function getRouterDeployConfiguration(config) {
   }
 
   if (config.enableRouter) {
-    config.routerContractAddress = await ask(
-      'Enter the router address or leave blank to deploy it: '
-    );
+    if (!config.routerContractAddress) {
+      config.routerContractAddress = process.env.ROUTER_CONTRACT_ADDRESS;
+    }
+
+    if (!config.routerContractAddress) {
+      config.routerContractAddress = await ask(
+        'Enter the router address or leave blank to deploy it: '
+      );
+    }
 
     if (config.routerContractAddress) {
       config.groupNumber = await ask(
@@ -907,14 +1042,16 @@ async function buildUpgradeActionPlan(plan, config) {
   await deployUpgrade(plan, config);
 }
 
-async function buildUpdateRoutingActionPlan(plan, config) {
+async function buildRouteUpdateActionPlan(plan, config) {
   dotenv.config();
 
   await getPrivateKey(config);
   await getRpcUrl(config);
   await getProvider(config);
   await getWallet(config);
-  await getRouterUpdateConfiguration(config);
+  await getRouteUpdateConfiguration(config);
+
+  await runRouteUpdate(plan, config);
 }
 
 /** Builds a plan using the provided function and then executes the plan.
@@ -962,15 +1099,21 @@ async function main() {
       await saveConfiguration(config);
     });
 
+  // TODO route-add
+
   program
-    .command('update-routing')
-    .description('Interactively updates the routing in the router.')
+    .command('route-update')
+    .description('Interactively updates the route in the router.')
     .action(async () => {
       const options = program.opts();
       let config = await loadConfiguration(options.config);
-      await buildAndRunPlan(buildUpdateRoutingActionPlan, config);
+      await buildAndRunPlan(buildRouteUpdateActionPlan, config);
       await saveConfiguration(config);
     });
+
+  // TODO route-disable
+
+  // TODO upgrade-router
 
   await program.parseAsync();
 }
