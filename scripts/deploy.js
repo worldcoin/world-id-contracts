@@ -36,6 +36,8 @@ const DEFAULT_BATCH_SIZE = 3;
 const MTB_VERSION = '1.0.2';
 const VERIFIER_SOURCE_PATH = MTB_CONTRACTS_DIR + '/Verifier.sol';
 const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json';
+const SEMAPHORE_VERIFIER_SOURCE_PATH = 'lib/semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol';
+const SEMAPHORE_VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/SemaphoreVerifier.json';
 const DEFAULT_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerImplMock';
 const DEFAULT_UPGRADE_FUNCTION_SPEC = 'initialize(uint32)';
 
@@ -295,13 +297,16 @@ async function compileVerifierContract(plan, config) {
       },
       settings: {
         outputSelection: {
-          'Verifier.sol': {
-            Verifier: ['evm.bytecode.object'],
-          },
+          '*': {
+            '*': ['*']
+          }
         },
       },
     };
+
+    console.log("-=------");
     let output = solc.compile(JSON.stringify(input));
+    fs.writeFileSync(MTB_CONTRACTS_DIR + "tmp", output);
     fs.mkdirSync(MTB_CONTRACTS_DIR, { recursive: true });
     fs.writeFileSync(config.mtbVerifierContractOutFile, output);
   });
@@ -356,6 +361,108 @@ async function ensureVerifierDeployment(plan, config) {
   }
 }
 
+// semaphore
+async function ensureSemaphoreVerifierDeployment(plan, config) {
+  await ensureMtbBinary(plan, config);
+  fs.mkdirSync(MTB_CONTRACTS_DIR, { recursive: true });
+  await compileAndDeploySemaphorePairingLibratry(plan, config);
+  // await compileSemaphoreVerifierContract(plan, config);
+  // await deploySemaphoreVerifierContract(plan, config);
+}
+
+async function compileAndDeploySemaphorePairingLibratry(plan, config) {
+  let input = {
+      language: 'Solidity',
+      sources: {
+          'Pairing.sol': {
+              content: fs.readFileSync('lib/semaphore/packages/contracts/contracts/base/Pairing.sol').toString(),
+          }
+      },
+      settings: {
+          outputSelection: {
+              'Pairing.sol': {
+                Pairing: ['evm.bytecode.object']
+              }
+          },
+      },
+  };
+  let bytecode = JSON.parse(solc.compile(JSON.stringify(input)));
+
+  let factory = new ContractFactory(
+      [],
+      bytecode.contracts['Pairing.sol'].Pairing.evm.bytecode.object,
+      config.wallet
+  );
+  let contract = await factory.deploy();
+  config.pairingLibraryAddress = contract.address.substring(2);
+  await contract.deployTransaction.wait();
+}
+
+async function compileSemaphoreVerifierContract(plan, config) {
+  plan.add('Compile Semaphore verifier contract', async config => {
+      await compileAndDeploySemaphorePairingLibratry(plan, config);
+
+      function findImports(path) {
+          if (path === 'base/Pairing.sol')
+            return {
+              contents: fs.readFileSync('lib/semaphore/packages/contracts/contracts/base/Pairing.sol').toString(),
+            };
+          else if (path === 'interfaces/ISemaphoreVerifier.sol')
+              return {
+              contents: fs.readFileSync('lib/semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol').toString(),
+              };
+          else return { error: 'File not found' };
+      }
+
+      let input = {
+          language: 'Solidity',
+          sources: {
+              'SemaphoreVerifier.sol': {
+                  content: fs.readFileSync(SEMAPHORE_VERIFIER_SOURCE_PATH).toString(),
+              }
+          },
+          settings: {
+              outputSelection: {
+                  '*': {
+                    '*': ['*']
+                  }
+              },
+          },
+      };
+
+      let output = JSON.parse(
+          solc.compile(JSON.stringify(input), { import: findImports })
+      );
+
+      // link Pairing library
+      let pairingPointer = '__$c3727049c0bbe32374ed9d5522c13a9bf7$__';
+      let withLinkedLibrary = JSON.stringify(output).replaceAll(pairingPointer, config.pairingLibraryAddress);
+
+      fs.mkdirSync(MTB_CONTRACTS_DIR, { recursive: true });
+      fs.writeFileSync(SEMAPHORE_VERIFIER_ABI_PATH, withLinkedLibrary);
+  });
+}
+
+async function deploySemaphoreVerifierContract(plan, config) {
+  plan.add('Deploy Semaphore verifier contract', async () => {
+      const spinner = ora(`Deploying Semaphore Verifier contract...`).start();
+      let verifierBytecode = JSON.parse(
+          fs.readFileSync(SEMAPHORE_VERIFIER_ABI_PATH).toString()
+      );
+      console.log()
+      let factory = new ContractFactory(
+          [],
+          verifierBytecode.contracts['SemaphoreVerifier.sol'].SemaphoreVerifier.evm.bytecode.object,
+          config.wallet
+      );
+      let contract = await factory.deploy();
+      spinner.text = `Waiting for Semaphore Verifier deploy transaction (address: ${contract.address})`;
+      await contract.deployTransaction.wait();
+      spinner.succeed(`Deployed Semaphore Verifier contract to ${contract.address}`);
+      config.semaphoreVerifierContractAddress = contract.address;
+  });
+}
+
 function computeRoot(depth) {
   let result = 0;
   while (depth--) {
@@ -387,7 +494,7 @@ async function deployIdentityManager(plan, config) {
     const spinner = ora('Deploying WorldID Identity Manager implementation...').start();
     const factory = new ContractFactory(
       IdentityManagerImpl.abi,
-      IdentityManagerImpl.bytecode.object,
+      IdentityManagerImpl.bytecode.object.replaceAll("__$a0b3f842b95cabff7722bd983061aec5b3$__", config.pairingLibraryAddress),
       config.wallet
     );
     const contract = await factory.deploy();
@@ -402,6 +509,7 @@ async function deployIdentityManager(plan, config) {
     const iface = new Interface(IdentityManagerImpl.abi);
     const processedStateBridgeAddress = utils.getAddress(config.stateBridgeContractAddress);
     const callData = iface.encodeFunctionData('initialize', [
+      16,
       config.initialRoot,
       config.verifierContractAddress,
       config.enableStateBridge,
@@ -770,6 +878,7 @@ async function buildDeploymentActionPlan(plan, config) {
 
   // TODO In future we may want to use the same call-encoding system as for the upgrade here.
   //   It may require some changes, or precomputing addresses.
+  await ensureSemaphoreVerifierDeployment(plan, config);
   await ensureVerifierDeployment(plan, config);
   await ensureInitialRoot(plan, config);
   await deployIdentityManager(plan, config);
