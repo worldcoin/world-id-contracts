@@ -50,4 +50,28 @@ contract WorldIDRouterUninit is WorldIDRouterTest {
         // Test
         assertCallFailsOn(routerAddress, callData, expectedError);
     }
+
+    /// @notice Ensures that routes cannot be updated while the contract is not initialized.
+    function testCannotUpdateGroupWhileUninit(uint256 groupId, address newTarget) public {
+        // Setup
+        makeUninitRouter();
+        bytes memory callData = abi.encodeCall(RouterImpl.updateGroup, (groupId, newTarget));
+        bytes memory expectedError =
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(routerAddress, callData, expectedError);
+    }
+
+    /// @notice Ensures that routes cannot be disabled while the contract is not initialized.
+    function testCannotDisableGroupWhileUninit(uint256 groupId) public {
+        // Setup
+        makeUninitRouter();
+        bytes memory callData = abi.encodeCall(RouterImpl.disableGroup, (groupId));
+        bytes memory expectedError =
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(routerAddress, callData, expectedError);
+    }
 }

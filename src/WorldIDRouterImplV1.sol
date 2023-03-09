@@ -78,8 +78,8 @@ contract WorldIDRouterImplV1 is WorldIDImpl {
     /// @param groupId The group identifier that is duplicated.
     error NonSequentialGroup(uint256 groupId);
 
-    /// @notice The requested group has does not have an associated identity manager instance.
-    error NullRoute();
+    /// @notice The requested group has been disabled.
+    error GroupDisabled();
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
@@ -139,7 +139,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl {
     /// @return target The target address for the group number.
     ///
     /// @custom:reverts NoSuchGroup If the requested `groupNumber` does not exist.
-    /// @custom:reverts NullRoute If there is no valid route for the requested `groupNumber`.
+    /// @custom:reverts GroupDisabled If the group has been disabled.
     function routeFor(uint256 groupNumber)
         public
         view
@@ -154,7 +154,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl {
 
         // If there is no valid route for a given group we also revert.
         if (routingTable[groupNumber] == NULL_ADDRESS) {
-            revert NullRoute();
+            revert GroupDisabled();
         }
 
         // With preconditions checked we can return the route.
@@ -166,14 +166,14 @@ contract WorldIDRouterImplV1 is WorldIDImpl {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Adds a group to the router.
-    /// @dev It is perfectly valid to add a group to be null-routed.
+    /// @dev It is perfectly valid to add a group to be disabled.
     /// @dev While it reverts if the group identifier is not sequential, this is due to the fact
     ///      that group identifiers are allocated externally. As a result, they cannot just be
     ///      allocated by the router.
     ///
     /// @param groupId The identifier for the new group.
     /// @param groupIdentityManager The address of the identity manager instance to be used for the
-    ///        group.
+    ///        group. If this is set to the null address the group is disabled.
     ///
     /// @custom:reverts DuplicateGroup If the `groupId` already exists in the routing table.
     /// @custom:reverts NonSequentialGroup If the `groupId` is not the sequentially next group based
@@ -198,8 +198,48 @@ contract WorldIDRouterImplV1 is WorldIDImpl {
         insertNewTableEntry(groupId, groupIdentityManager);
     }
 
-    // TODO updateGroup
-    // TODO removeGroup (doesn't actually remove, just null reverts);
+    /// @notice Updates the target address for a group in the router.
+    /// @dev It is perfectly valid to add a group to be disabled.
+    ///
+    /// @param groupId The identitifier for the group to have its target address updated.
+    /// @param newTargetAddress The new target address for the group in routing. If this is set to
+    ///        the null address the group will be disabled.
+    ///
+    /// @return oldTarget The old target address for the group.
+    ///
+    /// @custom:reverts NoSuchGroup If the target group does not exist to be updated.
+    function updateGroup(uint256 groupId, address newTargetAddress)
+        public
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+        returns (address oldTarget)
+    {
+        // It is not possible to update a non-existent group.
+        if (groupId >= groupCount()) {
+            revert NoSuchGroup(groupId);
+        }
+
+        oldTarget = routingTable[groupId];
+        routingTable[groupId] = newTargetAddress;
+    }
+
+    /// @notice Disables the target group in the router.
+    ///
+    /// @param groupId The identifier for the group to be disabled.
+    ///
+    /// @return oldTarget The old target address for the group.
+    ///
+    /// @custom:reverts NoSuchGroup If the target group does not exist to be disabled.
+    function disableGroup(uint256 groupId)
+        public
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+        returns (address oldTarget)
+    {
+        return updateGroup(groupId, NULL_ADDRESS);
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                              DATA QUERYING                              ///
