@@ -385,7 +385,7 @@ async function ensureInitialRoot(plan, config) {
 }
 
 async function deployRouter(plan, config) {
-  if (config.shouldDeployRouter) {
+  if (!config.routerContractAddress) {
     plan.add('Deploy the WorldID Router Implementation', async () => {
       const spinner = ora('Deploying WorldID Router implementation...').start();
       const factory = new ContractFactory(
@@ -429,6 +429,33 @@ async function deployRouter(plan, config) {
       } else {
         spinner.fail(`Could not communicate with the WorldID Router at ${contract.address}`);
       }
+    });
+  } else {
+    plan.add('Associating Identity Manager with Router', async () => {
+      const spinner = ora('Associating manager address with router...').start();
+      const contractWithAbi = new Contract(
+        config.routerContractAddress,
+        RouterImpl.abi,
+        config.wallet
+      );
+
+      if (!config.groupNumber) {
+        spinner.text = 'Obtaining next available group from router...';
+        const nextGroup = await contractWithAbi.groupCount();
+        if (!nextGroup instanceof BigNumber) {
+          spinner.fail(
+            `Could not get the next available group from the router at ${config.routerContractAddress}`
+          );
+          process.exit(1);
+        }
+        config.groupNumber = nextGroup._hex;
+      }
+
+      spinner.text = `Adding the WorldID Identity Manager for Group ${config.groupNumber}...`;
+      await contractWithAbi.addGroup(config.groupNumber, config.identityManagerContractAddress);
+      spinner.succeed(
+        `Associated Identity Manager at address ${config.identityManagerContractAddress} with group ${config.groupNumber}`
+      );
     });
   }
 }
@@ -547,12 +574,15 @@ async function getRouterConfiguration(config) {
   }
 
   if (config.enableRouter) {
-    config.routerAddress = await ask('Enter the router address or leave blank to deploy it: ');
+    config.routerContractAddress = await ask(
+      'Enter the router address or leave blank to deploy it: '
+    );
 
-    if (!config.routerAddress) {
-      config.shouldDeployRouter = true;
-    } else {
-      config.shouldDeployRouter = false;
+    if (config.routerContractAddress) {
+      config.groupNumber = await ask(
+        'Enter the group number to bind the contract to (leave blank to pick next available): ',
+        'number'
+      );
     }
   }
 }
