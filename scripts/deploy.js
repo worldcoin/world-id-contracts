@@ -497,6 +497,10 @@ async function deployIdentityManager(plan, config) {
       IdentityManagerImpl.bytecode.object.replaceAll("__$a0b3f842b95cabff7722bd983061aec5b3$__", config.pairingLibraryAddress),
       config.wallet
     );
+
+    let data = IdentityManagerImpl.bytecode.object.replaceAll("__$a0b3f842b95cabff7722bd983061aec5b3$__", config.pairingLibraryAddress);
+    fs.writeFileSync(MTB_CONTRACTS_DIR + "/widc", data);
+
     const contract = await factory.deploy();
     spinner.text = `Waiting for the WorldID Identity Manager Implementation deployment transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
