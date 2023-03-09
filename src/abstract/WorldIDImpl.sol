@@ -24,8 +24,9 @@ abstract contract WorldIDImpl is OwnableUpgradeable, UUPSUpgradeable, CheckIniti
     // - All functions that are less access-restricted than `private` should be marked `virtual` in
     //   order to enable the fixing of bugs in the existing interface.
     // - Any function that reads from or modifies state (i.e. is not marked `pure`) must be
-    //   annotated with the `onlyProxy` modifier. This ensures that it can only be called when it
-    //   has access to the data in the proxy, otherwise results are likely to be nonsensical.
+    //   annotated with the `onlyProxy` and `onlyInitialized` modifiers. This ensures that it can
+    //   only be called when it has access to the data in the proxy, otherwise results are likely to
+    //   be nonsensical.
     // - This contract deals with important data for the WorldID system. Ensure that all newly-added
     //   functionality is carefully access controlled using `onlyOwner`, or a more granular access
     //   mechanism.

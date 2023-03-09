@@ -21,8 +21,9 @@ contract WorldIDRouterImplV1 is WorldIDImpl {
     // - All functions that are less access-restricted than `private` should be marked `virtual` in
     //   order to enable the fixing of bugs in the existing interface.
     // - Any function that reads from or modifies state (i.e. is not marked `pure`) must be
-    //   annotated with the `onlyProxy` modifier. This ensures that it can only be called when it
-    //   has access to the data in the proxy, otherwise results are likely to be nonsensical.
+    //   annotated with the `onlyProxy` and `onlyInitialized` modifiers. This ensures that it can
+    //   only be called when it has access to the data in the proxy, otherwise results are likely to
+    //   be nonsensical.
     // - This contract deals with important data for the WorldID system. Ensure that all newly-added
     //   functionality is carefully access controlled using `onlyOwner`, or a more granular access
     //   mechanism.
@@ -46,6 +47,9 @@ contract WorldIDRouterImplV1 is WorldIDImpl {
 
     /// How much the routing table grows when it runs out of space.
     uint256 internal constant DEFAULT_ROUTING_TABLE_GROWTH = 5;
+
+    /// The null address.
+    address internal constant NULL_ADDRESS = address(0x0);
 
     /// The routing table used to dispatch from groups to addresses.
     address[] internal routingTable;
@@ -142,7 +146,20 @@ contract WorldIDRouterImplV1 is WorldIDImpl {
         onlyProxy
         onlyInitialized
         returns (address target)
-    {}
+    {
+        // We want to revert if the group does not exist.
+        if (groupNumber >= groupCount()) {
+            revert NoSuchGroup(groupNumber);
+        }
+
+        // If there is no valid route for a given group we also revert.
+        if (routingTable[groupNumber] == NULL_ADDRESS) {
+            revert NullRoute();
+        }
+
+        // With preconditions checked we can return the route.
+        return routingTable[groupNumber];
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             GROUP MANAGEMENT                            ///
@@ -168,7 +185,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl {
         onlyOwner
     {
         // Duplicate groups cannot be added.
-        if (groupId < _groupCount) {
+        if (groupId < groupCount()) {
             revert DuplicateGroup(groupId);
         }
 

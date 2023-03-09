@@ -16,10 +16,65 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
     ///                          GROUP ROUTING TESTS                            ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    // TODO testCanGetRoute
-    // TODO testErrorsOnNullRoute
-    // TODO testCannotGetRouteUnlessViaProxy
-    // TODO testCannotGetRouteWhileUninit
+    /// @notice Checks that it is possible to get a route for a group that exists.
+    function testCanGetRouteForValidGroup(uint8 groupId, address targetAddress) public {
+        // Setup
+        vm.assume(targetAddress != nullAddress);
+        for (uint256 i = 1; i <= groupId; ++i) {
+            address target = nullAddress;
+            if (i == groupId) {
+                target = targetAddress;
+            }
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, target));
+            assertCallSucceedsOn(routerAddress, setupCallData);
+        }
+        bytes memory callData = abi.encodeCall(RouterImpl.routeFor, (groupId));
+        address expectedReturnAddress = targetAddress;
+        if (groupId == 0) {
+            expectedReturnAddress = thisAddress;
+        }
+        bytes memory expectedReturn = abi.encode(expectedReturnAddress);
+
+        // Test
+        assertCallSucceedsOn(routerAddress, callData, expectedReturn);
+    }
+
+    /// @notice Ensures that requesting a route reverts if the request is made for a non-existent
+    ///         group.
+    function testShouldRevertOnRouteRequestForMissingGroup(uint256 groupId) public {
+        // Setup
+        vm.assume(groupId > 0);
+        bytes memory callData = abi.encodeCall(RouterImpl.routeFor, (groupId));
+        bytes memory expectedError =
+            abi.encodeWithSelector(RouterImpl.NoSuchGroup.selector, groupId);
+
+        // Test
+        assertCallFailsOn(routerAddress, callData, expectedError);
+    }
+
+    /// @notice Ensures that it reverts when a null route is found for a group.
+    function testShouldRevertOnNullRouteForGroup(uint8 groupId) public {
+        // Setup
+        vm.assume(groupId != 0);
+        for (uint256 i = 1; i <= groupId; ++i) {
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, nullAddress));
+            assertCallSucceedsOn(routerAddress, setupCallData);
+        }
+        bytes memory callData = abi.encodeCall(RouterImpl.routeFor, (groupId));
+        bytes memory expectedError = abi.encodeWithSelector(RouterImpl.NullRoute.selector);
+
+        // Test
+        assertCallFailsOn(routerAddress, callData, expectedError);
+    }
+
+    /// @notice Ensures that it is impossible to get a route except from via the proxy.
+    function testcannotGetRouteUnlessViaProxy(uint256 groupId) public {
+        // Setup
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        routerImpl.routeFor(groupId);
+    }
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                           GROUP ADDING TESTS                            ///
