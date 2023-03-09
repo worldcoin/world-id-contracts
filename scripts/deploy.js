@@ -521,6 +521,41 @@ async function deployIdentityManager(plan, config) {
   });
 }
 
+async function runRouteAdd(plan, config) {
+  plan.add('Add route in WorldID Router', async () => {
+    const spinner = ora('Building route add call...').start();
+    const contractWithAbi = new Contract(
+      config.routerContractAddress,
+      RouterImpl.abi,
+      config.wallet
+    );
+    spinner.text = `Attempting to add group ${config.routerGroupNumber} to router at ${config.routerContractAddress}...`;
+    try {
+      await contractWithAbi.addGroup(config.routerGroupNumber, config.routerTargetAddress);
+      spinner.succeed(
+        `Added group ${config.routerGroupNumber} to route to ${config.routerTargetAddress}`
+      );
+    } catch (e) {
+      const body = JSON.parse(e.error.error.body);
+      const decodedError = decodeContractError(contractWithAbi.interface, body.error.data);
+      if (decodedError.name === 'DuplicateGroup') {
+        spinner.fail(
+          `Group ${config.routerGroupNumber} already exists in the router at ${config.routerContractAddress}`
+        );
+      } else if (decodedError.name === 'NonSequentialGroup') {
+        spinner.fail(
+          `Group ${config.routerGroupNumber} is not the next available group in the router at ${config.routerContractAddress}`
+        );
+      } else {
+        spinner.fail(
+          `Could not add group ${config.routerGroupNumber} to the router at ${config.routerContractAddress}`
+        );
+        console.error(e);
+      }
+    }
+  });
+}
+
 async function runRouteUpdate(plan, config) {
   plan.add('Update route in WorldID Router', async () => {
     const spinner = ora('Building route update call...').start();
@@ -529,25 +564,22 @@ async function runRouteUpdate(plan, config) {
       RouterImpl.abi,
       config.wallet
     );
-    spinner.text = `Updating group ${config.routerUpdateGroupNumber} to route to ${config.routerUpdateTargetAddress}...`;
+    spinner.text = `Updating group ${config.routerGroupNumber} to route to ${config.routerTargetAddress}...`;
     try {
-      await contractWithAbi.updateGroup(
-        config.routerUpdateGroupNumber,
-        config.routerUpdateTargetAddress
-      );
+      await contractWithAbi.updateGroup(config.routerGroupNumber, config.routerTargetAddress);
       spinner.succeed(
-        `Updated group ${config.routerUpdateGroupNumber} to route to ${config.routerUpdateTargetAddress}`
+        `Updated group ${config.routerGroupNumber} to route to ${config.routerTargetAddress}`
       );
     } catch (e) {
       const body = JSON.parse(e.error.error.body);
       const decodedError = decodeContractError(contractWithAbi.interface, body.error.data);
       if (decodedError.name === 'NoSuchGroup') {
         spinner.fail(
-          `Unable to update: group ${config.routerUpdateGroupNumber} does not exist in the router at ${config.routerContractAddress}`
+          `Unable to update: group ${config.routerGroupNumber} does not exist in the router at ${config.routerContractAddress}`
         );
       } else {
         spinner.fail(
-          `Could not update group ${config.routerUpdateGroupNumber} in the router at ${config.routerContractAddress}`
+          `Could not update group ${config.routerGroupNumber} in the router at ${config.routerContractAddress}`
         );
         console.error(e);
       }
@@ -647,7 +679,7 @@ async function getEnableStateBridge(config) {
   }
 }
 
-async function getRouteUpdateConfiguration(config) {
+async function getRouterAddress(config) {
   if (!config.routerContractAddress) {
     config.routerContractAddress = process.env.ROUTER_CONTRACT_ADDRESS;
   }
@@ -660,34 +692,36 @@ async function getRouteUpdateConfiguration(config) {
     console.error('No router address provided.');
     process.exit(1);
   }
+}
 
-  if (!config.routerUpdateGroupNumber) {
-    config.routerUpdateGroupNumber = process.env.ROUTER_UPDATE_GROUP_NUMBER;
+async function getRouteConfiguration(config) {
+  if (!config.routerGroupNumber) {
+    config.routerGroupNumber = process.env.ROUTER_UPDATE_GROUP_NUMBER;
   }
 
-  if (!config.routerUpdateGroupNumber) {
-    config.routerUpdateGroupNumber = await ask(
-      'Which group should be updated in the router? ',
+  if (!config.routerGroupNumber) {
+    config.routerGroupNumber = await ask(
+      'Which group should be modified in the router? ',
       'number'
     );
   }
 
-  if (!config.routerUpdateGroupNumber) {
-    console.error('No group number to update provided but such a number is required.');
+  if (!config.routerGroupNumber) {
+    console.error('No group number to modify provided but such a number is required.');
     process.exit(1);
   }
 
-  if (!config.routerUpdateTargetAddress) {
-    config.routerUpdateTargetAddress = process.env.ROUTER_UPDATE_TARGET_ADDRESS;
+  if (!config.routerTargetAddress) {
+    config.routerTargetAddress = process.env.ROUTER_UPDATE_TARGET_ADDRESS;
   }
 
-  if (!config.routerUpdateTargetAddress) {
-    config.routerUpdateTargetAddress = await ask(
+  if (!config.routerTargetAddress) {
+    config.routerTargetAddress = await ask(
       `Please provide the new target address for the router: `
     );
   }
 
-  if (!config.routerUpdateTargetAddress) {
+  if (!config.routerTargetAddress) {
     console.error('No target for the update provided but such one is required.');
     process.exit(1);
   }
@@ -1042,6 +1076,19 @@ async function buildUpgradeActionPlan(plan, config) {
   await deployUpgrade(plan, config);
 }
 
+async function buildRouteAddActionPlan(plan, config) {
+  dotenv.config();
+
+  await getPrivateKey(config);
+  await getRpcUrl(config);
+  await getProvider(config);
+  await getWallet(config);
+  await getRouterAddress(config);
+  await getRouteConfiguration(config);
+
+  await runRouteAdd(plan, config);
+}
+
 async function buildRouteUpdateActionPlan(plan, config) {
   dotenv.config();
 
@@ -1049,7 +1096,8 @@ async function buildRouteUpdateActionPlan(plan, config) {
   await getRpcUrl(config);
   await getProvider(config);
   await getWallet(config);
-  await getRouteUpdateConfiguration(config);
+  await getRouterAddress(config);
+  await getRouteConfiguration(config);
 
   await runRouteUpdate(plan, config);
 }
@@ -1099,7 +1147,15 @@ async function main() {
       await saveConfiguration(config);
     });
 
-  // TODO route-add
+  program
+    .command('route-add')
+    .description('Interactively adds a route for a group to the WorldID router.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildRouteAddActionPlan, config);
+      await saveConfiguration(config);
+    });
 
   program
     .command('route-update')
