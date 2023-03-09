@@ -24,6 +24,7 @@ deployed reality may involve _multiple such pairs_, all of which need to be hand
   - [Fix the Problem](#fix-the-problem)
   - [Deploy the New Contract](#deploy-the-new-contract)
   - [Restart Identity Operations](#restart-identity-operations)
+  - [Update the Router](#update-the-router)
 - [Post Recovery Actions](#post-recovery-actions)
   - [Post-Mortem](#post-mortem)
   - [DRP Analysis](#drp-analysis)
@@ -51,6 +52,7 @@ followed:
 4. Fix the cause for activating the disaster recovery plan as described [here](#fix-the-problem).
 5. Deploy the new contract with the fixes as described [here](#deploy-the-new-contract).
 6. Restart identity operations as described [here](#restart-identity-operations).
+7. Add the new deployment to the router for clients as described [here](#update-the-router).
 
 Each item below contains a quoted block that describes the short set of steps to take. More detail
 follows.
@@ -59,7 +61,8 @@ follows.
 
 > 1. [Stop](#pause-identity-operations-task-1) the signup sequencer instance from submitting
 >    identity operations to the contract on the chain.
-> 2. [Communicate](#pause-identity-operations-task-2) with the community.
+> 2. [Disable](#pause-identity-operations-task-2) routing to the contract on chain.
+> 3. [Communicate](#pause-identity-operations-task-3) with the community.
 
 While, in an ideal world, it would be possible to stop the contract from responding to these calls,
 this plan cannot assume that we have control of the contract at this time. To this end, the stop is
@@ -73,10 +76,18 @@ identities in the database.
 > 1. Obtain VPN access to the production cluster from infrastructure.
 > 2. Kill the signup sequencer process running on the node.
 
+Pausing identity operations from the signup sequencer isn't enough to stop traffic to that identity
+manager instance on its own. In addition to doing this it is important to account for clients that
+may be relying on the identity manager through the router.
+
+<!-- TODO Finish off adding the router to the DRP -->
+
+> #### Pause Identity Operations: Task 2
+
 At the same time, it is exceedingly important to let the community (who may be relying on the
 identity manager and its associated signup sequencer) that a problem has occurred.
 
-> #### Pause Identity Operations: Task 2
+> #### Pause Identity Operations: Task 3
 >
 > 1. Update the community, broadly explaining the nature of the problem, the expected time to
 >    recovery, and any anticipated impacts on data.
@@ -302,6 +313,11 @@ from that point.
 At this point the entire system should be up and running again. It is recommended to perform
 extra-close monitoring of the restored system for the next few hours to ensure that nothing
 additional goes wrong.
+
+### Update the Router
+
+> 1. Update the address(es) for the identity manager in the router.
+> 2. Communicate to clients that WorldID is active again.
 
 ## Post Recovery Actions
 

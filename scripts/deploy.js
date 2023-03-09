@@ -13,6 +13,8 @@ import { Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
 import IdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
+import Router from '../out/WorldIDRouter.sol/WorldIDRouter.json' assert { type: 'json' };
+import RouterImpl from '../out/WorldIDRouterImplV1.sol/WorldIDRouterImplV1.json' assert { type: 'json' };
 import { BigNumber } from '@ethersproject/bignumber';
 
 const { JsonRpcProvider } = providers;
@@ -382,6 +384,55 @@ async function ensureInitialRoot(plan, config) {
   }
 }
 
+async function deployRouter(plan, config) {
+  if (config.shouldDeployRouter) {
+    plan.add('Deploy the WorldID Router Implementation', async () => {
+      const spinner = ora('Deploying WorldID Router implementation...').start();
+      const factory = new ContractFactory(
+        RouterImpl.abi,
+        RouterImpl.bytecode.object,
+        config.wallet
+      );
+      const contract = await factory.deploy();
+      spinner.text = `Waiting for the WorldID Router implementation deployment transaction (address: ${contract.address})...`;
+      await contract.deployTransaction.wait();
+      config.routerImplementationContractAddress = contract.address;
+      spinner.succeed(`Deployed WorldID Router Implementation to ${contract.address}`);
+    });
+    plan.add('Deploy the WorldID Router', async () => {
+      // Build the initializer function call.
+      const spinner = ora('Building initializer call...').start();
+      const iface = new Interface(RouterImpl.abi);
+      if (!config.identityManagerContractAddress) {
+        spinner.fail('No identity manager address available');
+        return;
+      }
+      spinner.text = `Using deployed identity manager at ${config.identityManagerContractAddress} as target for group 0...`;
+      const callData = iface.encodeFunctionData('initialize', [
+        config.identityManagerContractAddress,
+      ]);
+
+      // Deploy the proxy contract.
+      spinner.text = 'Deploying the WorldID Router proxy...';
+      const factory = new ContractFactory(Router.abi, Router.bytecode.object, config.wallet);
+      const contract = await factory.deploy(config.routerImplementationContractAddress, callData);
+      spinner.text = `Waiting for the WorldID Router deployment transaction (address: ${contract.address})...`;
+      await contract.deployTransaction.wait();
+      config.routerContractAddress = contract.address;
+
+      // Verify that the deployment went correctly.
+      spinner.text = 'Verifying correct deployment of the WorldID Router...';
+      const contractWithAbi = new Contract(contract.address, RouterImpl.abi, config.wallet);
+      const routeForGroupZero = await contractWithAbi.routeFor(0);
+      if (routeForGroupZero === config.identityManagerContractAddress) {
+        spinner.succeed(`Deployed WorldID Router to ${contract.address}`);
+      } else {
+        spinner.fail(`Could not communicate with the WorldID Router at ${contract.address}`);
+      }
+    });
+  }
+}
+
 async function deployIdentityManager(plan, config) {
   plan.add('Deploy WorldID Identity Manager Implementation', async () => {
     const spinner = ora('Deploying WorldID Identity Manager implementation...').start();
@@ -479,6 +530,30 @@ async function getEnableStateBridge(config) {
   }
   if (!config.enableStateBridge) {
     config.enableStateBridge = false;
+  }
+}
+
+async function getRouterConfiguration(config) {
+  if (!config.enableRouter) {
+    config.enableRouter = process.env.ENABLE_ROUTER;
+  }
+
+  if (!config.enableRouter) {
+    config.enableRouter = await ask('Enable WorldID Router? [y/N] ', 'bool');
+  }
+
+  if (!config.enableRouter) {
+    config.enableRouter = false;
+  }
+
+  if (config.enableRouter) {
+    config.routerAddress = await ask('Enter the router address or leave blank to deploy it: ');
+
+    if (!config.routerAddress) {
+      config.shouldDeployRouter = true;
+    } else {
+      config.shouldDeployRouter = false;
+    }
   }
 }
 
@@ -767,12 +842,14 @@ async function buildDeploymentActionPlan(plan, config) {
   await getWallet(config);
   await getEnableStateBridge(config);
   await getStateBridgeAddress(config);
+  await getRouterConfiguration(config);
 
   // TODO In future we may want to use the same call-encoding system as for the upgrade here.
   //   It may require some changes, or precomputing addresses.
   await ensureVerifierDeployment(plan, config);
   await ensureInitialRoot(plan, config);
   await deployIdentityManager(plan, config);
+  await deployRouter(plan, config);
 }
 
 async function buildUpgradeActionPlan(plan, config) {
