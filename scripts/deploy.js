@@ -38,8 +38,10 @@ const DEFAULT_BATCH_SIZE = 3;
 const MTB_VERSION = '1.0.2';
 const VERIFIER_SOURCE_PATH = MTB_CONTRACTS_DIR + '/Verifier.sol';
 const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json';
-const DEFAULT_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerImplMock';
-const DEFAULT_UPGRADE_FUNCTION_SPEC = 'initialize(uint32)';
+const DEFAULT_IDENTITY_MANAGER_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerImplMock';
+const DEFAULT_IDENTITY_MANAGER_UPGRADE_FUNCTION = 'initialize(uint32)';
+const DEFAULT_ROUTER_UPGRADE_CONTRACT_NAME = 'WorldIDRouterImplMock';
+const DEFAULT_ROUTER_UPGRADE_FUNCTION = 'initialize(uint32)';
 
 // === Implementation =============================================================================
 
@@ -47,11 +49,11 @@ const DEFAULT_UPGRADE_FUNCTION_SPEC = 'initialize(uint32)';
  * Asks the user a question and returns the answer.
  *
  * @param {string} question the question contents.
- * @param {?string} type an optional type to parse the answer as. Currently only supports 'int' for
- *        decimal integers. and `bool` for booleans.
+ * @param {?string|undefined = undefined} type an optional type to parse the answer as. Currently
+ *        only supports 'int' for decimal integers. and `bool` for booleans.
  * @returns a promise resolving to user's response
  */
-function ask(question, type) {
+function ask(question, type = undefined) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -107,7 +109,7 @@ function newPlan() {
 async function httpsGetWithRedirects(url) {
   return new Promise((resolve, reject) => {
     const request = https.get(url, function (response) {
-      if (response.statusCode == 302) {
+      if (response.statusCode === 302) {
         httpsGetWithRedirects(response.headers.location).then(resolve, reject);
       } else {
         resolve(response);
@@ -121,21 +123,21 @@ async function httpsGetWithRedirects(url) {
 
 async function downloadSemaphoreMtbBinary(plan, config) {
   config.mtbBinary = MTB_BIN_PATH;
-  if (process.platform == 'win32') {
-    if (process.arch != 'x64') {
+  if (process.platform === 'win32') {
+    if (process.arch !== 'x64') {
       throw new Error('Unsupported platform');
     }
     config.os = 'windows';
     config.arch = 'amd64';
-  } else if (process.platform == 'linux') {
-    if (process.arch != 'x64') {
+  } else if (process.platform === 'linux') {
+    if (process.arch !== 'x64') {
       throw new Error('Unsupported platform');
     }
     config.os = 'linux';
     config.arch = 'amd64';
-  } else if (process.platform == 'darwin') {
+  } else if (process.platform === 'darwin') {
     config.os = 'darwin';
-    config.arch = process.arch == 'arm64' ? 'arm64' : 'amd64';
+    config.arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
   }
   plan.add('Download Semaphore-MTB binary', async config => {
     fs.mkdirSync(MTB_BIN_DIR, { recursive: true });
@@ -152,11 +154,11 @@ async function downloadSemaphoreMtbBinary(plan, config) {
       });
 
       file.on('error', err => {
-        fs.unlink(config.MTB_BINARY, () => reject(err));
+        fs.unlink(config.mtbBinary, () => reject(err));
       });
     });
     await done;
-    if (config.os != 'windows') {
+    if (config.os !== 'windows') {
       fs.chmodSync(config.mtbBinary, '755');
     }
     spinner.succeed('Semaphore-MTB binary downloaded');
@@ -217,7 +219,7 @@ async function generateKeys(plan, config) {
       ],
       { stdio: 'inherit' }
     );
-    if (result.status != 0) {
+    if (result.status !== 0) {
       throw new Error('Failed to generate prover keys');
     }
     spinner.succeed('Prover keys generated');
@@ -259,7 +261,7 @@ async function generateVerifierContract(plan, config) {
       ],
       { stdio: 'inherit' }
     );
-    if (result.status != 0) {
+    if (result.status !== 0) {
       throw new Error('Failed to generate verifier contract');
     }
     spinner.succeed('Verifier contract generated');
@@ -286,7 +288,7 @@ async function ensureVerifierContractFile(plan, config) {
   }
 }
 
-async function compileVerifierContract(plan, config) {
+async function compileVerifierContract(plan, _) {
   plan.add('Compile Semaphore-MTB verifier contract', async config => {
     let input = {
       language: 'Solidity',
@@ -521,7 +523,7 @@ async function deployIdentityManager(plan, config) {
   });
 }
 
-async function runRouteAdd(plan, config) {
+async function planRouteAdd(plan, config) {
   plan.add('Add route in WorldID Router', async () => {
     const spinner = ora('Building route add call...').start();
     const contractWithAbi = new Contract(
@@ -556,7 +558,7 @@ async function runRouteAdd(plan, config) {
   });
 }
 
-async function runRouteUpdate(plan, config) {
+async function planRouteUpdate(plan, config) {
   plan.add('Update route in WorldID Router', async () => {
     const spinner = ora('Building route update call...').start();
     const contractWithAbi = new Contract(
@@ -587,7 +589,7 @@ async function runRouteUpdate(plan, config) {
   });
 }
 
-async function runRouteDisable(plan, config) {
+async function planRouteDisable(plan, config) {
   plan.add('Disable route in WorldID Router', async () => {
     const spinner = ora('Building route disable call...').start();
     const contractWithAbi = new Contract(
@@ -708,6 +710,11 @@ async function getEnableStateBridge(config) {
   }
 }
 
+/** Gets the address for the WorldID router to be modified at.
+ *
+ * @param {Object} config The configuration for the script.
+ * @returns {Promise<void>} The route configuration is written into the `config` object.
+ */
 async function getRouterAddress(config) {
   if (!config.routerContractAddress) {
     config.routerContractAddress = process.env.ROUTER_CONTRACT_ADDRESS;
@@ -723,6 +730,13 @@ async function getRouterAddress(config) {
   }
 }
 
+/** Gets the configuration required to modify a route in the WorldID router.
+ *
+ * @param {Object} config The configuration for the script.
+ * @param {?boolean = false} isDisable Whether or not it is getting routing configuration to disable
+ *        a route or not.
+ * @returns {Promise<void>} The route configuration is written into the `config` object
+ */
 async function getRouteConfiguration(config, isDisable = false) {
   if (!config.routerGroupNumber) {
     config.routerGroupNumber = process.env.ROUTER_UPDATE_GROUP_NUMBER;
@@ -971,7 +985,7 @@ async function buildCall(config, targetAbiField, callInfoField, defaultFunction)
   config[callInfoField] = upgradeCall;
 }
 
-async function deployUpgrade(plan, config) {
+async function planDeployUpgrade(plan, config) {
   plan.add('Deploy WorldID Identity Manager Implementation Upgrade', async () => {
     const spinner = ora('Deploying WorldID Identity Manager Implementation Upgrade...').start();
     const factory = new ContractFactory(
@@ -1086,7 +1100,7 @@ async function buildDeploymentActionPlan(plan, config) {
   await deployRouter(plan, config);
 }
 
-async function buildUpgradeActionPlan(plan, config) {
+async function buildIdentityManagerUpgradeActionPlan(plan, config) {
   dotenv.config();
 
   await getPrivateKey(config);
@@ -1101,10 +1115,20 @@ async function buildUpgradeActionPlan(plan, config) {
     config,
     'upgradeImplementationName',
     abiFieldName,
-    DEFAULT_UPGRADE_CONTRACT_NAME
+    DEFAULT_IDENTITY_MANAGER_UPGRADE_CONTRACT_NAME
   );
-  await buildCall(config, abiFieldName, 'upgradeCallInfo', DEFAULT_UPGRADE_FUNCTION_SPEC);
-  await deployUpgrade(plan, config);
+  await buildCall(config, abiFieldName, 'upgradeCallInfo', DEFAULT_IDENTITY_MANAGER_UPGRADE_FUNCTION);
+  await planDeployUpgrade(plan, config);
+}
+
+async function buildRouterUpgradeActionPlan(plan, config) {
+  dotenv.config();
+
+  await getPrivateKey(config);
+  await getRpcUrl(config);
+  await getProvider(config);
+  await getWallet(config);
+  await getUpgradeTargetAddress(config);
 }
 
 async function buildRouteAddActionPlan(plan, config) {
@@ -1117,7 +1141,7 @@ async function buildRouteAddActionPlan(plan, config) {
   await getRouterAddress(config);
   await getRouteConfiguration(config, false);
 
-  await runRouteAdd(plan, config);
+  await planRouteAdd(plan, config);
 }
 
 async function buildRouteUpdateActionPlan(plan, config) {
@@ -1130,7 +1154,7 @@ async function buildRouteUpdateActionPlan(plan, config) {
   await getRouterAddress(config);
   await getRouteConfiguration(config, false);
 
-  await runRouteUpdate(plan, config);
+  await planRouteUpdate(plan, config);
 }
 
 async function buildRouteDisableActionPlan(plan, config) {
@@ -1143,7 +1167,7 @@ async function buildRouteDisableActionPlan(plan, config) {
   await getRouterAddress(config);
   await getRouteConfiguration(config, true);
 
-  await runRouteDisable(plan, config);
+  await planRouteDisable(plan, config);
 }
 
 /** Builds a plan using the provided function and then executes the plan.
@@ -1187,7 +1211,7 @@ async function main() {
     .action(async () => {
       const options = program.opts();
       let config = await loadConfiguration(options.config);
-      await buildAndRunPlan(buildUpgradeActionPlan, config);
+      await buildAndRunPlan(buildIdentityManagerUpgradeActionPlan, config);
       await saveConfiguration(config);
     });
 
@@ -1221,7 +1245,15 @@ async function main() {
       await saveConfiguration(config);
     });
 
-  // TODO upgrade-router
+  program
+    .command('upgrade-router')
+    .description('Interactively upgrades the WorldID router.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildRouterUpgradeActionPlan, config);
+      await saveConfiguration(config);
+    })
 
   await program.parseAsync();
 }
