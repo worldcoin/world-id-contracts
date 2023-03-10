@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.4;
+pragma solidity ^0.8.10;
 
 import {CheckInitialized} from "./utils/CheckInitialized.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";

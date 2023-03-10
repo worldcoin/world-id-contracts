@@ -1,4 +1,4 @@
-pragma solidity 0.8.4;
+pragma solidity ^0.8.15;
 
 interface IBridge {
     /// @notice Sends the latest Semaphore root to Optimism.
