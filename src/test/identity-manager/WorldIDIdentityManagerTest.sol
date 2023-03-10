@@ -168,6 +168,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @return actualProof The conversion of `prf` to the proper type.
     function prepareInsertIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
         public
+        pure
         returns (uint256[] memory preparedIdents, uint256[8] memory actualProof)
     {
         for (uint256 i = 0; i < idents.length; ++i) {
@@ -192,6 +193,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @return actualProof The conversion of `prf` to the proper type.
     function prepareUpdateIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
         public
+        pure
         returns (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof)
     {
         for (uint256 i = 0; i < idents.length; ++i) {
@@ -223,6 +225,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @return actualProof The conversion of `prf` to the proper type.
     function prepareRemoveIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
         public
+        pure
         returns (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof)
     {
         for (uint256 i = 0; i < idents.length; ++i) {

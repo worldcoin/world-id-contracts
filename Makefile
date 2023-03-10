@@ -15,6 +15,9 @@ test:; FOUNDRY_PROFILE=debug forge test
 # Clean the solidity build directory.
 clean:; rm -rf out/
 
+# Get the contract sizes.
+sizes:; forge build --sizes
+
 # ===== Profiling Rules ===============================================================================================
 
 # Benchmark the tests.
