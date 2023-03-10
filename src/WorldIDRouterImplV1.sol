@@ -166,7 +166,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Adds a group to the router.
-    /// @dev It is perfectly valid to add a group to be disabled.
+    /// @dev It is perfectly valid to add a group with a target address of 0 in order to disable it.
     /// @dev While it reverts if the group identifier is not sequential, this is due to the fact
     ///      that group identifiers are allocated externally. As a result, they cannot just be
     ///      allocated by the router.
@@ -199,7 +199,8 @@ contract WorldIDRouterImplV1 is WorldIDImpl {
     }
 
     /// @notice Updates the target address for a group in the router.
-    /// @dev It is perfectly valid to add a group to be disabled.
+    /// @dev It is perfectly valid to update a group with a target address of 0 in order to disable
+    ///      it.
     ///
     /// @param groupId The identitifier for the group to have its target address updated.
     /// @param newTargetAddress The new target address for the group in routing. If this is set to
