@@ -824,18 +824,22 @@ async function getStateBridgeAddress(config) {
   }
 }
 
-async function getUpgradeTargetAddress(config) {
+/** Gets the target address for making an upgrade.
+ *
+ * @param {Object} config The process configuration.
+ * @param {string|undefined} defaultAddress The default address to use if none is provided.
+ * @returns {Promise<void>} The results are written to the `config`.
+ */
+async function getUpgradeTargetAddress(config, defaultAddress) {
   if (!config.upgradeTargetAddress) {
     config.upgradeTargetAddress = process.env.UPGRADE_TARGET_ADDRESS;
   }
   if (!config.upgradeTargetAddress) {
-    const message = config.identityManagerContractAddress
-      ? ` (${config.identityManagerContractAddress})`
-      : '';
+    const message = defaultAddress ? ` (${defaultAddress})` : '';
     config.upgradeTargetAddress = await ask(`Enter upgrade target address${message}: `);
   }
   if (!config.upgradeTargetAddress) {
-    config.upgradeTargetAddress = config.identityManagerContractAddress;
+    config.upgradeTargetAddress = defaultAddress;
   }
   if (!config.upgradeTargetAddress) {
     console.error('Unable to detect upgrade target address. Aborting...');
@@ -985,12 +989,12 @@ async function buildCall(config, targetAbiField, callInfoField, defaultFunction)
   config[callInfoField] = upgradeCall;
 }
 
-async function planDeployUpgrade(plan, config) {
+async function planDeployUpgrade(plan, config, abiFieldName, callInfoFieldName) {
   plan.add('Deploy WorldID Identity Manager Implementation Upgrade', async () => {
     const spinner = ora('Deploying WorldID Identity Manager Implementation Upgrade...').start();
     const factory = new ContractFactory(
-      config.upgradeImplementationAbi.abi,
-      config.upgradeImplementationAbi.bytecode.object,
+      config[abiFieldName].abi,
+      config[abiFieldName].bytecode.object,
       config.wallet
     );
     const contract = await factory.deploy();
@@ -1002,21 +1006,21 @@ async function planDeployUpgrade(plan, config) {
   plan.add('Upgrade WorldIDIdentityManager', async () => {
     // Encode the new initializer function call.
     const spinner = ora('Upgrading WorldID Identity Manager...').start();
-    const iface = new Interface(config.upgradeImplementationAbi.abi);
+    const iface = new Interface(config[abiFieldName].abi);
     const callData = iface.encodeFunctionData(
-      config.upgradeCallInfo.functionSpec,
-      config.upgradeCallInfo.paramValues.map(p => p.solValue)
+      config[callInfoFieldName].functionSpec,
+      config[callInfoFieldName].paramValues.map(p => p.solValue)
     );
 
     // Make the call.
     spinner.text = `Upgrading identity manager implementation (address: ${config.identityManagerContractAddress})`;
     const contractWithAbi = new Contract(
-      config.identityManagerContractAddress,
+      config.upgradeTargetAddress,
       IdentityManagerImpl.abi,
       config.wallet
     );
     try {
-      const result = await contractWithAbi.upgradeToAndCall(
+      await contractWithAbi.upgradeToAndCall(
         config.upgradedImplementationContractAddress,
         callData
       );
@@ -1107,18 +1111,25 @@ async function buildIdentityManagerUpgradeActionPlan(plan, config) {
   await getRpcUrl(config);
   await getProvider(config);
   await getWallet(config);
-  await getUpgradeTargetAddress(config);
+  await getUpgradeTargetAddress(config, config.identityManagerContractAddress);
 
-  const abiFieldName = 'upgradeImplementationAbi';
+  const abiFieldName = 'upgradeIdentityManagerImplementationAbi';
+  const callInfoFieldName = 'upgradeIdentityManagerCallInfo';
+  const nameFieldName = 'upgradeIdentityManagerImplementationName';
 
   await getImplContractAbi(
     config,
-    'upgradeImplementationName',
+    nameFieldName,
     abiFieldName,
     DEFAULT_IDENTITY_MANAGER_UPGRADE_CONTRACT_NAME
   );
-  await buildCall(config, abiFieldName, 'upgradeCallInfo', DEFAULT_IDENTITY_MANAGER_UPGRADE_FUNCTION);
-  await planDeployUpgrade(plan, config);
+  await buildCall(
+    config,
+    abiFieldName,
+    callInfoFieldName,
+    DEFAULT_IDENTITY_MANAGER_UPGRADE_FUNCTION
+  );
+  await planDeployUpgrade(plan, config, abiFieldName, callInfoFieldName);
 }
 
 async function buildRouterUpgradeActionPlan(plan, config) {
@@ -1128,7 +1139,16 @@ async function buildRouterUpgradeActionPlan(plan, config) {
   await getRpcUrl(config);
   await getProvider(config);
   await getWallet(config);
-  await getUpgradeTargetAddress(config);
+  await getUpgradeTargetAddress(config, config.routerContractAddress);
+
+  const abiFieldName = 'upgradeRouterImplementationAbi';
+
+  await getImplContractAbi(
+    config,
+    'upgradeRouterImplementationName',
+    abiFieldName,
+    DEFAULT_ROUTER_UPGRADE_CONTRACT_NAME
+  );
 }
 
 async function buildRouteAddActionPlan(plan, config) {
@@ -1253,7 +1273,7 @@ async function main() {
       let config = await loadConfiguration(options.config);
       await buildAndRunPlan(buildRouterUpgradeActionPlan, config);
       await saveConfiguration(config);
-    })
+    });
 
   await program.parseAsync();
 }
