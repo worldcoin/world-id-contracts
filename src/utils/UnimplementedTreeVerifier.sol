@@ -29,7 +29,7 @@ contract UnimplementedTreeVerifier is ITreeVerifier {
         uint256[2][2] memory b,
         uint256[2] memory c,
         uint256[1] memory input
-    ) external pure override returns (bool) {
+    ) external pure returns (bool) {
         delete a;
         delete b;
         delete c;

@@ -966,7 +966,7 @@ contract WorldIDIdentityManagerImplV1 is
         uint256 nullifierHash,
         uint256 externalNullifierHash,
         uint256[8] calldata proof
-    ) public view override virtual onlyProxy onlyInitialized {
+    ) public view virtual onlyProxy onlyInitialized {
         if (checkValidRoot(root)) {
             semaphoreVerifier.verifyProof(
                 root,
