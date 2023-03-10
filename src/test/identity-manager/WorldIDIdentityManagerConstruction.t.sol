@@ -3,6 +3,8 @@ pragma solidity ^0.8.19;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
+import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
+
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
@@ -32,7 +34,15 @@ contract WorldIDIdentityManagerConstruction is WorldIDIdentityManagerTest {
         emit Initialized(1);
         managerImpl = new ManagerImpl();
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize, (initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy)
+            ManagerImpl.initialize,
+            (
+                initialRoot,
+                verifier,
+                unimplementedVerifier,
+                semaphoreVerifier,
+                isStateBridgeEnabled,
+                stateBridgeProxy
+            )
         );
 
         // Test

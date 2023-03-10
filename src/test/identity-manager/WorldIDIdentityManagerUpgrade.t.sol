@@ -61,7 +61,15 @@ contract WorldIDIdentityManagerUpdate is WorldIDIdentityManagerTest {
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
         address mockUpgradeAddress = address(mockUpgrade);
         bytes memory initCall = abi.encodeCall(
-            ManagerImpl.initialize, (initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy)
+            ManagerImpl.initialize,
+            (
+                initialRoot,
+                verifier,
+                unimplementedVerifier,
+                semaphoreVerifier,
+                isStateBridgeEnabled,
+                stateBridgeProxy
+            )
         );
         vm.expectRevert("Function must be called through delegatecall");
 

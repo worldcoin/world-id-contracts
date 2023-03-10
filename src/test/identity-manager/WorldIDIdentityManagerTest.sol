@@ -6,6 +6,8 @@ import {WorldIDTest} from "../WorldIDTest.sol";
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleStateBridge} from "../mock/SimpleStateBridge.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
+import {UnimplementedTreeVerifier} from "../../utils/UnimplementedTreeVerifier.sol";
+import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -53,6 +55,10 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     bool internal isStateBridgeEnabled = true;
 
     event StateRootSentMultichain(uint256 indexed root);
+
+    // Mock Verifiers
+    ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
+    SemaphoreVerifier semaphoreVerifier = new SemaphoreVerifier();
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
@@ -115,7 +121,14 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
         bytes memory initCallData = abi.encodeCall(
             ManagerImpl.initialize,
-            (actualPreRoot, actualVerifier, enableStateBridge, actualStateBridgeProxy)
+            (
+                actualPreRoot,
+                actualVerifier,
+                unimplementedVerifier,
+                semaphoreVerifier,
+                enableStateBridge,
+                actualStateBridgeProxy
+            )
         );
 
         identityManager = new IdentityManager(managerImplAddress, initCallData);
@@ -168,7 +181,6 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @return actualProof The conversion of `prf` to the proper type.
     function prepareInsertIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
         public
-        pure
         returns (uint256[] memory preparedIdents, uint256[8] memory actualProof)
     {
         for (uint256 i = 0; i < idents.length; ++i) {
@@ -193,7 +205,6 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @return actualProof The conversion of `prf` to the proper type.
     function prepareUpdateIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
         public
-        pure
         returns (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof)
     {
         for (uint256 i = 0; i < idents.length; ++i) {
@@ -225,7 +236,6 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @return actualProof The conversion of `prf` to the proper type.
     function prepareRemoveIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
         public
-        pure
         returns (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof)
     {
         for (uint256 i = 0; i < idents.length; ++i) {
