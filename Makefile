@@ -33,6 +33,9 @@ upgrade: install build; node --no-warnings scripts/deploy.js upgrade
 
 # ===== Router Management Rules =======================================================================================
 
+# Deploys the router contract.
+deploy-router: install build; node --no-warnings scripts/deploy.js deploy-router
+
 # Upgrades the router contract.
 upgrade-router: install build; node --no-warnings scripts/deploy.js upgrade-router
 

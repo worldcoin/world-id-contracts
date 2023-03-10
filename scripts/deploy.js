@@ -406,14 +406,12 @@ async function deployRouter(plan, config) {
         // Build the initializer function call.
         const spinner = ora('Building initializer call...').start();
         const iface = new Interface(RouterImpl.abi);
-        if (!config.identityManagerContractAddress) {
+        if (!config.routerInitialRoute) {
           spinner.fail('No identity manager address available');
           return;
         }
         spinner.text = `Using deployed identity manager at ${config.identityManagerContractAddress} as target for group 0...`;
-        const callData = iface.encodeFunctionData('initialize', [
-          config.identityManagerContractAddress,
-        ]);
+        const callData = iface.encodeFunctionData('initialize', [config.routerInitialRoute]);
 
         // Deploy the proxy contract.
         spinner.text = 'Deploying the WorldID Router proxy...';
@@ -427,7 +425,7 @@ async function deployRouter(plan, config) {
         spinner.text = 'Verifying correct deployment of the WorldID Router...';
         const contractWithAbi = new Contract(contract.address, RouterImpl.abi, config.wallet);
         const routeForGroupZero = await contractWithAbi.routeFor(0);
-        if (routeForGroupZero === config.identityManagerContractAddress) {
+        if (routeForGroupZero === config.routerInitialRoute) {
           spinner.succeed(`Deployed WorldID Router to ${contract.address}`);
         } else {
           spinner.fail(`Could not communicate with the WorldID Router at ${contract.address}`);
@@ -772,7 +770,7 @@ async function getRouteConfiguration(config, isDisable = false) {
   }
 }
 
-async function getRouterDeployConfiguration(config) {
+async function getRouterJointDeployConfiguration(config) {
   if (!config.enableRouter) {
     config.enableRouter = process.env.ENABLE_ROUTER;
   }
@@ -843,6 +841,26 @@ async function getUpgradeTargetAddress(config, defaultAddress) {
   }
   if (!config.upgradeTargetAddress) {
     console.error('Unable to detect upgrade target address. Aborting...');
+    process.exit(1);
+  }
+}
+
+/** Gets the initial target address for group 0 in the router.
+ *
+ * @param {Object} config The process configuration.
+ * @returns {Promise<void>} The results are written to `config`.
+ */
+async function getRouterInitialRoute(config) {
+  if (!config.routerInitialRoute) {
+    config.routerInitialRoute = process.env.ROUTER_INITIAL_ROUTE;
+  }
+  if (!config.routerInitialRoute) {
+    config.routerInitialRoute = await ask(
+      `Enter the target address for the route for group 0 in the router: `
+    );
+  }
+  if (!config.routerInitialRoute) {
+    console.error('No initial route for group 0 provided. Aborting...');
     process.exit(1);
   }
 }
@@ -1085,7 +1103,7 @@ async function saveConfiguration(config) {
   fs.writeFileSync(CONFIG_FILENAME, data);
 }
 
-async function buildDeploymentActionPlan(plan, config) {
+async function buildIdentityManagerDeploymentActionPlan(plan, config) {
   dotenv.config();
 
   await getPrivateKey(config);
@@ -1094,13 +1112,27 @@ async function buildDeploymentActionPlan(plan, config) {
   await getWallet(config);
   await getEnableStateBridge(config);
   await getStateBridgeAddress(config);
-  await getRouterDeployConfiguration(config);
+  await getRouterJointDeployConfiguration(config);
 
   // TODO In future we may want to use the same call-encoding system as for the upgrade here.
   //   It may require some changes, or precomputing addresses.
   await ensureVerifierDeployment(plan, config);
   await ensureInitialRoot(plan, config);
   await deployIdentityManager(plan, config);
+  config.routerInitialRoute = config.identityManagerContractAddress;
+  await deployRouter(plan, config);
+}
+
+async function buildRouterDeploymentActionPlan(plan, config) {
+  dotenv.config();
+
+  await getPrivateKey(config);
+  await getRpcUrl(config);
+  await getProvider(config);
+  await getWallet(config);
+  config.enableRouter = true;
+  await getRouterInitialRoute(config);
+
   await deployRouter(plan, config);
 }
 
@@ -1241,7 +1273,7 @@ async function main() {
     .action(async () => {
       const options = program.opts();
       let config = await loadConfiguration(options.config);
-      await buildAndRunPlan(buildDeploymentActionPlan, config);
+      await buildAndRunPlan(buildIdentityManagerDeploymentActionPlan, config);
       await saveConfiguration(config);
     });
 
@@ -1252,6 +1284,26 @@ async function main() {
       const options = program.opts();
       let config = await loadConfiguration(options.config);
       await buildAndRunPlan(buildIdentityManagerUpgradeActionPlan, config);
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('deploy-router')
+    .description('Interactively deploys the WorldID router.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildRouterDeploymentActionPlan, config);
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('upgrade-router')
+    .description('Interactively upgrades the WorldID router.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildRouterUpgradeActionPlan, config);
       await saveConfiguration(config);
     });
 
@@ -1282,16 +1334,6 @@ async function main() {
       const options = program.opts();
       let config = await loadConfiguration(options.config);
       await buildAndRunPlan(buildRouteDisableActionPlan, config);
-      await saveConfiguration(config);
-    });
-
-  program
-    .command('upgrade-router')
-    .description('Interactively upgrades the WorldID router.')
-    .action(async () => {
-      const options = program.opts();
-      let config = await loadConfiguration(options.config);
-      await buildAndRunPlan(buildRouterUpgradeActionPlan, config);
       await saveConfiguration(config);
     });
 
