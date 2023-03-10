@@ -29,12 +29,8 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         makeNewIdentityManager(treeDepth, newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy);
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeWithSelector(
-            ManagerImpl.removeIdentities.selector,
-            actualProof,
-            newPreRoot,
-            preparedIdents,
-            newPostRoot
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
         );
 
         // Expect that the state root was sent to the state bridge
@@ -58,12 +54,8 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         makeNewIdentityManager(treeDepth, newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy);
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeWithSelector(
-            ManagerImpl.removeIdentities.selector,
-            actualProof,
-            newPreRoot,
-            preparedIdents,
-            newPostRoot
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
@@ -82,8 +74,8 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         vm.assume(nonManager != address(this) && nonManager != address(0x0));
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeWithSelector(
-            ManagerImpl.removeIdentities.selector, actualProof, preRoot, preparedIdents, postRoot
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.removeIdentities, (actualProof, preRoot, preparedIdents, postRoot)
         );
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(nonManager);
@@ -105,12 +97,8 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         preparedIdents[index].newCommitment = uint256(commitment);
-        bytes memory callData = abi.encodeWithSelector(
-            ManagerImpl.removeIdentities.selector,
-            actualProof,
-            initialRoot,
-            preparedIdents,
-            postRoot
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.removeIdentities, (actualProof, initialRoot, preparedIdents, postRoot)
         );
         bytes memory errorData =
             abi.encodeWithSelector(ManagerImpl.InvalidCommitment.selector, index);
@@ -137,8 +125,8 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         makeNewIdentityManager(
             treeDepth, uint256(currentPreRoot), treeVerifier, semaphoreVerifier,  isStateBridgeEnabled, stateBridgeProxy
         );
-        bytes memory callData = abi.encodeWithSelector(
-            ManagerImpl.removeIdentities.selector, actualProof, actualRoot, preparedIdents, postRoot
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.removeIdentities, (actualProof, actualRoot, preparedIdents, postRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.NotLatestRoot.selector, actualRoot, uint256(currentPreRoot)
@@ -163,8 +151,8 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
             prepareRemoveIdentitiesTestCase(identities, prf);
         makeNewIdentityManager(treeDepth, newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy);
         preparedIdents[position].oldCommitment = SNARK_SCALAR_FIELD + i;
-        bytes memory callData = abi.encodeWithSelector(
-            ManagerImpl.removeIdentities.selector, actualProof, newPreRoot, preparedIdents, postRoot
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, postRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -187,8 +175,8 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeWithSelector(
-            ManagerImpl.removeIdentities.selector, actualProof, newPreRoot, preparedIdents, postRoot
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, postRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -211,12 +199,8 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeWithSelector(
-            ManagerImpl.removeIdentities.selector,
-            actualProof,
-            initialRoot,
-            preparedIdents,
-            newPostRoot
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.removeIdentities, (actualProof, initialRoot, preparedIdents, newPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,

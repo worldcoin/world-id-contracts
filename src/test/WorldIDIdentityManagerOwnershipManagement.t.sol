@@ -32,7 +32,7 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
     ///         initialised.
     function testHasOwner() public {
         // Setup
-        bytes memory callData = abi.encodeWithSelector(OwnableUpgradeable.owner.selector);
+        bytes memory callData = abi.encodeCall(OwnableUpgradeable.owner, ());
         bytes memory expectedReturn = abi.encode(address(this));
 
         // Test
@@ -44,8 +44,8 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         // Setup
         vm.assume(newOwner != nullAddress);
         bytes memory transferCallData =
-            abi.encodeWithSelector(OwnableUpgradeable.transferOwnership.selector, newOwner);
-        bytes memory ownerCallData = abi.encodeWithSelector(OwnableUpgradeable.owner.selector);
+            abi.encodeCall(OwnableUpgradeable.transferOwnership, (newOwner));
+        bytes memory ownerCallData = abi.encodeCall(OwnableUpgradeable.owner, ());
         vm.expectEmit(true, true, true, true);
         emit OwnershipTransferred(thisAddress, newOwner);
 
@@ -58,8 +58,7 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
     function testCannotTransferOwnerIfNotOwner(address naughty, address newOwner) public {
         // Setup
         vm.assume(naughty != thisAddress && newOwner != nullAddress);
-        bytes memory callData =
-            abi.encodeWithSelector(OwnableUpgradeable.transferOwnership.selector, newOwner);
+        bytes memory callData = abi.encodeCall(OwnableUpgradeable.transferOwnership, (newOwner));
         bytes memory expectedReturn = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(naughty);
 
@@ -70,9 +69,8 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
     /// @notice Tests that it is possible to renounce ownership.
     function testRenounceOwnership() public {
         // Setup
-        bytes memory renounceData =
-            abi.encodeWithSelector(OwnableUpgradeable.renounceOwnership.selector);
-        bytes memory ownerData = abi.encodeWithSelector(OwnableUpgradeable.owner.selector);
+        bytes memory renounceData = abi.encodeCall(OwnableUpgradeable.renounceOwnership, ());
+        bytes memory ownerData = abi.encodeCall(OwnableUpgradeable.owner, ());
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, renounceData);
@@ -83,8 +81,7 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
     function testCannotRenounceOwnershipIfNotOwner(address naughty) public {
         // Setup
         vm.assume(naughty != thisAddress && naughty != nullAddress);
-        bytes memory callData =
-            abi.encodeWithSelector(OwnableUpgradeable.renounceOwnership.selector);
+        bytes memory callData = abi.encodeCall(OwnableUpgradeable.renounceOwnership, ());
         bytes memory returnData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(naughty);
 

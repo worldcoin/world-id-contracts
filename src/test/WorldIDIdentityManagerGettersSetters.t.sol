@@ -19,8 +19,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     ///         to verify identity registration proofs.
     function testCanGetRegisterIdentitiesVerifierAddress() public {
         // Setup
-        bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.getRegisterIdentitiesVerifierAddress.selector);
+        bytes memory callData = abi.encodeCall(ManagerImpl.getRegisterIdentitiesVerifierAddress, ());
         bytes memory expectedReturn = abi.encode(address(treeVerifier));
 
         // Test
@@ -44,9 +43,9 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         ITreeVerifier newVerifier = new SimpleVerifier();
         address newVerifierAddress = address(newVerifier);
         bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.setRegisterIdentitiesVerifier.selector, newVerifier);
+            abi.encodeCall(ManagerImpl.setRegisterIdentitiesVerifier, (newVerifier));
         bytes memory checkCallData =
-            abi.encodeWithSelector(ManagerImpl.getRegisterIdentitiesVerifierAddress.selector);
+            abi.encodeCall(ManagerImpl.getRegisterIdentitiesVerifierAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifierAddress);
 
         // Test
@@ -60,7 +59,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         vm.assume(notOwner != address(this) && notOwner != address(0x0));
         ITreeVerifier newVerifier = new SimpleVerifier();
         bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.setRegisterIdentitiesVerifier.selector, newVerifier);
+            abi.encodeCall(ManagerImpl.setRegisterIdentitiesVerifier, (newVerifier));
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(notOwner);
 
@@ -83,8 +82,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     ///         to verify identity update proofs.
     function testCanGetIdentityUpdateVerifierAddress() public {
         // Setup
-        bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.getIdentityUpdateVerifierAddress.selector);
+        bytes memory callData = abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierAddress, ());
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData);
@@ -106,10 +104,9 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         // Setup
         ITreeVerifier newVerifier = new SimpleVerifier();
         address newVerifierAddress = address(newVerifier);
-        bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.setIdentityUpdateVerifier.selector, newVerifier);
+        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityUpdateVerifier, (newVerifier));
         bytes memory checkCallData =
-            abi.encodeWithSelector(ManagerImpl.getIdentityUpdateVerifierAddress.selector);
+            abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifierAddress);
 
         // Test
@@ -122,8 +119,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(notOwner != address(this) && notOwner != address(0x0));
         ITreeVerifier newVerifier = new SimpleVerifier();
-        bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.setIdentityUpdateVerifier.selector, newVerifier);
+        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityUpdateVerifier, (newVerifier));
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(notOwner);
 
@@ -145,8 +141,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     /// @notice Ensures that we can get the address of the semaphore verifier.
     function testCanGetSemaphoreVerifierAddress() public {
         // Setup
-        bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.getSemaphoreVerifierAddress.selector);
+        bytes memory callData = abi.encodeCall(ManagerImpl.getSemaphoreVerifierAddress, ());
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData);
@@ -168,10 +163,8 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         // Setup
         SemaphoreVerifier newVerifier = new SemaphoreVerifier();
         address newVerifierAddress = address(newVerifier);
-        bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.setSemaphoreVerifier.selector, newVerifier);
-        bytes memory checkCallData =
-            abi.encodeWithSelector(ManagerImpl.getSemaphoreVerifierAddress.selector);
+        bytes memory callData = abi.encodeCall(ManagerImpl.setSemaphoreVerifier, (newVerifier));
+        bytes memory checkCallData = abi.encodeCall(ManagerImpl.getSemaphoreVerifierAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifierAddress);
 
         // Test
@@ -184,8 +177,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(notOwner != address(this) && notOwner != address(0x0));
         SemaphoreVerifier newVerifier = new SemaphoreVerifier();
-        bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.setSemaphoreVerifier.selector, newVerifier);
+        bytes memory callData = abi.encodeCall(ManagerImpl.setSemaphoreVerifier, (newVerifier));
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(notOwner);
 
@@ -207,7 +199,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     /// @notice Ensures that it's possible to get the root history expiry time.
     function testCanGetRootHistoryExpiry() public {
         // Setup
-        bytes memory callData = abi.encodeWithSelector(ManagerImpl.getRootHistoryExpiry.selector);
+        bytes memory callData = abi.encodeCall(ManagerImpl.getRootHistoryExpiry, ());
         bytes memory result = abi.encode(uint256(1 hours));
 
         // Test
@@ -227,10 +219,8 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     function testCanSetRootHistoryExpiry(uint256 newExpiry) public {
         // Setup
         vm.assume(newExpiry != 0 && newExpiry != 1 hours);
-        bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.setRootHistoryExpiry.selector, newExpiry);
-        bytes memory checkCallData =
-            abi.encodeWithSelector(ManagerImpl.getRootHistoryExpiry.selector);
+        bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (newExpiry));
+        bytes memory checkCallData = abi.encodeCall(ManagerImpl.getRootHistoryExpiry, ());
         bytes memory expectedReturn = abi.encode(newExpiry);
 
         // Test
@@ -241,7 +231,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     /// @notice Ensures that the root history expiry time can't be set to zero.
     function testCannotSetRootHistoryExpiryToZero() public {
         // Setup
-        bytes memory callData = abi.encodeWithSelector(ManagerImpl.setRootHistoryExpiry.selector, 0);
+        bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (0));
         bytes memory expectedError = encodeStringRevert("Expiry time cannot be zero.");
 
         // Test
@@ -253,8 +243,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(notOwner != address(this) && notOwner != address(0x0));
         SemaphoreVerifier newVerifier = new SemaphoreVerifier();
-        bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.setSemaphoreVerifier.selector, newVerifier);
+        bytes memory callData = abi.encodeCall(ManagerImpl.setSemaphoreVerifier, (newVerifier));
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(notOwner);
 

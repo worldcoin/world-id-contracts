@@ -14,13 +14,10 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
     /// @notice Tests whether it is possible to correctly calculate the `inputHash` to the merkle
     ///         tree verifier.
     function testCalculateIdentityRegistrationInputHashFromParametersOnKnownInput() public {
-        // Setup0
-        bytes memory callData = abi.encodeWithSelector(
-            ManagerImpl.calculateIdentityRegistrationInputHash.selector,
-            startIndex,
-            preRoot,
-            postRoot,
-            identityCommitments
+        // Setup
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.calculateIdentityRegistrationInputHash,
+            (startIndex, preRoot, postRoot, identityCommitments)
         );
         bytes memory returnData = abi.encode(inputHash);
 
@@ -43,8 +40,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
     function testCanCheckValueIsInReducedForm(uint256 value) public {
         // Setup
         vm.assume(value < SNARK_SCALAR_FIELD);
-        bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.isInputInReducedForm.selector, value);
+        bytes memory callData = abi.encodeCall(ManagerImpl.isInputInReducedForm, (value));
         bytes memory returnData = abi.encode(true);
 
         // Test
@@ -55,8 +51,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
     function testCanCheckValueIsNotInReducedForm(uint256 value) public {
         // Setup
         vm.assume(value >= SNARK_SCALAR_FIELD);
-        bytes memory callData =
-            abi.encodeWithSelector(ManagerImpl.isInputInReducedForm.selector, value);
+        bytes memory callData = abi.encodeCall(ManagerImpl.isInputInReducedForm, (value));
         bytes memory returnData = abi.encode(false);
 
         // Test
@@ -103,8 +98,8 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
                 newIdent2
             )
         );
-        bytes memory callData = abi.encodeWithSelector(
-            ManagerImpl.calculateIdentityUpdateInputHash.selector, preRoot, postRoot, newIdents
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.calculateIdentityUpdateInputHash, (preRoot, postRoot, newIdents)
         );
         bytes memory expectedReturn = abi.encode(expectedResult);
 

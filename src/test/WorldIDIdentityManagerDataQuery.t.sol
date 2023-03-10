@@ -17,7 +17,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     function testQueryCurrentRoot(uint128 newPreRoot) public {
         // Setup
         makeNewIdentityManager(treeDepth, newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy);
-        bytes memory callData = abi.encodeWithSelector(ManagerImpl.queryRoot.selector, newPreRoot);
+        bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, newPreRoot);
         bytes memory returnData = abi.encode(ManagerImpl.RootInfo(newPreRoot, 0, true));
 
         // Test
@@ -38,13 +38,9 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         makeNewIdentityManager(treeDepth, newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy);
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
-        bytes memory registerCallData = abi.encodeWithSelector(
-            ManagerImpl.registerIdentities.selector,
-            actualProof,
-            newPreRoot,
-            newStartIndex,
-            preparedIdents,
-            newPostRoot
+        bytes memory registerCallData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
         );
 
         // expect event that state root was sent to state bridge
@@ -52,8 +48,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         emit StateRootSentMultichain(newPostRoot);
 
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
-        bytes memory queryCallData =
-            abi.encodeWithSelector(ManagerImpl.queryRoot.selector, newPreRoot);
+        bytes memory queryCallData = abi.encodeCall(ManagerImpl.queryRoot, (newPreRoot));
         bytes memory returnData =
             abi.encode(ManagerImpl.RootInfo(newPreRoot, uint128(block.timestamp), true));
 
@@ -76,13 +71,9 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
         uint256 originalTimestamp = block.timestamp;
-        bytes memory registerCallData = abi.encodeWithSelector(
-            ManagerImpl.registerIdentities.selector,
-            actualProof,
-            newPreRoot,
-            newStartIndex,
-            preparedIdents,
-            newPostRoot
+        bytes memory registerCallData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
         );
 
         // expect event that state root was sent to state bridge
@@ -90,8 +81,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         emit StateRootSentMultichain(newPostRoot);
 
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
-        bytes memory queryCallData =
-            abi.encodeWithSelector(ManagerImpl.queryRoot.selector, newPreRoot);
+        bytes memory queryCallData = abi.encodeCall(ManagerImpl.queryRoot, (newPreRoot));
         bytes memory returnData =
             abi.encode(ManagerImpl.RootInfo(newPreRoot, uint128(originalTimestamp), false));
         vm.warp(originalTimestamp + 2 hours); // Force preRoot to expire
@@ -108,7 +98,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     function testQueryInvalidRoot(uint256 badRoot) public {
         // Setup
         vm.assume(badRoot != initialRoot);
-        bytes memory callData = abi.encodeWithSelector(ManagerImpl.queryRoot.selector, badRoot);
+        bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, badRoot);
         bytes memory returnData = abi.encode(managerImpl.NO_SUCH_ROOT());
 
         // Test
@@ -127,8 +117,8 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     /// @notice Checks that it is possible to get the latest root from the contract.
     function testCanGetLatestRoot(uint256 actualRoot) public {
         // Setup
-        makeNewIdentityManager(treeDepth, actualRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy);
-        bytes memory callData = abi.encodeWithSelector(ManagerImpl.latestRoot.selector);
+        makeNewIdentityManager(treeDepth, actualRoot, treeVerifier, semaphoreVerifier,  isStateBridgeEnabled, stateBridgeProxy);
+        bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory returnData = abi.encode(actualRoot);
 
         // Test

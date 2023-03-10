@@ -111,6 +111,7 @@ contract WorldIDIdentityManagerTest is Test {
     /// @dev It is initialised in the globals.
     /// @dev It is initialised in the globals.
     ///
+    /// @param actualTreeDepth The tree depth to use.
     /// @param actualPreRoot The pre-root to use.
     /// @param actualTreeVerifier The tree verifier instance to use.
     /// @param actualSemaphoreVerifier The Semaphore verifier instance to use.
@@ -118,7 +119,7 @@ contract WorldIDIdentityManagerTest is Test {
     ///        bridge enabled.
     /// @param actualStateBridgeProxy The address of the state bridge.
     function makeNewIdentityManager(
-        uint8 actualTreePath,
+        uint8 actualTreeDepth,
         uint256 actualPreRoot,
         ITreeVerifier actualTreeVerifier,
         ISemaphoreVerifier actualSemaphoreVerifier,
@@ -128,22 +129,16 @@ contract WorldIDIdentityManagerTest is Test {
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
 
-        bytes memory initCallData = abi.encodeWithSelector(
-            ManagerImpl.initialize.selector,
-            actualTreePath,
-            actualPreRoot,
-            actualTreeVerifier,
-            actualSemaphoreVerifier,
-            enableStateBridge,
-            actualStateBridgeProxy
+        bytes memory initCallData = abi.encodeCall(
+            ManagerImpl.initialize,
+            (actualTreeDepth, actualPreRoot, actualTreeVerifier, actualSemaphoreVerifier, enableStateBridge, actualStateBridgeProxy)
         );
 
         identityManager = new IdentityManager(managerImplAddress, initCallData);
         identityManagerAddress = address(identityManager);
 
-        bytes memory updateVerifierCallData = abi.encodeWithSelector(
-            ManagerImpl.setIdentityUpdateVerifier.selector, new SimpleVerifier()
-        );
+        bytes memory updateVerifierCallData =
+            abi.encodeCall(ManagerImpl.setIdentityUpdateVerifier, (new SimpleVerifier()));
         (bool status,) = identityManagerAddress.call(updateVerifierCallData);
         assert(status);
     }
