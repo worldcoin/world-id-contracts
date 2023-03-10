@@ -24,7 +24,6 @@ deployed reality may involve _multiple such pairs_, all of which need to be hand
   - [Fix the Problem](#fix-the-problem)
   - [Deploy the New Contract](#deploy-the-new-contract)
   - [Restart Identity Operations](#restart-identity-operations)
-  - [Update the Router](#update-the-router)
 - [Post Recovery Actions](#post-recovery-actions)
   - [Post-Mortem](#post-mortem)
   - [DRP Analysis](#drp-analysis)
@@ -80,9 +79,19 @@ Pausing identity operations from the signup sequencer isn't enough to stop traff
 manager instance on its own. In addition to doing this it is important to account for clients that
 may be relying on the identity manager through the router.
 
-<!-- TODO Finish off adding the router to the DRP -->
-
 > #### Pause Identity Operations: Task 2
+>
+> 1. Execute `make route-disable`.
+> 2. Select `n` when asked if you want to reuse configuration.
+> 3. Provide `https://polygon-mainnet.g.alchemy.com/v2/ZBjU5pzlBWQQPftvl26hJ4cP1VaBrOGq` as the RPC
+>    URL.
+> 4. Obtain the running address of the WorldID router and record it below.
+> 5. Provide the address of the WorldID router when asked.
+> 6. Provide the group associated with the problem identity manager when asked. Record the group
+>    below.
+>
+> **WorldID Router Address:**  
+> **WorldID Group Number:**
 
 At the same time, it is exceedingly important to let the community (who may be relying on the
 identity manager and its associated signup sequencer) that a problem has occurred.
@@ -298,6 +307,7 @@ restarted.
 ### Restart Identity Operations
 
 > 1. Restart identity operations in the signup sequencer.
+> 2. Add the new deployment to the router.
 
 Work performed in the [step](#roll-back-the-signup-sequencer) above will ensure that the signup
 sequencer will restart from the last known good state on chain and continue to submit identities
@@ -310,14 +320,23 @@ from that point.
 > 2. Push to `batching/main` to trigger a deploy.
 > 3. Approve the deploy to production via Datadog.
 
-At this point the entire system should be up and running again. It is recommended to perform
+At this point the entire paired system should be up and running again. It is recommended to perform
 extra-close monitoring of the restored system for the next few hours to ensure that nothing
 additional goes wrong.
 
-### Update the Router
+> #### Restart: Task 2
+>
+> 1. Run `make route-add`.
+> 2. Select `n` when asked if you want to reuse configuration.
+> 3. Provide `https://polygon-mainnet.g.alchemy.com/v2/ZBjU5pzlBWQQPftvl26hJ4cP1VaBrOGq` as the RPC
+>    URL.
+> 4. Provide the address of the router ([recorded above](#pause-identity-operations-task-2)) when
+>    asked.
+> 5. Provide the group number recorded above.
+> 6. Provide the [new address](#deploy-task-1) of the WorldID Identity Manager as the target
+>    address.
 
-> 1. Update the address(es) for the identity manager in the router.
-> 2. Communicate to clients that WorldID is active again.
+Now the new Identity Manager instance is available to clients.
 
 ## Post Recovery Actions
 
