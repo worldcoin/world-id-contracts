@@ -861,7 +861,7 @@ async function getImplContractAbi(config, nameField, abiField, defaultContract) 
   let answer = '';
   if (!config[nameField]) {
     answer = await ask(
-      `Please provide the name of the implementation contract to use for WorldID (${defaultContract}): `
+      `Please provide the name of the implementation contract to use for (${defaultContract}): `
     );
   }
   const spinner = ora('Obtaining contract ABI').start();
@@ -949,7 +949,7 @@ async function buildCall(config, targetAbiField, callInfoField, defaultFunction)
   spinner.succeed(`Using upgrade call with signature ${answer}`);
 
   const formatParamSpec = paramSpec => {
-    return `\`${paramSpec.name} : ${paramSpec.type} = ${paramSpec.jsValue}\``;
+    return `${paramSpec.name} : ${paramSpec.type} = ${paramSpec.jsValue}`;
   };
 
   if (
@@ -990,22 +990,22 @@ async function buildCall(config, targetAbiField, callInfoField, defaultFunction)
 }
 
 async function planDeployUpgrade(plan, config, abiFieldName, callInfoFieldName) {
-  plan.add('Deploy WorldID Identity Manager Implementation Upgrade', async () => {
-    const spinner = ora('Deploying WorldID Identity Manager Implementation Upgrade...').start();
+  plan.add('Deploy Upgraded Implementation', async () => {
+    const spinner = ora('Deploying Implementation Upgrade...').start();
     const factory = new ContractFactory(
       config[abiFieldName].abi,
       config[abiFieldName].bytecode.object,
       config.wallet
     );
     const contract = await factory.deploy();
-    spinner.text = `Waiting for the WorldID Identity Manager implementation upgrade deployment transaction (address ${contract.address})`;
+    spinner.text = `Waiting for the implementation upgrade deployment transaction (address ${contract.address})`;
     await contract.deployTransaction.wait();
     config.upgradedImplementationContractAddress = contract.address;
     spinner.succeed(`Deployed upgraded implementation to ${contract.address}`);
   });
-  plan.add('Upgrade WorldIDIdentityManager', async () => {
+  plan.add('Upgrade Target Contract', async () => {
     // Encode the new initializer function call.
-    const spinner = ora('Upgrading WorldID Identity Manager...').start();
+    const spinner = ora('Upgrading the selected contract...').start();
     const iface = new Interface(config[abiFieldName].abi);
     const callData = iface.encodeFunctionData(
       config[callInfoFieldName].functionSpec,
@@ -1013,7 +1013,7 @@ async function planDeployUpgrade(plan, config, abiFieldName, callInfoFieldName) 
     );
 
     // Make the call.
-    spinner.text = `Upgrading identity manager implementation (address: ${config.identityManagerContractAddress})`;
+    spinner.text = `Upgrading target implementation (address: ${config.identityManagerContractAddress})`;
     const contractWithAbi = new Contract(
       config.upgradeTargetAddress,
       IdentityManagerImpl.abi,
@@ -1026,12 +1026,12 @@ async function planDeployUpgrade(plan, config, abiFieldName, callInfoFieldName) 
       );
 
       spinner.succeed(
-        `Upgraded identity manager implementation to ${config.upgradedImplementationContractAddress}`
+        `Upgraded target implementation to ${config.upgradedImplementationContractAddress}`
       );
     } catch (e) {
       const message = JSON.parse(e.error.error.body).error.message;
       const errString = message ? message : e.message;
-      spinner.fail(`Unable to upgrade identity manager implementation: ${errString}`);
+      spinner.fail(`Unable to upgrade the target implementation: ${errString}`);
       process.exit(1);
     }
   });
@@ -1105,50 +1105,70 @@ async function buildDeploymentActionPlan(plan, config) {
 }
 
 async function buildIdentityManagerUpgradeActionPlan(plan, config) {
-  dotenv.config();
-
-  await getPrivateKey(config);
-  await getRpcUrl(config);
-  await getProvider(config);
-  await getWallet(config);
-  await getUpgradeTargetAddress(config, config.identityManagerContractAddress);
-
-  const abiFieldName = 'upgradeIdentityManagerImplementationAbi';
-  const callInfoFieldName = 'upgradeIdentityManagerCallInfo';
-  const nameFieldName = 'upgradeIdentityManagerImplementationName';
-
-  await getImplContractAbi(
+  await buildUpgradeActionPlan(
+    plan,
     config,
-    nameFieldName,
-    abiFieldName,
-    DEFAULT_IDENTITY_MANAGER_UPGRADE_CONTRACT_NAME
-  );
-  await buildCall(
-    config,
-    abiFieldName,
-    callInfoFieldName,
+    config.identityManagerContractAddress,
+    'upgradeIdentityManagerImplementationAbi',
+    'upgradeIdentityManagerCallInfo',
+    'upgradeIdentityManagerImplementationName',
+    DEFAULT_IDENTITY_MANAGER_UPGRADE_CONTRACT_NAME,
     DEFAULT_IDENTITY_MANAGER_UPGRADE_FUNCTION
   );
-  await planDeployUpgrade(plan, config, abiFieldName, callInfoFieldName);
 }
 
 async function buildRouterUpgradeActionPlan(plan, config) {
+  await buildUpgradeActionPlan(
+    plan,
+    config,
+    config.routerTargetAddress,
+    'upgradeRouterImplementationAbi',
+    'upgradeRouterCallInfo',
+    'upgradeRouterImplementationName',
+    DEFAULT_ROUTER_UPGRADE_CONTRACT_NAME,
+    DEFAULT_ROUTER_UPGRADE_FUNCTION
+  );
+}
+
+/** Builds an action plan for upgrading an upgradable proxy-based contract that has already been
+ *  deployed to the blockchain.
+ *
+ * @param {Object} plan The action plan to insert actions into.
+ * @param {Object} config The configuration object for the script.
+ * @param {string|undefined} targetAddressDefault The default target address to be used. Need not be
+ *        specified.
+ * @param {string} abiFieldName The name of the field in the `config` object in which to store the
+ *        target contract ABI.
+ * @param {string} callInfoFieldName The name of the field in the `config` object in which to store
+ *        the upgrade function call data.
+ * @param {string} nameFieldName The name of the field in the `config` object in which to store the
+ *        name of the implementation to be upgraded to.
+ * @param {string} defaultContractName The name of the default upgrade target contract.
+ * @param {string} defaultUpgradeFunction The name of the default upgrade function to call when
+ *        upgrading.
+ * @returns {Promise<void>} Nothing
+ */
+async function buildUpgradeActionPlan(
+  plan,
+  config,
+  targetAddressDefault,
+  abiFieldName,
+  callInfoFieldName,
+  nameFieldName,
+  defaultContractName,
+  defaultUpgradeFunction
+) {
   dotenv.config();
 
   await getPrivateKey(config);
   await getRpcUrl(config);
   await getProvider(config);
   await getWallet(config);
-  await getUpgradeTargetAddress(config, config.routerContractAddress);
+  await getUpgradeTargetAddress(config, targetAddressDefault);
 
-  const abiFieldName = 'upgradeRouterImplementationAbi';
-
-  await getImplContractAbi(
-    config,
-    'upgradeRouterImplementationName',
-    abiFieldName,
-    DEFAULT_ROUTER_UPGRADE_CONTRACT_NAME
-  );
+  await getImplContractAbi(config, nameFieldName, abiFieldName, defaultContractName);
+  await buildCall(config, abiFieldName, callInfoFieldName, defaultUpgradeFunction);
+  await planDeployUpgrade(plan, config, abiFieldName, callInfoFieldName);
 }
 
 async function buildRouteAddActionPlan(plan, config) {
