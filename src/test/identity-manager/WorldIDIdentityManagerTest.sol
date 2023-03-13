@@ -4,12 +4,13 @@ pragma solidity ^0.8.19;
 import {WorldIDTest} from "../WorldIDTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
+import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
+
 import {SimpleStateBridge} from "../mock/SimpleStateBridge.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {UnimplementedTreeVerifier} from "../../utils/UnimplementedTreeVerifier.sol";
-import {ISemaphoreVerifier} from
-    "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
-import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
+import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
+import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -46,6 +47,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     uint256 internal constant postRoot =
         0x5c1e52b41a571293b30efacd2afdb7173b20cfaf1f646c4ac9f96eb75848270;
     uint256[] identityCommitments;
+    uint256 identityCommitmentsSize = 3;
     uint256[8] proof;
 
     // Needed for testing things.
@@ -63,13 +65,18 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
     SemaphoreVerifier semaphoreVerifier = new SemaphoreVerifier();
 
+    // Verifiers
+    uint256 initialBatchSize = 30;
+    VerifierLookupTable internal defaultInsertVerifiers;
+    VerifierLookupTable internal defaultUpdateVerifiers;
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////
 
     constructor() {
         // Make the identity commitments.
-        identityCommitments = new uint256[](3);
+        identityCommitments = new uint256[](identityCommitmentsSize);
         identityCommitments[0] = 0x1;
         identityCommitments[1] = 0x2;
         identityCommitments[2] = 0x3;
@@ -90,13 +97,16 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @notice This function runs before every single test.
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
-        treeVerifier = new SimpleVerifier();
+        treeVerifier = new SimpleVerifier(initialBatchSize);
+        defaultInsertVerifiers = new VerifierLookupTable(initialBatchSize, treeVerifier);
+        defaultUpdateVerifiers = new VerifierLookupTable(initialBatchSize, treeVerifier);
         stateBridge = new SimpleStateBridge();
         stateBridgeProxy = address(stateBridge);
         makeNewIdentityManager(
             treeDepth,
             initialRoot,
-            treeVerifier,
+            defaultInsertVerifiers,
+            defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -116,7 +126,8 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @dev It is initialised in the globals.
     ///
     /// @param actualPreRoot The pre-root to use.
-    /// @param actualTreeVerifier The tree verifier instance to use.
+    /// @param insertVerifiers The insertion verifier lookup table.
+    /// @param updateVerifiers The udpate verifier lookup table.
     /// @param actualSemaphoreVerifier The Semaphore verifier instance to use.
     /// @param enableStateBridge Whether or not the new identity manager should have the state
     ///        bridge enabled.
@@ -124,7 +135,8 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     function makeNewIdentityManager(
         uint8 actualTreeDepth,
         uint256 actualPreRoot,
-        ITreeVerifier actualTreeVerifier,
+        VerifierLookupTable insertVerifiers,
+        VerifierLookupTable updateVerifiers,
         ISemaphoreVerifier actualSemaphoreVerifier,
         bool enableStateBridge,
         address actualStateBridgeProxy
@@ -137,8 +149,8 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             (
                 actualTreeDepth,
                 actualPreRoot,
-                actualTreeVerifier,
-                unimplementedVerifier,
+                insertVerifiers,
+                updateVerifiers,
                 actualSemaphoreVerifier,
                 enableStateBridge,
                 actualStateBridgeProxy
@@ -147,11 +159,78 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
         identityManager = new IdentityManager(managerImplAddress, initCallData);
         identityManagerAddress = address(identityManager);
+    }
 
-        bytes memory updateVerifierCallData =
-            abi.encodeCall(ManagerImpl.setIdentityUpdateVerifier, (new SimpleVerifier()));
-        (bool status,) = identityManagerAddress.call(updateVerifierCallData);
-        assert(status);
+    /// @notice Initialises a new identity manager using the provided information.
+    /// @dev It is initialised in the globals.
+    ///
+    /// @param actualPreRoot The pre-root to use.
+    /// @param enableStateBridge Whether or not the new identity manager should have the state
+    ///        bridge enabled.
+    /// @param actualStateBridgeProxy The address of the state bridge.
+    /// @param batchSizes The batch sizes to create verifiers for. Verifiers will be created for
+    ///        both insertions and updates. Must be non-empty.
+    ///
+    /// @custom:reverts string If any batch size exceeds 1000.
+    /// @custom:reverts string If `batchSizes` is empty.
+    function makeNewIdentityManager(
+        uint256 actualPreRoot,
+        bool enableStateBridge,
+        address actualStateBridgeProxy,
+        uint256[] calldata batchSizes
+    ) public {
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(batchSizes);
+        defaultInsertVerifiers = insertVerifiers;
+        defaultUpdateVerifiers = updateVerifiers;
+
+        // Now we can build the identity manager as usual.
+        makeNewIdentityManager(
+            treeDepth,
+            actualPreRoot,
+            insertVerifiers,
+            updateVerifiers,
+            semaphoreVerifier,
+            enableStateBridge,
+            actualStateBridgeProxy
+        );
+    }
+
+    /// @notice Constructs new verifier lookup tables from the provided `batchSizes`.
+    ///
+    /// @param batchSizes The batch sizes to create verifiers for. Verifiers will be created for
+    ///        both insertions and updates. Must be non-empty and contain no duplicates.
+    ///
+    /// @return insertVerifiers The insertion verifier lookup table.
+    /// @return updateVerifiers The update verifier lookup table.
+    ///
+    /// @custom:reverts VerifierExists If `batchSizes` contains a duplicate.
+    /// @custom:reverts string If any batch size exceeds 1000.
+    /// @custom:reverts string If `batchSizes` is empty.
+    function makeVerifierLookupTables(uint256[] memory batchSizes)
+        public
+        returns (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers)
+    {
+        // Construct the verifier LUTs from the provided `batchSizes` info.
+        if (batchSizes.length == 0) {
+            revert("batchSizes must be non-empty.");
+        }
+        if (batchSizes[0] > 1000) {
+            revert("batch size greater than 1000.");
+        }
+        ITreeVerifier initialVerifier = new SimpleVerifier(batchSizes[0]);
+        insertVerifiers = new VerifierLookupTable(batchSizes[0], initialVerifier);
+        updateVerifiers = new VerifierLookupTable(batchSizes[0], initialVerifier);
+        for (uint256 i = 1; i < batchSizes.length; ++i) {
+            uint256 batchSize = batchSizes[i];
+            if (batchSize > 1000) {
+                revert("batch size greater than 1000.");
+            }
+
+            ITreeVerifier batchVerifier = new SimpleVerifier(batchSize);
+            insertVerifiers.addVerifier(batchSize, batchVerifier);
+            updateVerifiers.addVerifier(batchSize, batchVerifier);
+        }
     }
 
     /// @notice Creates a new identity manager without initializing the delegate.

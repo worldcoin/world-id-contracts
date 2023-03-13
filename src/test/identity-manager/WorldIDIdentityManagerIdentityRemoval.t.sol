@@ -5,7 +5,9 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
+import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
+import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -16,6 +18,9 @@ import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentity
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
 contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
+    /// Taken from SimpleVerifier.sol
+    event VerifiedProof(uint256 batchSize);
+
     /// @notice Checks that the proof validates properly with correct inputs.
     function testRemoveIdentitiesWithCorrectInputs(
         uint128[8] memory prf,
@@ -26,10 +31,14 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
+        vm.assume(identities.length <= 1000);
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
-            treeVerifier,
+            insertVerifiers,
+            updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -48,6 +57,96 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         assertCallSucceedsOn(identityManagerAddress, callData);
     }
 
+    /// @notice Ensures that identity removals select the correct verifier when removing identities.
+    function testRemoveIdentitiesSelectsCorrectVerifier(
+        uint128[8] memory prf,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
+        vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        vm.assume(newPreRoot != newPostRoot);
+        vm.assume(identities.length <= 1000 && identities.length > 0);
+        uint256 secondIdentsLength = identities.length / 2;
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length, secondIdentsLength]));
+        makeNewIdentityManager(
+            treeDepth,
+            newPreRoot,
+            insertVerifiers,
+            updateVerifiers,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
+        );
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareRemoveIdentitiesTestCase(identities, prf);
+        ManagerImpl.IdentityUpdate[] memory secondIdents =
+            new ManagerImpl.IdentityUpdate[](secondIdentsLength);
+        for (uint256 i = 0; i < secondIdentsLength; ++i) {
+            secondIdents[i] = preparedIdents[i];
+        }
+        bytes memory firstCallData = abi.encodeCall(
+            ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
+        );
+        uint256 secondPostRoot = uint256(newPostRoot) + 1;
+        bytes memory secondCallData = abi.encodeCall(
+            ManagerImpl.removeIdentities, (actualProof, newPostRoot, secondIdents, secondPostRoot)
+        );
+
+        vm.expectEmit(true, true, true, true);
+        emit VerifiedProof(identities.length);
+        vm.expectEmit(true, true, true, true);
+        emit StateRootSentMultichain(newPostRoot);
+        vm.expectEmit(true, true, true, true);
+        emit VerifiedProof(identities.length / 2);
+        vm.expectEmit(true, true, true, true);
+        emit StateRootSentMultichain(secondPostRoot);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, firstCallData);
+        assertCallSucceedsOn(identityManagerAddress, secondCallData);
+    }
+
+    /// @notice Ensures that the contract reverts if passed a batch size it doesn't know about.
+    function testCannotRemoveIdentitiesWithInvalidBatchSize(
+        uint128[8] memory prf,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
+        vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        vm.assume(newPreRoot != newPostRoot);
+        vm.assume(identities.length > 0);
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length - 1]));
+        makeNewIdentityManager(
+            treeDepth,
+            newPreRoot,
+            insertVerifiers,
+            updateVerifiers,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
+        );
+        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareRemoveIdentitiesTestCase(identities, prf);
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
+        );
+        bytes memory errorData;
+        if (identities.length > 1000) {
+            errorData = abi.encodeWithSelector(
+                VerifierLookupTable.BatchTooLarge.selector, identities.length
+            );
+        } else {
+            errorData = abi.encodeWithSelector(VerifierLookupTable.NoSuchVerifier.selector);
+        }
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, errorData);
+    }
+
     /// @notice Checks that it reverts if the provided proof is incorrect for the public inputs.
     function testCannotRemoveIdentitiesWithIncorrectInputs(
         uint128[8] memory prf,
@@ -58,10 +157,14 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
+        vm.assume(identities.length <= 1000);
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
-            treeVerifier,
+            insertVerifiers,
+            updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -139,7 +242,8 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         makeNewIdentityManager(
             treeDepth,
             uint256(currentPreRoot),
-            treeVerifier,
+            defaultInsertVerifiers,
+            defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -166,12 +270,16 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         vm.assume(position < identities.length);
+        vm.assume(identities.length <= 1000);
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
-            treeVerifier,
+            insertVerifiers,
+            updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy

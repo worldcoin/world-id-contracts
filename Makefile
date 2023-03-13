@@ -16,15 +16,15 @@ test:; FOUNDRY_PROFILE=debug forge test
 clean:; rm -rf out/
 
 # Get the contract sizes.
-sizes:; forge build --sizes
+sizes:; forge build --sizes 2>&1 > .size-snapshot
 
 # ===== Profiling Rules ===============================================================================================
 
 # Benchmark the tests.
-bench:; FOUNDRY_PROFILE=bench forge test --gas-report --no-match-test testCannotRegisterIfProofIncorrect
+bench:; forge test --gas-report --no-match-test testCannotRegisterIfProofIncorrect
 
 # Snapshot the current test usages.
-snapshot:; FOUNDRY_PROFILE=bench forge snapshot --no-match-test testCannotRegisterIfProofIncorrect
+snapshot:; forge snapshot --no-match-test testCannotRegisterIfProofIncorrect
 
 # ===== Deployment Rules ==============================================================================================
 
@@ -33,6 +33,14 @@ deploy: install build; node --no-warnings scripts/deploy.js deploy
 
 # Upgrade contracts
 upgrade: install build; node --no-warnings scripts/deploy.js upgrade
+
+# ===== Verifier Management Rules =====================================================================================
+
+verifier-add: install build; node --no-warnings scripts/deploy.js verifier-add
+
+verifier-update: install build; node --no-warnings scripts/deploy.js verifier-update
+
+verifier-disable: install build; node --no-warnings scripts/deploy.js verifier-disable
 
 # ===== Router Management Rules =======================================================================================
 

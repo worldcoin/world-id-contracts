@@ -65,8 +65,8 @@ contract WorldIDIdentityManagerUpdate is WorldIDIdentityManagerTest {
             (
                 treeDepth,
                 initialRoot,
-                treeVerifier,
-                unimplementedVerifier,
+                defaultInsertVerifiers,
+                defaultUpdateVerifiers,
                 semaphoreVerifier,
                 isStateBridgeEnabled,
                 stateBridgeProxy

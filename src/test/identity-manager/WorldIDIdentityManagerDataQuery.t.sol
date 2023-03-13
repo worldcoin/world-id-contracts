@@ -2,9 +2,11 @@
 pragma solidity ^0.8.19;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
-import {SemaphoreTreeDepthValidator} from "../../utils/SemaphoreTreeDepthValidator.sol";
 
+import {SemaphoreTreeDepthValidator} from "../../utils/SemaphoreTreeDepthValidator.sol";
 import {SimpleVerify} from "../mock/SimpleVerifier.sol";
+import {TypeConverter as TC} from "../utils/TypeConverter.sol";
+import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
@@ -20,7 +22,8 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
-            treeVerifier,
+            defaultInsertVerifiers,
+            defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -43,10 +46,14 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
+        vm.assume(identities.length <= 1000);
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
-            treeVerifier,
+            insertVerifiers,
+            updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -82,10 +89,14 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        vm.assume(identities.length <= 1000);
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
-            treeVerifier,
+            insertVerifiers,
+            updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -142,7 +153,8 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         makeNewIdentityManager(
             treeDepth,
             actualRoot,
-            treeVerifier,
+            defaultInsertVerifiers,
+            defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -170,7 +182,8 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         makeNewIdentityManager(
             actualTreeDepth,
             preRoot,
-            treeVerifier,
+            defaultInsertVerifiers,
+            defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy

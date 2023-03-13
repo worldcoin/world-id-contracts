@@ -16,6 +16,7 @@ import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldID
 import UnimplementedTreeVerifier from '../out/UnimplementedTreeVerifier.sol/UnimplementedTreeVerifier.json' assert { type: 'json' };
 import { default as SemaphoreVerifier } from '../out/SemaphoreVerifier.sol/SemaphoreVerifier.json' assert { type: 'json' };
 import { default as SemaphorePairing } from '../out/Pairing.sol/Pairing.json' assert { type: 'json' };
+import VerifierLookupTable from '../out/VerifierLookupTable.sol/VerifierLookupTable.json' assert { type: 'json' };
 import Router from '../out/WorldIDRouter.sol/WorldIDRouter.json' assert { type: 'json' };
 import RouterImpl from '../out/WorldIDRouterImplV1.sol/WorldIDRouterImplV1.json' assert { type: 'json' };
 import { BigNumber } from '@ethersproject/bignumber';
@@ -28,6 +29,7 @@ const DEFAULT_RPC_URL = 'http://localhost:8545';
 const MTB_RELEASES_URL = 'https://github.com/worldcoin/semaphore-mtb/releases/download';
 const MTB_DIR = 'mtb';
 const KEYS_PATH = MTB_DIR + '/keys';
+const KEYS_META_PATH = MTB_DIR + '/keys_meta.json';
 const MTB_BIN_DIR = MTB_DIR + '/bin';
 const MTB_BIN_PATH = MTB_BIN_DIR + '/mtb';
 const MTB_CONTRACTS_DIR = MTB_DIR + '/contracts';
@@ -204,23 +206,51 @@ async function ensureMtbBinary(plan, config) {
 async function ensureTreeDepth(plan, config) {
   config.treeDepth = process.env.TREE_DEPTH;
   if (!config.treeDepth) {
-    config.treeDepth = await ask(`Enter tree depth: (${DEFAULT_TREE_DEPTH}) `, 'int');
+    config.treeDepth = await ask(
+      `Enter tree depth, where 16 <= depth <= 32: (${DEFAULT_TREE_DEPTH}) `,
+      'int'
+    );
   }
   if (!config.treeDepth) {
     config.treeDepth = DEFAULT_TREE_DEPTH;
   }
+  if (config.treeDepth < 16) {
+    console.warn('Depth less than 16 specified. Clamping depth to 16.');
+    config.treeDepth = 16;
+  }
+  if (config.treeDepth > 32) {
+    console.warn('Depth greater than 32 specified. Clamping depth to 32.');
+    config.treeDepth = 32;
+  }
 }
 
-async function generateKeys(plan, config) {
-  await ensureTreeDepth(plan, config);
-
-  config.batchSize = process.env.BATCH_SIZE;
+async function getBatchSize(config) {
+  if (!config.batchSize) {
+    config.batchSize = process.env.BATCH_SIZE;
+  }
   if (!config.batchSize) {
     config.batchSize = await ask(`Enter batch size: (${DEFAULT_BATCH_SIZE}) `, 'int');
   }
   if (!config.batchSize) {
     config.batchSize = DEFAULT_BATCH_SIZE;
   }
+}
+
+async function getVerifierLUTAddress(config, targetField, name) {
+  if (!config[targetField]) {
+    config[targetField] = process.env[`${targetField.toUpperCase()}_VERIFIER_LUT_ADDRESS`];
+  }
+  if (!config[targetField]) {
+    config[targetField] = await ask(
+      `Please provide the address of the ${name} verifier LUT (or leave blank to deploy): `
+    );
+  }
+}
+
+async function generateKeys(plan, config) {
+  await ensureTreeDepth(plan, config);
+  await getBatchSize(config);
+
   plan.add('Setup Semaphore-MTB keys', async config => {
     const spinner = ora('Generating prover keys').start();
     fs.mkdirSync(MTB_DIR, { recursive: true });
@@ -240,6 +270,8 @@ async function generateKeys(plan, config) {
     if (result.status !== 0) {
       throw new Error('Failed to generate prover keys');
     }
+    const keysMeta = { batchSize: config.batchSize };
+    fs.writeFileSync(KEYS_META_PATH, JSON.stringify(keysMeta));
     spinner.succeed('Prover keys generated');
   });
 }
@@ -260,6 +292,19 @@ async function ensureKeysFile(plan, config) {
   if (!config.keysFile) {
     config.keysFile = KEYS_PATH;
     await generateKeys(plan, config);
+  }
+}
+
+async function shouldRegenerateVerifierFromScratch(plan, config) {
+  if (!fs.existsSync(KEYS_META_PATH)) {
+    return true;
+  }
+  const data = JSON.parse(fs.readFileSync(KEYS_META_PATH).toString());
+  if (!data) {
+    return true;
+  }
+  if (data.batchSize) {
+    return data.batchSize !== config.batchSize;
   }
 }
 
@@ -296,7 +341,7 @@ async function ensureVerifierContractFile(plan, config) {
   }
   if (!config.mtbVerifierContractFile) {
     config.mtbVerifierContractFile = await ask(
-      'Enter path to the Semaphore-MTB verifier contract file, or leave empty to generate it: '
+      'Enter path to the Semaphore-MTB verifier contract file matching your batch size, or leave empty to generate it: '
     );
   }
   if (!config.mtbVerifierContractFile) {
@@ -433,7 +478,7 @@ async function ensureVerifierDeployment(plan, config) {
   }
   if (!config.verifierContractAddress) {
     config.verifierContractAddress = await ask(
-      'Enter batch insert verifier contract address, or leave empty to deploy it: '
+      'Enter verifier contract address, or leave empty to deploy it: '
     );
   }
   if (!config.verifierContractAddress) {
@@ -546,7 +591,128 @@ async function deployRouter(plan, config) {
   }
 }
 
-async function deployIdentityManager(plan, config) {
+/** Deploys the verifier lookup table using the specified `targetVerifierAddress` for the configured
+ * batch size.
+ *
+ * @param {Object} plan The plan to add deployment actions to.
+ * @param {Object} config The configuration object to use for the deployment.
+ * @param {string} name The name of the verifier LUT being deployed.
+ * @param {string} targetVerifierAddressField The field in the config object to read the target
+ *        verifier address from.
+ * @param {string} targetFieldName The name of the field in `config` to write the deployed address
+ *        into.
+ * @returns {Promise<void>} Configuration is written to the `config` object.
+ */
+async function deployVerifierLookupTable(
+  plan,
+  config,
+  name,
+  targetVerifierAddressField,
+  targetFieldName
+) {
+  plan.add(`Deploy ${name} Verifier Lookup Table`, async () => {
+    const spinner = ora(`Deploying ${name.toLowerCase()} verifier lookup table...`).start();
+    const factory = new ContractFactory(
+      VerifierLookupTable.abi,
+      VerifierLookupTable.bytecode.object,
+      config.wallet
+    );
+    const targetAddress = config[targetVerifierAddressField];
+    const contract = await factory.deploy(config.batchSize, targetAddress);
+    spinner.text = `Waiting for the verifier lookup table deployment transaction (address: ${contract.address})...`;
+    await contract.deployTransaction.wait();
+    config[targetFieldName] = contract.address;
+    spinner.succeed(`Deployed ${name} Verifier Lookup Table to ${contract.address}`);
+  });
+}
+
+async function addVerifierToLUT(plan, config) {
+  plan.add('Add Verifier to Lookup Table', async () => {
+    const spinner = ora(
+      `Adding verifier to LUT at ${config.lookupTableAddress} for batch size ${config.batchSize}...`
+    ).start();
+    const contractWithAbi = new Contract(
+      config.lookupTableAddress,
+      VerifierLookupTable.abi,
+      config.wallet
+    );
+    try {
+      contractWithAbi.addVerifier(config.batchSize, config.targetVerifierAddress);
+      spinner.succeed(
+        `Added verifier at ${config.targetVerifierAddress} to LUT at ${config.lookupTableAddress} for batch size ${config.batchSize}`
+      );
+    } catch (e) {
+      const body = JSON.parse(e.error.error.body);
+      const decodedError = decodeContractError(contractWithAbi.interface, body.error.data);
+      if (decodedError.name === 'VerifierExists') {
+        spinner.fail(`The batch size of ${config.batchSize} already has an associated verifier`);
+      } else if (decodedError === 'BatchTooLarge') {
+        spinner.fail(`The batch size of ${config.batchSize} is too large`);
+      } else {
+        spinner.fail(`Could not add a verifier for the group size of ${config.batchSize}`);
+        console.error(e);
+      }
+    }
+  });
+}
+
+async function updateVerifierInLUT(plan, config) {
+  plan.add('Update Verifier in Lookup Table', async () => {
+    const spinner = ora(
+      `Updating verifier in LUT at ${config.lookupTableAddress} for batch size of ${config.batchSize}...`
+    ).start();
+    const contractWithAbi = new Contract(
+      config.lookupTableAddress,
+      VerifierLookupTable.abi,
+      config.wallet
+    );
+    try {
+      contractWithAbi.updateVerifier(config.batchSize, config.targetVerifierAddress);
+      spinner.succeed(
+        `Updated batch size of ${config.batchSize} in LUT at ${config.lookupTableAddress} to use verifier at ${config.targetVerifierAddress}`
+      );
+    } catch (e) {
+      const body = JSON.parse(e.error.error.body);
+      const decodedError = decodeContractError(contractWithAbi.interface, body.error.data);
+      if (decodedError.name === 'BatchTooLarge') {
+        spinner.fail(`The batch size of ${config.batchSize} is too large`);
+      } else {
+        spinner.fail(`Could not update the verifier for the group size of ${config.batchSize}`);
+        console.error(e);
+      }
+    }
+  });
+}
+
+async function disableVerifierInLUT(plan, config) {
+  plan.add('Disable Verifier in Lookup Table', async () => {
+    const spinner = ora(
+      `Disabling verifier in LUT at ${config.lookupTableAddress} for batch size of ${config.batchSize}`
+    ).start();
+    const contractWithAbi = new Contract(
+      config.lookupTableAddress,
+      VerifierLookupTable.abi,
+      config.wallet
+    );
+    try {
+      contractWithAbi.disableVerifier(config.batchSize);
+      spinner.succeed(
+        `Disabled verifier for batch size of ${config.batchSize} in LUT at ${config.lookupTableAddress}`
+      );
+    } catch (e) {
+      const body = JSON.parse(e.error.error.body);
+      const decodedError = decodeContractError(contractWithAbi.interface, body.error.data);
+      if (decodedError.name === 'BatchTooLarge') {
+        spinner.fail(`The batch size of ${config.batchSize} is too large`);
+      } else {
+        spinner.fail(`Could not update the verifier for the group size of ${config.batchSize}`);
+        console.error(e);
+      }
+    }
+  });
+}
+
+async function deployIdentityManager(plan, config, insertLUTTargetField, updateLUTTargetField) {
   plan.add('Deploy WorldID Identity Manager Implementation', async () => {
     const spinner = ora('Deploying WorldID Identity Manager implementation...').start();
     let bytecode = IdentityManagerImpl.bytecode.object;
@@ -566,8 +732,8 @@ async function deployIdentityManager(plan, config) {
     const callData = iface.encodeFunctionData('initialize', [
       config.treeDepth,
       config.initialRoot,
-      config.verifierContractAddress,
-      config.unimplementedTreeVerifierContractAddress,
+      config[insertLUTTargetField],
+      config[updateLUTTargetField],
       config.semaphoreVerifierContractAddress,
       config.enableStateBridge,
       processedStateBridgeAddress,
@@ -782,13 +948,13 @@ async function getWallet(config) {
 }
 
 async function getEnableStateBridge(config) {
-  if (!config.enableStateBridge) {
+  if (config.enableStateBridge === undefined) {
     config.enableStateBridge = process.env.ENABLE_STATE_BRIDGE;
   }
-  if (!config.enableStateBridge) {
+  if (config.enableStateBridge === undefined) {
     config.enableStateBridge = await ask(`Enable State Bridge? [y/N] `, 'bool');
   }
-  if (!config.enableStateBridge) {
+  if (config.enableStateBridge === undefined) {
     config.enableStateBridge = false;
   }
 }
@@ -810,6 +976,40 @@ async function getRouterAddress(config) {
   if (!config.routerContractAddress) {
     console.error('No router address provided.');
     process.exit(1);
+  }
+}
+
+async function getLookupTableAddress(config) {
+  if (!config.lookupTableAddress) {
+    config.lookupTableAddress = process.env.LOOKUP_TABLE_ADDRESS;
+  }
+
+  if (!config.lookupTableAddress) {
+    config.lookupTableAddress = await ask(
+      'Enter the address for the lookup table to add a verifier to: '
+    );
+  }
+
+  if (!config.lookupTableAddress) {
+    console.error('No address provided for the lookup table but one is required.');
+    process.exit();
+  }
+}
+
+async function getTargetVerifierAddress(config) {
+  if (!config.targetVerifierAddress) {
+    config.targetVerifierAddress = process.env.TARGET_VERIFIER_ADDRESS;
+  }
+
+  if (!config.targetVerifierAddress) {
+    config.targetVerifierAddress = await ask(
+      'Enter the address for the verifier to add to the lookup table: '
+    );
+  }
+
+  if (!config.targetVerifierAddress) {
+    console.error('No address provided for the target verifier but one is required.');
+    process.exit();
   }
 }
 
@@ -856,15 +1056,15 @@ async function getRouteConfiguration(config, isDisable = false) {
 }
 
 async function getRouterJointDeployConfiguration(config) {
-  if (!config.enableRouter) {
+  if (config.enableRouter === undefined) {
     config.enableRouter = process.env.ENABLE_ROUTER;
   }
 
-  if (!config.enableRouter) {
+  if (config.enableRouter === undefined) {
     config.enableRouter = await ask('Enable WorldID Router? [y/N] ', 'bool');
   }
 
-  if (!config.enableRouter) {
+  if (config.enableRouter === undefined) {
     config.enableRouter = false;
   }
 
@@ -1191,6 +1391,9 @@ async function saveConfiguration(config) {
 async function buildIdentityManagerDeploymentActionPlan(plan, config) {
   dotenv.config();
 
+  const insertLUTTargetField = 'insertVerifierLUTAddress';
+  const updateLUTTargetField = 'updateVerifierLUTAddress';
+
   await getPrivateKey(config);
   await getRpcUrl(config);
   await getProvider(config);
@@ -1198,14 +1401,46 @@ async function buildIdentityManagerDeploymentActionPlan(plan, config) {
   await getEnableStateBridge(config);
   await getStateBridgeAddress(config);
   await getRouterJointDeployConfiguration(config);
+  await getVerifierLUTAddress(config, insertLUTTargetField, 'insert');
+  await getVerifierLUTAddress(config, updateLUTTargetField, 'update');
+  await getBatchSize(config);
 
-  // TODO In future we may want to use the same call-encoding system as for the upgrade here.
-  //   It may require some changes, or precomputing addresses.
+  if (await shouldRegenerateVerifierFromScratch(plan, config)) {
+    console.warn(
+      `Requested batch size of ${config.batchSize} does not match keys file. Keys will be regenerated.`
+    );
+    config.mtbVerifierContractOutFile = undefined;
+    config.mtbVerifierContractFile = undefined;
+    config.keysFile = undefined;
+    fs.rmSync(VERIFIER_SOURCE_PATH, { force: true });
+    fs.rmSync(VERIFIER_ABI_PATH, { force: true });
+    fs.rmSync(KEYS_PATH, { force: true });
+    fs.rmSync(KEYS_META_PATH, { force: true });
+  }
+
   await ensureVerifierDeployment(plan, config);
   await ensureUnimplementedTreeVerifierDeployment(plan, config);
   await ensureSemaphoreVerifierDeployment(plan, config);
   await ensureInitialRoot(plan, config);
-  await deployIdentityManager(plan, config);
+  if (!config[insertLUTTargetField]) {
+    await deployVerifierLookupTable(
+      plan,
+      config,
+      'Registration',
+      'verifierContractAddress',
+      insertLUTTargetField
+    );
+  }
+  if (!config[updateLUTTargetField]) {
+    await deployVerifierLookupTable(
+      plan,
+      config,
+      'Update',
+      'unimplementedTreeVerifierContractAddress',
+      updateLUTTargetField
+    );
+  }
+  await deployIdentityManager(plan, config, insertLUTTargetField, updateLUTTargetField);
   config.routerInitialRoute = config.identityManagerContractAddress;
   await deployRouter(plan, config);
 }
@@ -1329,6 +1564,38 @@ async function buildRouteDisableActionPlan(plan, config) {
   await planRouteDisable(plan, config);
 }
 
+/** Builds a verifier action plan of the specified type.
+ *
+ * @param {Object} plan The plan, containing actions to execute.
+ * @param {Object} config The configuration for the process.
+ * @param {'add' | 'update' | 'disable'} type The type of action plan to build.
+ * @returns {Promise<void>}
+ */
+async function buildVerifierActionPlan(plan, config, type) {
+  dotenv.config();
+
+  await getPrivateKey(config);
+  await getRpcUrl(config);
+  await getProvider(config);
+  await getWallet(config);
+  await getLookupTableAddress(config);
+  await getBatchSize(config);
+  if (type !== 'disable') {
+    await getTargetVerifierAddress(config);
+  }
+
+  if (type === 'add') {
+    await addVerifierToLUT(plan, config);
+  } else if (type === 'update') {
+    await updateVerifierInLUT(plan, config);
+  } else if (type === 'disable') {
+    await disableVerifierInLUT(plan, config);
+  } else {
+    console.error(`INTERNAL ERROR: Unrecognised type of verifier action plan: ${type}`);
+    process.exit(0);
+  }
+}
+
 /** Builds a plan using the provided function and then executes the plan.
  *
  * @param {(plan: Object, config: Object) => Promise<void>} planner The function that performs the
@@ -1421,6 +1688,42 @@ async function main() {
       const options = program.opts();
       let config = await loadConfiguration(options.config);
       await buildAndRunPlan(buildRouteDisableActionPlan, config);
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('verifier-add')
+    .description('Adds a verifier to the specified verifier lookup table.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan((plan, config) => buildVerifierActionPlan(plan, config, 'add'), config);
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('verifier-update')
+    .description('Updates the verifier for a given batch size.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(
+        (plan, config) => buildVerifierActionPlan(plan, config, 'update'),
+        config
+      );
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('verifier-disable')
+    .description('Updates the verifier for a given batch size.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(
+        (plan, config) => buildVerifierActionPlan(plan, config, 'disable'),
+        config
+      );
       await saveConfiguration(config);
     });
 

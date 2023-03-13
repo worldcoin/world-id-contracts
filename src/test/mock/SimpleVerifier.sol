@@ -7,16 +7,28 @@ import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 /// @author Worldcoin
 /// @notice A dumb verifier to make it easy to fuzz test successes and failures.
 contract SimpleVerifier is ITreeVerifier {
+    uint256 batchSize;
+
+    event VerifiedProof(uint256 batchSize);
+
+    constructor(uint256 _batchSize) {
+        batchSize = _batchSize;
+    }
+
     function verifyProof(
         uint256[2] memory a,
         uint256[2][2] memory b,
         uint256[2] memory c,
         uint256[1] memory input
-    ) external pure override returns (bool) {
+    ) external override returns (bool result) {
         delete b;
         delete c;
         delete input;
-        return a[0] % 2 == 0;
+        result = a[0] % 2 == 0;
+
+        if (result) {
+            emit VerifiedProof(batchSize);
+        }
     }
 }
 

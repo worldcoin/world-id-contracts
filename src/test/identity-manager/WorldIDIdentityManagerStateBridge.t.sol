@@ -4,7 +4,9 @@ pragma solidity ^0.8.19;
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
+import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
+import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
@@ -29,11 +31,14 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
     function testCanDisableStateBridgeFunctionality() public {
         // Setup
         bytes memory callData = abi.encodeCall(ManagerImpl.disableStateBridge, ());
-        ITreeVerifier actualVerifier = new TreeVerifier();
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([40]));
+        insertVerifiers.addVerifier(identityCommitmentsSize, new TreeVerifier());
         makeNewIdentityManager(
             treeDepth,
             preRoot,
-            actualVerifier,
+            insertVerifiers,
+            updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -94,7 +99,13 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
     function testCanEnableStateBridgeIfDisabled() public {
         // Setup
         makeNewIdentityManager(
-            treeDepth, preRoot, treeVerifier, semaphoreVerifier, false, stateBridgeProxy
+            treeDepth,
+            preRoot,
+            defaultInsertVerifiers,
+            defaultUpdateVerifiers,
+            semaphoreVerifier,
+            false,
+            stateBridgeProxy
         );
         bytes memory callData = abi.encodeCall(ManagerImpl.enableStateBridge, ());
 

@@ -83,13 +83,14 @@ may be relying on the identity manager through the router.
 >
 > 1. Execute `make route-disable`.
 > 2. Select `n` when asked if you want to reuse configuration.
-> 3. Provide `https://polygon-mainnet.g.alchemy.com/v2/ZBjU5pzlBWQQPftvl26hJ4cP1VaBrOGq` as the RPC
->    URL.
-> 4. Obtain the running address of the WorldID router and record it below.
-> 5. Provide the address of the WorldID router when asked.
-> 6. Provide the group associated with the problem identity manager when asked. Record the group
+> 3. Acquire the Alchemy RPC URL for mainnet from the infrastructure team and record it below.
+> 4. Provide it when asked for the RPC URL.
+> 5. Obtain the running address of the WorldID router and record it below.
+> 6. Provide the address of the WorldID router when asked.
+> 7. Provide the group associated with the problem identity manager when asked. Record the group
 >    below.
 >
+> **Mainnet URL:**  
 > **WorldID Router Address:**  
 > **WorldID Group Number:**
 
@@ -268,19 +269,27 @@ must be taken when testing the fix, undue time cannot be spent deploying the fix
 > 1. `make build` to ensure that everything is compiled.
 > 2. `make test` to ensure that all the tests pass.
 > 3. Obtain the deployment private key from the infrastructre team.
-> 4. `make deploy` to start the deployment process.
-> 5. Answer `n` to the question about reusing configuration.
-> 6. Enter the private key obtained from the infrastructure team.
-> 7. Provide `https://polygon-mainnet.g.alchemy.com/v2/ZBjU5pzlBWQQPftvl26hJ4cP1VaBrOGq` as the RPC
->    URL.
-> 8. Enable the state bridge.
-> 9. Obtain the existing state bridge address.
-> 10. Provide the obtained state bridge address when asked.
-> 11. Leave the "batch insert verifier" address as blank.
-> 12. Set the initial root to the `rootValue` obtained above.
-> 13. Enter the tree depth to match that used by the signup sequencer.
-> 14. Store the contract addresses in the fields below:
+> 4. Obtain the verifier lookup table addresses from the infrastructure team if possible. Record
+>    them below if obtained.
+> 5. `make deploy` to start the deployment process.
+> 6. Answer `n` to the question about reusing configuration.
+> 7. Enter the private key obtained from the infrastructure team.
+> 8. Provide the already obtained RPC URL when asked.
+> 9. Enable the state bridge.
+> 10. Obtain the existing state bridge address.
+> 11. Provide the obtained state bridge address when asked.
+> 12. When asked if you want to enable the router, select `n`.
+> 13. When asked for the address of the insert verifier LUT, provide it if you were able to do so.
+> 14. When asked for the address of the update verifier LUT, provide it if you were able to do so.
+> 15. When asked for the batch size, provide the one corresponding to the signup sequencer
+>     deployment.
+> 16. If asked to regenerate the MTB keys, leave all fields blank. This may take some time.
+> 17. Enter the tree depth to match that used by the signup sequencer when asked.
+> 18. Set the initial root to the `rootValue` obtained above when asked.
+> 19. Store the contract addresses in the fields below:
 >
+> **Insert Verifier LUT Address:**  
+> **Update Verifier LUT Address:**  
 > **Batch Verifier Contract Address:**  
 > **State Bridge Contract Address:**  
 > **WorldID Identity Manager Implementation Address:**  
@@ -328,8 +337,7 @@ additional goes wrong.
 >
 > 1. Run `make route-add`.
 > 2. Select `n` when asked if you want to reuse configuration.
-> 3. Provide `https://polygon-mainnet.g.alchemy.com/v2/ZBjU5pzlBWQQPftvl26hJ4cP1VaBrOGq` as the RPC
->    URL.
+> 3. Provide the already obtained RPC URL when asked.
 > 4. Provide the address of the router ([recorded above](#pause-identity-operations-task-2)) when
 >    asked.
 > 5. Provide the group number recorded above.
@@ -344,6 +352,8 @@ Once the recovery steps have been taken, it may be tempted to take a break from 
 something else. Unfortunately it is _highly_ recommended that you conduct both a
 [post-mortem](#post-mortem) and an [analysis of the DRP](#drp-analysis) while the process is fresh
 in your mind in order to get the best insights.
+
+> **WARNING:** Do not commit any of the addresses recorded in this document.
 
 ### Post-Mortem
 

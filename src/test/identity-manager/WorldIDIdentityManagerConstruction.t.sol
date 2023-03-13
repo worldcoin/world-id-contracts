@@ -3,8 +3,6 @@ pragma solidity ^0.8.19;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
-
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
@@ -38,8 +36,8 @@ contract WorldIDIdentityManagerConstruction is WorldIDIdentityManagerTest {
             (
                 treeDepth,
                 initialRoot,
-                treeVerifier,
-                unimplementedVerifier,
+                defaultInsertVerifiers,
+                defaultUpdateVerifiers,
                 semaphoreVerifier,
                 isStateBridgeEnabled,
                 stateBridgeProxy

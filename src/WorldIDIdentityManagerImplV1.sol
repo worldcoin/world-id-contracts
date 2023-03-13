@@ -2,13 +2,13 @@
 pragma solidity ^0.8.19;
 
 import {WorldIDImpl} from "./abstract/WorldIDImpl.sol";
-import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
-import {IWorldID} from "./interfaces/IWorldID.sol";
-import {SemaphoreTreeDepthValidator} from "./utils/SemaphoreTreeDepthValidator.sol";
 
-import {ISemaphoreVerifier} from
-    "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
-import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
+import {IWorldID} from "./interfaces/IWorldID.sol";
+import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
+import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
+
+import {SemaphoreTreeDepthValidator} from "./utils/SemaphoreTreeDepthValidator.sol";
+import {VerifierLookupTable} from "./data/VerifierLookupTable.sol";
 
 /// @title WorldID Identity Manager Implementation Version 1
 /// @author Worldcoin
@@ -75,11 +75,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     uint256 internal constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
-    /// @notice The verifier instance needed for verifying batch identity insertions.
-    ITreeVerifier internal batchInsertionVerifier;
+    /// @notice The table of verifiers for verifying batch identity insertions.
+    VerifierLookupTable internal batchInsertionVerifiers;
 
-    /// @notice The verifier instance needed for verifying identity updates.
-    ITreeVerifier internal identityUpdateVerifier;
+    /// @notice The table of verifiers for verifying batch identity insertions.
+    VerifierLookupTable internal identityUpdateVerifiers;
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
     ISemaphoreVerifier internal semaphoreVerifier;
@@ -219,8 +219,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param _treeDepth The depth of the MerkeTree
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of the empty tree.
-    /// @param _batchInsertionVerifier The initial tree verifier to use for batch insertions.
-    /// @param _batchUpdateVerifier The initial tree verifier to use for batch updates.
+    /// @param _batchInsertionVerifiers The verifier lookup table for batch insertions.
+    /// @param _batchUpdateVerifiers The verifier lookup table for batch updates.
     /// @param _semaphoreVerifier The verifier to use for semaphore protocol proofs.
     /// @param _enableStateBridge Whether or not the state bridge should be enabled when
     ///        initialising the identity manager.
@@ -231,8 +231,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     function initialize(
         uint8 _treeDepth,
         uint256 initialRoot,
-        ITreeVerifier _batchInsertionVerifier,
-        ITreeVerifier _batchUpdateVerifier,
+        VerifierLookupTable _batchInsertionVerifiers,
+        VerifierLookupTable _batchUpdateVerifiers,
         ISemaphoreVerifier _semaphoreVerifier,
         bool _enableStateBridge,
         address initialStateBridgeProxyAddress
@@ -248,8 +248,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         treeDepth = _treeDepth;
         rootHistoryExpiry = 1 hours;
         _latestRoot = initialRoot;
-        batchInsertionVerifier = _batchInsertionVerifier;
-        identityUpdateVerifier = _batchUpdateVerifier;
+        batchInsertionVerifiers = _batchInsertionVerifiers;
+        identityUpdateVerifiers = _batchUpdateVerifiers;
         semaphoreVerifier = _semaphoreVerifier;
         _stateBridgeProxyAddress = initialStateBridgeProxyAddress;
         _isStateBridgeEnabled = _enableStateBridge;
@@ -300,6 +300,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
     ///                 `identityCommitments` is not an element of the field `Kr`. It describes the
     ///                 type and value of the unreduced element.
+    /// @custom:reverts VerifierLookupTable.NoSuchVerifier If the batch sizes doesn't match a known
+    ///                 verifier.
+    /// @custom:reverts VerifierLookupTable.BatchTooLarge If the batch size exceeds the maximum
+    ///                 batch size.
     function registerIdentities(
         uint256[8] calldata insertionProof,
         uint256 preRoot,
@@ -338,7 +342,12 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         // verifier.
         uint256 reducedElement = reduceInputElementInSnarkScalarField(uint256(inputHash));
 
-        try batchInsertionVerifier.verifyProof(
+        // We need to look up the correct verifier before we can verify.
+        ITreeVerifier insertionVerifier =
+            batchInsertionVerifiers.getVerifierFor(identityCommitments.length);
+
+        // With that, we can properly try and verify.
+        try insertionVerifier.verifyProof(
             [insertionProof[0], insertionProof[1]],
             [[insertionProof[2], insertionProof[3]], [insertionProof[4], insertionProof[5]]],
             [insertionProof[6], insertionProof[7]],
@@ -353,8 +362,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             // root to the root after the insertions.
             _latestRoot = postRoot;
 
-            // We also need to add the previous root to the history, and set the timestamp at which
-            // it was expired.
+            // We also need to add the previous root to the history, and set the timestamp at
+            // which it was expired.
             rootHistory[preRoot] = uint128(block.timestamp);
 
             // With the update confirmed, we send the root across multiple chains to ensure sync.
@@ -395,6 +404,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
     ///                 `removedIdentities` is not an element of the field `Kr`. It describes the
     ///                 type and value of the unreduced element.
+    /// @custom:reverts VerifierLookupTable.NoSuchVerifier If the batch sizes doesn't match a known
+    ///                 verifier.
+    /// @custom:reverts VerifierLookupTable.BatchTooLarge If the batch size exceeds the maximum
+    ///                 batch size.
     function removeIdentities(
         uint256[8] calldata removalProof,
         uint256 preRoot,
@@ -437,6 +450,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and `identities` is not
     ///                 an element of the field `Kr`. It describes the type and value of the
     ///                 unreduced element.
+    /// @custom:reverts NoSuchVerifier If the batch sizes doesn't match a known verifier.
     function updateIdentities(
         uint256[8] calldata updateProof,
         uint256 preRoot,
@@ -466,8 +480,12 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         // the field Fr. We reduce it into the field to give it safely to the verifier.
         uint256 reducedInputHash = reduceInputElementInSnarkScalarField(uint256(inputHash));
 
+        // We have to look up the correct verifier before we can verify.
+        ITreeVerifier updateVerifier =
+            identityUpdateVerifiers.getVerifierFor(updatedIdentities.length);
+
         // With all of that done we can hand it to the verifier to check the proof.
-        try batchInsertionVerifier.verifyProof(
+        try updateVerifier.verifyProof(
             [updateProof[0], updateProof[1]],
             [[updateProof[2], updateProof[3]], [updateProof[4], updateProof[5]]],
             [updateProof[6], updateProof[7]],
@@ -808,11 +826,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         return true;
     }
 
-    /// @notice Gets the address for the merkle tree verifier used for verifying identity
+    /// @notice Gets the address for the lookup table of merkle tree verifiers used for identity
     ///         registrations.
     ///
-    /// @return addr The addresss of the contract being used as the verifier.
-    function getRegisterIdentitiesVerifierAddress()
+    /// @return addr The addresss of the contract being used as the verifier lookup table.
+    function getRegisterIdentitiesVerifierLookupTableAddress()
         public
         view
         virtual
@@ -820,31 +838,31 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         onlyInitialized
         returns (address addr)
     {
-        return address(batchInsertionVerifier);
+        return address(batchInsertionVerifiers);
     }
 
-    /// @notice Sets the address for the merkle tree verifier to be used for verification of
-    ///         identity registrations.
+    /// @notice Sets the address for the lookup table of merkle tree verifiers used for identity
+    ///         registrations.
     /// @dev Only the owner of the contract can call this function.
     ///
-    /// @param newVerifier The new verifier instance to be used for verifying identity
-    ///                    registrations.
-    function setRegisterIdentitiesVerifier(ITreeVerifier newVerifier)
+    /// @param newTable The new verifier lookup table to be used for verifying identity
+    ///        registrations.
+    function setRegisterIdentitiesVerifierLookupTable(VerifierLookupTable newTable)
         public
         virtual
         onlyProxy
         onlyInitialized
         onlyOwner
     {
-        batchInsertionVerifier = newVerifier;
+        batchInsertionVerifiers = newTable;
     }
 
-    /// @notice Gets the address for the merkle tree verifier used for verifying identity
+    /// @notice Gets the address for the lookup table of merkle tree verifiers used for identity
     ///         updates.
     /// @dev The update verifier is also used for member removals.
     ///
-    /// @return addr The addresss of the contract being used as the verifier.
-    function getIdentityUpdateVerifierAddress()
+    /// @return addr The addresss of the contract being used as the verifier lookup table.
+    function getIdentityUpdateVerifierLookupTableAddress()
         public
         view
         virtual
@@ -852,24 +870,23 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         onlyInitialized
         returns (address addr)
     {
-        return address(identityUpdateVerifier);
+        return address(identityUpdateVerifiers);
     }
 
-    /// @notice Sets the address for the merkle tree verifier to be used for verification of
-    ///         identity updates.
+    /// @notice Sets the address for the lookup table of merkle tree verifiers to be used for
+    ///         verification of identity updates.
     /// @dev Only the owner of the contract can call this function.
     /// @dev The update verifier is also used for member removals.
     ///
-    /// @param newVerifier The new verifier instance to be used for verifying identity
-    ///                    updates.
-    function setIdentityUpdateVerifier(ITreeVerifier newVerifier)
+    /// @param newTable The new lookup table instance to be used for verifying identity updates.
+    function setIdentityUpdateVerifierLookupTable(VerifierLookupTable newTable)
         public
         virtual
         onlyProxy
         onlyInitialized
         onlyOwner
     {
-        identityUpdateVerifier = newVerifier;
+        identityUpdateVerifiers = newTable;
     }
 
     /// @notice Gets the address of the verifier used for verification of semaphore proofs.
@@ -891,7 +908,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @dev Only the owner of the contract can call this function.
     ///
     /// @param newVerifier The new verifier instance to be used for verifying semaphore proofs.
-    function setSemaphoreVerifier(SemaphoreVerifier newVerifier)
+    function setSemaphoreVerifier(ISemaphoreVerifier newVerifier)
         public
         virtual
         onlyProxy

@@ -28,8 +28,8 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
             (
                 treeDepth,
                 initialRoot,
-                treeVerifier,
-                unimplementedVerifier,
+                defaultInsertVerifiers,
+                defaultUpdateVerifiers,
                 semaphoreVerifier,
                 isStateBridgeEnabled,
                 stateBridgeProxy
@@ -51,8 +51,8 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
             (
                 treeDepth,
                 initialRoot,
-                treeVerifier,
-                unimplementedVerifier,
+                defaultInsertVerifiers,
+                defaultUpdateVerifiers,
                 semaphoreVerifier,
                 isStateBridgeEnabled,
                 stateBridgeProxy
@@ -75,8 +75,8 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         localImpl.initialize(
             treeDepth,
             initialRoot,
-            treeVerifier,
-            unimplementedVerifier,
+            defaultInsertVerifiers,
+            defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -98,8 +98,8 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
             (
                 unsupportedDepth,
                 initialRoot,
-                treeVerifier,
-                unimplementedVerifier,
+                defaultInsertVerifiers,
+                defaultUpdateVerifiers,
                 semaphoreVerifier,
                 isStateBridgeEnabled,
                 stateBridgeProxy

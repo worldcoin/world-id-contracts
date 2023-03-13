@@ -67,7 +67,8 @@ gas_reports = [
   "WorldIdIdentityManagerImplV1",
   "Verifier",
   "WorldIDRouter",
-  "WorldIDRouterImplV1"
+  "WorldIDRouterImplV1",
+  "VerifierLookupTable"
 ]
 
 # === Production Profile ======================================================
