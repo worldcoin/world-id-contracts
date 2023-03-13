@@ -36,7 +36,10 @@ const DEFAULT_BATCH_SIZE = 3;
 const MTB_VERSION = '1.0.2';
 const VERIFIER_SOURCE_PATH = MTB_CONTRACTS_DIR + '/Verifier.sol';
 const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json';
-const SEMAPHORE_VERIFIER_SOURCE_PATH = 'lib/semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol';
+const SEMAPHORE_SUBMODULE_PATH = 'lib/semaphore/packages/contracts/contracts/';
+const PAIRING_LIB_CONTRACT_PATH = SEMAPHORE_SUBMODULE_PATH + 'base/Pairing.sol';
+const SEMAPHORE_VERIFIER_INTERFACE_SOURCE_PATH = SEMAPHORE_SUBMODULE_PATH + 'interfaces/ISemaphoreVerifier.sol';
+const SEMAPHORE_VERIFIER_SOURCE_PATH = SEMAPHORE_SUBMODULE_PATH + 'base/SemaphoreVerifier.sol';
 const SEMAPHORE_VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/SemaphoreVerifier.json';
 const DEFAULT_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerImplMock';
 const DEFAULT_UPGRADE_FUNCTION_SPEC = 'initialize(uint32)';
@@ -243,6 +246,14 @@ async function ensureKeysFile(plan, config) {
     }
 }
 
+async function deployContract(abi, bytecode, wallet) {
+    let factory = new ContractFactory(abi, bytecode, wallet);
+    let contract = await factory.deploy();
+    await contract.deployTransaction.wait();
+
+    return contract.address;
+}
+
 async function generateVerifierContract(plan, config) {
     await ensureKeysFile(plan, config);
     plan.add('Generate Semaphore-MTB verifier contract', async () => {
@@ -332,16 +343,13 @@ async function deployVerifierContract(plan, config) {
         let verifierBytecode = JSON.parse(
             fs.readFileSync(config.mtbVerifierContractOutFile).toString()
         );
-        let factory = new ContractFactory(
+        spinner.text = `Waiting for MTB Verifier deploy transaction)`;
+        config.verifierContractAddress = await deployContract(
             [],
             verifierBytecode.contracts['Verifier.sol'].Verifier.evm.bytecode.object,
             config.wallet
-        );
-        let contract = await factory.deploy();
-        spinner.text = `Waiting for MTB Verifier deploy transaction (address: ${contract.address})`;
-        await contract.deployTransaction.wait();
-        spinner.succeed(`Deployed MTB Verifier contract to ${contract.address}`);
-        config.verifierContractAddress = contract.address;
+        )
+        spinner.succeed(`Deployed MTB Verifier contract to ${config.verifierContractAddress}`);
     });
 }
 
@@ -373,7 +381,7 @@ async function compileAndDeploySemaphorePairingLibratry(plan, config) {
         language: 'Solidity',
         sources: {
             'Pairing.sol': {
-                content: fs.readFileSync('lib/semaphore/packages/contracts/contracts/base/Pairing.sol').toString(),
+                content: fs.readFileSync(PAIRING_LIB_CONTRACT_PATH).toString(),
             }
         },
         settings: {
@@ -385,15 +393,12 @@ async function compileAndDeploySemaphorePairingLibratry(plan, config) {
         },
     };
     let bytecode = JSON.parse(solc.compile(JSON.stringify(input)));
-
-    let factory = new ContractFactory(
+    let address = await deployContract(
         [],
         bytecode.contracts['Pairing.sol'].Pairing.evm.bytecode.object,
         config.wallet
-    );
-    let contract = await factory.deploy();
-    config.pairingLibraryAddress = contract.address.substring(2);
-    await contract.deployTransaction.wait();
+    )
+    config.pairingLibraryAddress = address.substring(2);
 }
 
 async function compileSemaphoreVerifierContract(plan, config) {
@@ -403,11 +408,11 @@ async function compileSemaphoreVerifierContract(plan, config) {
         function findImports(path) {
             if (path === 'base/Pairing.sol')
               return {
-                contents: fs.readFileSync('lib/semaphore/packages/contracts/contracts/base/Pairing.sol').toString(),
+                contents: fs.readFileSync(PAIRING_LIB_CONTRACT_PATH).toString(),
               };
             else if (path === 'interfaces/ISemaphoreVerifier.sol')
                 return {
-                contents: fs.readFileSync('lib/semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol').toString(),
+                contents: fs.readFileSync(SEMAPHORE_VERIFIER_INTERFACE_SOURCE_PATH).toString(),
                 };
             else return { error: 'File not found' };
         }
@@ -428,13 +433,11 @@ async function compileSemaphoreVerifierContract(plan, config) {
             },
         };
 
-        let output = JSON.parse(
-            solc.compile(JSON.stringify(input), { import: findImports })
-        );
+        let output = JSON.parse(solc.compile(JSON.stringify(input), { import: findImports }));
 
         // link Pairing library
-        let pairingPointer = '__$c3727049c0bbe32374ed9d5522c13a9bf7$__';
-        let withLinkedLibrary = JSON.stringify(output).replaceAll(pairingPointer, config.pairingLibraryAddress);
+        let pairingPlaceholder = '__$c3727049c0bbe32374ed9d5522c13a9bf7$__';
+        let withLinkedLibrary = JSON.stringify(output).replaceAll(pairingPlaceholder, config.pairingLibraryAddress);
 
         fs.mkdirSync(MTB_CONTRACTS_DIR, { recursive: true });
         fs.writeFileSync(SEMAPHORE_VERIFIER_ABI_PATH, withLinkedLibrary);
@@ -444,20 +447,13 @@ async function compileSemaphoreVerifierContract(plan, config) {
 async function deploySemaphoreVerifierContract(plan, config) {
     plan.add('Deploy Semaphore verifier contract', async () => {
         const spinner = ora(`Deploying Semaphore Verifier contract...`).start();
-        let verifierBytecode = JSON.parse(
+        let bytecodeFile = JSON.parse(
             fs.readFileSync(SEMAPHORE_VERIFIER_ABI_PATH).toString()
         );
-        console.log()
-        let factory = new ContractFactory(
-            [],
-            verifierBytecode.contracts['SemaphoreVerifier.sol'].SemaphoreVerifier.evm.bytecode.object,
-            config.wallet
-        );
-        let contract = await factory.deploy();
-        spinner.text = `Waiting for Semaphore Verifier deploy transaction (address: ${contract.address})`;
-        await contract.deployTransaction.wait();
-        spinner.succeed(`Deployed Semaphore Verifier contract to ${contract.address}`);
-        config.semaphoreVerifierContractAddress = contract.address;
+        let bytecode =  bytecodeFile.contracts['SemaphoreVerifier.sol']['SemaphoreVerifier'].evm.bytecode.object;
+        spinner.text = `Waiting for Semaphore Verifier deploy transaction`;
+        config.semaphoreVerifierContractAddress = await deployContract([], bytecode, config.wallet);
+        spinner.succeed(`Deployed Semaphore Verifier contract to ${config.semaphoreVerifierContractAddress}`);
     });
 }
 
@@ -490,16 +486,13 @@ async function ensureInitialRoot(plan, config) {
 async function deployIdentityManager(plan, config) {
     plan.add('Deploy WorldID Identity Manager Implementation', async () => {
         const spinner = ora('Deploying WorldID Identity Manager implementation...').start();
-        const factory = new ContractFactory(
+        spinner.text = `Waiting for the WorldID Identity Manager Implementation deployment transaction...`;
+        config.identityManagerImplementationContractAddress = await deployContract(
             IdentityManagerImpl.abi,
             IdentityManagerImpl.bytecode.object,
             config.wallet
         );
-        const contract = await factory.deploy();
-        spinner.text = `Waiting for the WorldID Identity Manager Implementation deployment transaction (address: ${contract.address})...`;
-        await contract.deployTransaction.wait();
-        config.identityManagerImplementationContractAddress = contract.address;
-        spinner.succeed(`Deployed WorldID Identity Manager Implementation to ${contract.address}`);
+        spinner.succeed(`Deployed WorldID Identity Manager Implementation to ${config.identityManagerImplementationContractAddress}`);
     });
     plan.add('Deploy WorldID Identity Manager', async () => {
         // Encode the initializer function call.
@@ -776,15 +769,12 @@ async function buildCall(config, targetAbiField, callInfoField, defaultFunction)
 async function deployUpgrade(plan, config) {
     plan.add('Deploy WorldID Identity Manager Implementation Upgrade', async () => {
         const spinner = ora('Deploying WorldID Identity Manager Implementation Upgrade...').start();
-        const factory = new ContractFactory(
+        spinner.text = `Waiting for the WorldID Identity Manager implementation upgrade deployment transaction`;
+        config.upgradedImplementationContractAddress = await deployContract(
             config.upgradeImplementationAbi.abi,
             config.upgradeImplementationAbi.bytecode.object,
-            config.wallet
-        );
-        const contract = await factory.deploy();
-        spinner.text = `Waiting for the WorldID Identity Manager implementation upgrade deployment transaction (address ${contract.address})`;
-        await contract.deployTransaction.wait();
-        config.upgradedImplementationContractAddress = contract.address;
+            config.wallet,
+        )
         spinner.succeed(`Deployed upgraded implementation to ${contract.address}`);
     });
     plan.add('Upgrade WorldIDIdentityManager', async () => {
