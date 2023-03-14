@@ -318,7 +318,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         uint256 nullifierHash,
         uint256 externalNullifierHash,
         uint256[8] calldata proof
-    ) external virtual onlyProxy onlyInitialized {
+    ) external view virtual onlyProxy onlyInitialized {
         address identityManager = routeFor(groupId);
 
         bytes memory callData = abi.encodeCall(
@@ -326,7 +326,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         );
 
         // The function doesn't return, so `returnData` is only populated if it reverts.
-        (bool success, bytes memory returnData) = identityManager.call(callData);
+        (bool success, bytes memory returnData) = identityManager.staticcall(callData);
 
         if (!success) {
             // We don't actually care about the selector here, so we ignore it after decoding.
