@@ -135,7 +135,7 @@ good state is.
 > 3. Find the last identity inserted as part of the root returned from the above.
 >
 > ```sql
-> SELECT (commitment, leaf_index, status) -- Select all columns
+> SELECT (commitment, last_index, status) -- Select all columns
 > FROM identities                         -- From the identities table
 > WHERE commitment = last_identity;       -- In rows where commitment matches the last_identity from
 >                                         -- the previous query
@@ -196,7 +196,7 @@ tables in the production database to a consistent state.
 > ```sql
 > UPDATE identities                   -- Update the identities table
 > SET status = "pending"              -- To set the status for all identities to pending
-> WHERE leaf_index > last_leaf_index; -- If those identities are after the last known good identity
+> WHERE last_index > last_leaf_index; -- If those identities are after the last known good identity
 >                                     -- (where last_leaf_index) comes from the row in the identities
 >                                     -- table that was found above)
 > ```

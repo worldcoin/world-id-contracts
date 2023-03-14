@@ -13,6 +13,9 @@ import { ErrorFragment, Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
 import IdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
+import UnimplementedTreeVerifier from '../out/UnimplementedTreeVerifier.sol/UnimplementedTreeVerifier.json' assert { type: 'json' };
+import { default as SemaphoreVerifier } from '../out/Verifier.sol/Verifier.json' assert { type: 'json' };
+import { default as SemaphorePairing } from '../out/Verifier.sol/Pairing.json' assert { type: 'json' };
 import Router from '../out/WorldIDRouter.sol/WorldIDRouter.json' assert { type: 'json' };
 import RouterImpl from '../out/WorldIDRouterImplV1.sol/WorldIDRouterImplV1.json' assert { type: 'json' };
 import { BigNumber } from '@ethersproject/bignumber';
@@ -338,10 +341,57 @@ async function deployVerifierContract(plan, config) {
       config.wallet
     );
     let contract = await factory.deploy();
-    spinner.text = `Waiting for MTB Verifier deploy transaction (address: ${contract.address})`;
+    spinner.text = `Waiting for MTB Verifier deploy transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
     spinner.succeed(`Deployed MTB Verifier contract to ${contract.address}`);
     config.verifierContractAddress = contract.address;
+  });
+}
+
+async function ensureUnimplementedTreeVerifierDeployment(plan, config) {
+  plan.add('Deploy Unimplemented Tree Verifier', async () => {
+    const spinner = ora('Deploying Unimplemented Tree Verifier contract...').start();
+    const factory = new ContractFactory(
+      UnimplementedTreeVerifier.abi,
+      UnimplementedTreeVerifier.bytecode.object,
+      config.wallet
+    );
+    const contract = await factory.deploy();
+    spinner.text = `Waiting for verifier deploy transaction (address: ${contract.address})...`;
+    await contract.deployTransaction.wait();
+    spinner.succeed(`Deployed Unimplemented Tree Verifier contract to ${contract.address}`);
+    config.unimplementedTreeVerifierContractAddress = contract.address;
+  });
+}
+
+async function ensureSemaphoreVerifierDeployment(plan, config) {
+  plan.add('Deploy Semaphore Pairing Library', async () => {
+    const spinner = ora('Deploying Semaphore pairing library...').start();
+    const factory = new ContractFactory(
+      SemaphorePairing.abi,
+      SemaphorePairing.bytecode.object,
+      config.wallet
+    );
+    const contract = await factory.deploy();
+    spinner.text = `Waiting for pairing library deploy transaction (address: ${contract.address})...`;
+    await contract.deployTransaction.wait();
+    spinner.succeed(`Deployed Pairing Library to ${contract.address}`);
+    config.semaphorePairingLibraryAddress = contract.address;
+  });
+  plan.add('Deploy Semaphore Verifier Contract', async () => {
+    const spinner = ora('Deploying Semaphore Verifier contract...').start();
+    const pairingPointer = '__$c3727049c0bbe32374ed9d5522c13a9bf7$__';
+    const pairingLibAddressWithout0x = config.semaphorePairingLibraryAddress.substring(2);
+    const newBytecode = SemaphoreVerifier.bytecode.object.replaceAll(
+      pairingPointer,
+      pairingLibAddressWithout0x
+    );
+    const factory = new ContractFactory(SemaphorePairing.abi, newBytecode, config.wallet);
+    const contract = await factory.deploy();
+    spinner.text = `Waiting for Semaphore verifier deploy transaction (address: ${contract.address})...`;
+    await contract.deployTransaction.wait();
+    spinner.succeed(`Deployed Semaphore Verifier contract to ${contract.address}`);
+    config.semaphoreVerifierContractAddress = contract.address;
   });
 }
 
@@ -484,6 +534,8 @@ async function deployIdentityManager(plan, config) {
     const callData = iface.encodeFunctionData('initialize', [
       config.initialRoot,
       config.verifierContractAddress,
+      config.unimplementedTreeVerifierContractAddress,
+      config.semaphoreVerifierContractAddress,
       config.enableStateBridge,
       processedStateBridgeAddress,
     ]);
@@ -1117,6 +1169,8 @@ async function buildIdentityManagerDeploymentActionPlan(plan, config) {
   // TODO In future we may want to use the same call-encoding system as for the upgrade here.
   //   It may require some changes, or precomputing addresses.
   await ensureVerifierDeployment(plan, config);
+  await ensureUnimplementedTreeVerifierDeployment(plan, config);
+  await ensureSemaphoreVerifierDeployment(plan, config);
   await ensureInitialRoot(plan, config);
   await deployIdentityManager(plan, config);
   config.routerInitialRoute = config.identityManagerContractAddress;

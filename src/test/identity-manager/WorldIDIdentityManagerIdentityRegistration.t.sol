@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.19;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
@@ -143,7 +143,14 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         bytes memory callData = abi.encodeCall(
             ManagerImpl.initialize,
-            (preRoot, actualVerifier, isStateBridgeEnabled, stateBridgeProxy)
+            (
+                preRoot,
+                actualVerifier,
+                unimplementedVerifier,
+                semaphoreVerifier,
+                isStateBridgeEnabled,
+                stateBridgeProxy
+            )
         );
 
         identityManager = new IdentityManager(managerImplAddress, callData);

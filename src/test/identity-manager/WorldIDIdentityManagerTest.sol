@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.19;
 
 import {WorldIDTest} from "../WorldIDTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleStateBridge} from "../mock/SimpleStateBridge.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
+import {UnimplementedTreeVerifier} from "../../utils/UnimplementedTreeVerifier.sol";
+import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -53,6 +55,10 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     bool internal isStateBridgeEnabled = true;
 
     event StateRootSentMultichain(uint256 indexed root);
+
+    // Mock Verifiers
+    ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
+    SemaphoreVerifier semaphoreVerifier = new SemaphoreVerifier();
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
@@ -115,7 +121,14 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
         bytes memory initCallData = abi.encodeCall(
             ManagerImpl.initialize,
-            (actualPreRoot, actualVerifier, enableStateBridge, actualStateBridgeProxy)
+            (
+                actualPreRoot,
+                actualVerifier,
+                unimplementedVerifier,
+                semaphoreVerifier,
+                enableStateBridge,
+                actualStateBridgeProxy
+            )
         );
 
         identityManager = new IdentityManager(managerImplAddress, initCallData);
