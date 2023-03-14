@@ -3,12 +3,15 @@ pragma solidity ^0.8.10;
 
 import {WorldIDImpl} from "./abstract/WorldIDImpl.sol";
 
+import {IWorldIDGroups} from "./interfaces/IWorldIDGroups.sol";
+import {IWorldID} from "./interfaces/IWorldID.sol";
+
 /// @title WorldID Router Implementation Version 1
 /// @author Worldcoin
 /// @notice A router component that can dispatch group numbers to the correct identity manager
 ///         implementation.
 /// @dev This is the implementation delegated to by a proxy.
-contract WorldIDRouterImplV1 is WorldIDImpl {
+contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -289,5 +292,46 @@ contract WorldIDRouterImplV1 is WorldIDImpl {
     /// @return groupId The highest group identifier known.
     function nextGroupId() internal view onlyProxy onlyInitialized returns (uint256 groupId) {
         return _groupCount;
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                            WORLDID COMPLIANCE                           ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Verifies a WorldID zero knowledge proof.
+    /// @dev Note that a double-signaling check is not included here, and should be carried by the
+    ///      caller.
+    ///
+    /// @param groupId The group identifier for the group to verify a proof for.
+    /// @param root The of the Merkle tree
+    /// @param signalHash A keccak256 hash of the Semaphore signal
+    /// @param nullifierHash The nullifier hash
+    /// @param externalNullifierHash A keccak256 hash of the external nullifier
+    /// @param proof The zero-knowledge proof
+    ///
+    /// @custom:reverts string If the `proof` is invalid.
+    /// @custom:reverts NoSuchGroup If the provided `groupId` references a group that does not exist.
+    function verifyProof(
+        uint256 groupId,
+        uint256 root,
+        uint256 signalHash,
+        uint256 nullifierHash,
+        uint256 externalNullifierHash,
+        uint256[8] calldata proof
+    ) external virtual onlyProxy onlyInitialized {
+        address identityManager = routeFor(groupId);
+
+        bytes memory callData = abi.encodeCall(
+            IWorldID.verifyProof, (root, signalHash, nullifierHash, externalNullifierHash, proof)
+        );
+
+        // The function doesn't return, so `returnData` is only populated if it reverts.
+        (bool success, bytes memory returnData) = identityManager.call(callData);
+
+        if (!success) {
+            // We don't actually care about the selector here, so we ignore it after decoding.
+            (, string memory message) = abi.decode(returnData, (bytes4, string));
+            revert(message);
+        }
     }
 }
