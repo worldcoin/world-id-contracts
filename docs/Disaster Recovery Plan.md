@@ -51,6 +51,7 @@ followed:
 4. Fix the cause for activating the disaster recovery plan as described [here](#fix-the-problem).
 5. Deploy the new contract with the fixes as described [here](#deploy-the-new-contract).
 6. Restart identity operations as described [here](#restart-identity-operations).
+7. Add the new deployment to the router for clients as described [here](#update-the-router).
 
 Each item below contains a quoted block that describes the short set of steps to take. More detail
 follows.
@@ -59,7 +60,8 @@ follows.
 
 > 1. [Stop](#pause-identity-operations-task-1) the signup sequencer instance from submitting
 >    identity operations to the contract on the chain.
-> 2. [Communicate](#pause-identity-operations-task-2) with the community.
+> 2. [Disable](#pause-identity-operations-task-2) routing to the contract on chain.
+> 3. [Communicate](#pause-identity-operations-task-3) with the community.
 
 While, in an ideal world, it would be possible to stop the contract from responding to these calls,
 this plan cannot assume that we have control of the contract at this time. To this end, the stop is
@@ -73,10 +75,28 @@ identities in the database.
 > 1. Obtain VPN access to the production cluster from infrastructure.
 > 2. Kill the signup sequencer process running on the node.
 
+Pausing identity operations from the signup sequencer isn't enough to stop traffic to that identity
+manager instance on its own. In addition to doing this it is important to account for clients that
+may be relying on the identity manager through the router.
+
+> #### Pause Identity Operations: Task 2
+>
+> 1. Execute `make route-disable`.
+> 2. Select `n` when asked if you want to reuse configuration.
+> 3. Provide `https://polygon-mainnet.g.alchemy.com/v2/ZBjU5pzlBWQQPftvl26hJ4cP1VaBrOGq` as the RPC
+>    URL.
+> 4. Obtain the running address of the WorldID router and record it below.
+> 5. Provide the address of the WorldID router when asked.
+> 6. Provide the group associated with the problem identity manager when asked. Record the group
+>    below.
+>
+> **WorldID Router Address:**  
+> **WorldID Group Number:**
+
 At the same time, it is exceedingly important to let the community (who may be relying on the
 identity manager and its associated signup sequencer) that a problem has occurred.
 
-> #### Pause Identity Operations: Task 2
+> #### Pause Identity Operations: Task 3
 >
 > 1. Update the community, broadly explaining the nature of the problem, the expected time to
 >    recovery, and any anticipated impacts on data.
@@ -287,6 +307,7 @@ restarted.
 ### Restart Identity Operations
 
 > 1. Restart identity operations in the signup sequencer.
+> 2. Add the new deployment to the router.
 
 Work performed in the [step](#roll-back-the-signup-sequencer) above will ensure that the signup
 sequencer will restart from the last known good state on chain and continue to submit identities
@@ -299,9 +320,23 @@ from that point.
 > 2. Push to `batching/main` to trigger a deploy.
 > 3. Approve the deploy to production via Datadog.
 
-At this point the entire system should be up and running again. It is recommended to perform
+At this point the entire paired system should be up and running again. It is recommended to perform
 extra-close monitoring of the restored system for the next few hours to ensure that nothing
 additional goes wrong.
+
+> #### Restart: Task 2
+>
+> 1. Run `make route-add`.
+> 2. Select `n` when asked if you want to reuse configuration.
+> 3. Provide `https://polygon-mainnet.g.alchemy.com/v2/ZBjU5pzlBWQQPftvl26hJ4cP1VaBrOGq` as the RPC
+>    URL.
+> 4. Provide the address of the router ([recorded above](#pause-identity-operations-task-2)) when
+>    asked.
+> 5. Provide the group number recorded above.
+> 6. Provide the [new address](#deploy-task-1) of the WorldID Identity Manager as the target
+>    address.
+
+Now the new Identity Manager instance is available to clients.
 
 ## Post Recovery Actions
 

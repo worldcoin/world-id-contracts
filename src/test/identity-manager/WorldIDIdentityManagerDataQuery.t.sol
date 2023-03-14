@@ -3,9 +3,9 @@ pragma solidity ^0.8.10;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {SimpleVerify} from "./mock/SimpleVerifier.sol";
+import {SimpleVerify} from "../mock/SimpleVerifier.sol";
 
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Data Querying Tests
 /// @notice Contains tests for the WorldID identity manager.

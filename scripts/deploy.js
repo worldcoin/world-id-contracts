@@ -9,10 +9,12 @@ import { Command } from 'commander';
 
 import solc from 'solc';
 import { Contract, ContractFactory, providers, utils, Wallet } from 'ethers';
-import { Interface } from 'ethers/lib/utils.js';
+import { ErrorFragment, Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
 import IdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
+import Router from '../out/WorldIDRouter.sol/WorldIDRouter.json' assert { type: 'json' };
+import RouterImpl from '../out/WorldIDRouterImplV1.sol/WorldIDRouterImplV1.json' assert { type: 'json' };
 import { BigNumber } from '@ethersproject/bignumber';
 
 const { JsonRpcProvider } = providers;
@@ -36,8 +38,10 @@ const DEFAULT_BATCH_SIZE = 3;
 const MTB_VERSION = '1.0.2';
 const VERIFIER_SOURCE_PATH = MTB_CONTRACTS_DIR + '/Verifier.sol';
 const VERIFIER_ABI_PATH = MTB_CONTRACTS_DIR + '/Verifier.json';
-const DEFAULT_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerImplMock';
-const DEFAULT_UPGRADE_FUNCTION_SPEC = 'initialize(uint32)';
+const DEFAULT_IDENTITY_MANAGER_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerImplMock';
+const DEFAULT_IDENTITY_MANAGER_UPGRADE_FUNCTION = 'initialize(uint32)';
+const DEFAULT_ROUTER_UPGRADE_CONTRACT_NAME = 'WorldIDRouterImplMock';
+const DEFAULT_ROUTER_UPGRADE_FUNCTION = 'initialize(uint32)';
 
 // === Implementation =============================================================================
 
@@ -45,11 +49,11 @@ const DEFAULT_UPGRADE_FUNCTION_SPEC = 'initialize(uint32)';
  * Asks the user a question and returns the answer.
  *
  * @param {string} question the question contents.
- * @param {?string} type an optional type to parse the answer as. Currently only supports 'int' for
- *        decimal integers. and `bool` for booleans.
+ * @param {?string|undefined = undefined} type an optional type to parse the answer as. Currently
+ *        only supports 'int' for decimal integers. and `bool` for booleans.
  * @returns a promise resolving to user's response
  */
-function ask(question, type) {
+function ask(question, type = undefined) {
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout,
@@ -105,7 +109,7 @@ function newPlan() {
 async function httpsGetWithRedirects(url) {
   return new Promise((resolve, reject) => {
     const request = https.get(url, function (response) {
-      if (response.statusCode == 302) {
+      if (response.statusCode === 302) {
         httpsGetWithRedirects(response.headers.location).then(resolve, reject);
       } else {
         resolve(response);
@@ -119,21 +123,21 @@ async function httpsGetWithRedirects(url) {
 
 async function downloadSemaphoreMtbBinary(plan, config) {
   config.mtbBinary = MTB_BIN_PATH;
-  if (process.platform == 'win32') {
-    if (process.arch != 'x64') {
+  if (process.platform === 'win32') {
+    if (process.arch !== 'x64') {
       throw new Error('Unsupported platform');
     }
     config.os = 'windows';
     config.arch = 'amd64';
-  } else if (process.platform == 'linux') {
-    if (process.arch != 'x64') {
+  } else if (process.platform === 'linux') {
+    if (process.arch !== 'x64') {
       throw new Error('Unsupported platform');
     }
     config.os = 'linux';
     config.arch = 'amd64';
-  } else if (process.platform == 'darwin') {
+  } else if (process.platform === 'darwin') {
     config.os = 'darwin';
-    config.arch = process.arch == 'arm64' ? 'arm64' : 'amd64';
+    config.arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
   }
   plan.add('Download Semaphore-MTB binary', async config => {
     fs.mkdirSync(MTB_BIN_DIR, { recursive: true });
@@ -150,11 +154,11 @@ async function downloadSemaphoreMtbBinary(plan, config) {
       });
 
       file.on('error', err => {
-        fs.unlink(config.MTB_BINARY, () => reject(err));
+        fs.unlink(config.mtbBinary, () => reject(err));
       });
     });
     await done;
-    if (config.os != 'windows') {
+    if (config.os !== 'windows') {
       fs.chmodSync(config.mtbBinary, '755');
     }
     spinner.succeed('Semaphore-MTB binary downloaded');
@@ -215,7 +219,7 @@ async function generateKeys(plan, config) {
       ],
       { stdio: 'inherit' }
     );
-    if (result.status != 0) {
+    if (result.status !== 0) {
       throw new Error('Failed to generate prover keys');
     }
     spinner.succeed('Prover keys generated');
@@ -257,7 +261,7 @@ async function generateVerifierContract(plan, config) {
       ],
       { stdio: 'inherit' }
     );
-    if (result.status != 0) {
+    if (result.status !== 0) {
       throw new Error('Failed to generate verifier contract');
     }
     spinner.succeed('Verifier contract generated');
@@ -284,7 +288,7 @@ async function ensureVerifierContractFile(plan, config) {
   }
 }
 
-async function compileVerifierContract(plan, config) {
+async function compileVerifierContract(plan, _) {
   plan.add('Compile Semaphore-MTB verifier contract', async config => {
     let input = {
       language: 'Solidity',
@@ -382,6 +386,82 @@ async function ensureInitialRoot(plan, config) {
   }
 }
 
+async function deployRouter(plan, config) {
+  if (config.enableRouter) {
+    if (!config.routerContractAddress) {
+      plan.add('Deploy the WorldID Router Implementation', async () => {
+        const spinner = ora('Deploying WorldID Router implementation...').start();
+        const factory = new ContractFactory(
+          RouterImpl.abi,
+          RouterImpl.bytecode.object,
+          config.wallet
+        );
+        const contract = await factory.deploy();
+        spinner.text = `Waiting for the WorldID Router implementation deployment transaction (address: ${contract.address})...`;
+        await contract.deployTransaction.wait();
+        config.routerImplementationContractAddress = contract.address;
+        spinner.succeed(`Deployed WorldID Router Implementation to ${contract.address}`);
+      });
+      plan.add('Deploy the WorldID Router', async () => {
+        // Build the initializer function call.
+        const spinner = ora('Building initializer call...').start();
+        const iface = new Interface(RouterImpl.abi);
+        if (!config.routerInitialRoute) {
+          spinner.fail('No identity manager address available');
+          return;
+        }
+        spinner.text = `Using deployed identity manager at ${config.identityManagerContractAddress} as target for group 0...`;
+        const callData = iface.encodeFunctionData('initialize', [config.routerInitialRoute]);
+
+        // Deploy the proxy contract.
+        spinner.text = 'Deploying the WorldID Router proxy...';
+        const factory = new ContractFactory(Router.abi, Router.bytecode.object, config.wallet);
+        const contract = await factory.deploy(config.routerImplementationContractAddress, callData);
+        spinner.text = `Waiting for the WorldID Router deployment transaction (address: ${contract.address})...`;
+        await contract.deployTransaction.wait();
+        config.routerContractAddress = contract.address;
+
+        // Verify that the deployment went correctly.
+        spinner.text = 'Verifying correct deployment of the WorldID Router...';
+        const contractWithAbi = new Contract(contract.address, RouterImpl.abi, config.wallet);
+        const routeForGroupZero = await contractWithAbi.routeFor(0);
+        if (routeForGroupZero === config.routerInitialRoute) {
+          spinner.succeed(`Deployed WorldID Router to ${contract.address}`);
+        } else {
+          spinner.fail(`Could not communicate with the WorldID Router at ${contract.address}`);
+        }
+      });
+    } else {
+      plan.add('Associating Identity Manager with Router', async () => {
+        const spinner = ora('Associating manager address with router...').start();
+        const contractWithAbi = new Contract(
+          config.routerContractAddress,
+          RouterImpl.abi,
+          config.wallet
+        );
+
+        if (!config.groupNumber) {
+          spinner.text = 'Obtaining next available group from router...';
+          const nextGroup = await contractWithAbi.groupCount();
+          if (!nextGroup instanceof BigNumber) {
+            spinner.fail(
+              `Could not get the next available group from the router at ${config.routerContractAddress}`
+            );
+            process.exit(1);
+          }
+          config.groupNumber = nextGroup._hex;
+        }
+
+        spinner.text = `Adding the WorldID Identity Manager for Group ${config.groupNumber}...`;
+        await contractWithAbi.addGroup(config.groupNumber, config.identityManagerContractAddress);
+        spinner.succeed(
+          `Associated Identity Manager at address ${config.identityManagerContractAddress} with group ${config.groupNumber}`
+        );
+      });
+    }
+  }
+}
+
 async function deployIdentityManager(plan, config) {
   plan.add('Deploy WorldID Identity Manager Implementation', async () => {
     const spinner = ora('Deploying WorldID Identity Manager implementation...').start();
@@ -441,6 +521,152 @@ async function deployIdentityManager(plan, config) {
   });
 }
 
+async function planRouteAdd(plan, config) {
+  plan.add('Add route in WorldID Router', async () => {
+    const spinner = ora('Building route add call...').start();
+    const contractWithAbi = new Contract(
+      config.routerContractAddress,
+      RouterImpl.abi,
+      config.wallet
+    );
+    spinner.text = `Attempting to add group ${config.routerGroupNumber} to router at ${config.routerContractAddress}...`;
+    try {
+      await contractWithAbi.addGroup(config.routerGroupNumber, config.routerTargetAddress);
+      spinner.succeed(
+        `Added group ${config.routerGroupNumber} to route to ${config.routerTargetAddress}`
+      );
+    } catch (e) {
+      const body = JSON.parse(e.error.error.body);
+      const decodedError = decodeContractError(contractWithAbi.interface, body.error.data);
+      if (decodedError.name === 'DuplicateGroup') {
+        spinner.fail(
+          `Group ${config.routerGroupNumber} already exists in the router at ${config.routerContractAddress}`
+        );
+      } else if (decodedError.name === 'NonSequentialGroup') {
+        spinner.fail(
+          `Group ${config.routerGroupNumber} is not the next available group in the router at ${config.routerContractAddress}`
+        );
+      } else {
+        spinner.fail(
+          `Could not add group ${config.routerGroupNumber} to the router at ${config.routerContractAddress}`
+        );
+        console.error(e);
+      }
+    }
+  });
+}
+
+async function planRouteUpdate(plan, config) {
+  plan.add('Update route in WorldID Router', async () => {
+    const spinner = ora('Building route update call...').start();
+    const contractWithAbi = new Contract(
+      config.routerContractAddress,
+      RouterImpl.abi,
+      config.wallet
+    );
+    spinner.text = `Updating group ${config.routerGroupNumber} to route to ${config.routerTargetAddress}...`;
+    try {
+      await contractWithAbi.updateGroup(config.routerGroupNumber, config.routerTargetAddress);
+      spinner.succeed(
+        `Updated group ${config.routerGroupNumber} to route to ${config.routerTargetAddress}`
+      );
+    } catch (e) {
+      const body = JSON.parse(e.error.error.body);
+      const decodedError = decodeContractError(contractWithAbi.interface, body.error.data);
+      if (decodedError.name === 'NoSuchGroup') {
+        spinner.fail(
+          `Unable to update: group ${config.routerGroupNumber} does not exist in the router at ${config.routerContractAddress}`
+        );
+      } else {
+        spinner.fail(
+          `Could not update group ${config.routerGroupNumber} in the router at ${config.routerContractAddress}`
+        );
+        console.error(e);
+      }
+    }
+  });
+}
+
+async function planRouteDisable(plan, config) {
+  plan.add('Disable route in WorldID Router', async () => {
+    const spinner = ora('Building route disable call...').start();
+    const contractWithAbi = new Contract(
+      config.routerContractAddress,
+      RouterImpl.abi,
+      config.wallet
+    );
+    spinner.text = `Disabling group ${config.routerGroupNumber}...`;
+    try {
+      await contractWithAbi.disableGroup(config.routerGroupNumber);
+      spinner.succeed(`Disabled group ${config.routerGroupNumber}`);
+    } catch (e) {
+      const body = JSON.parse(e.error.error.body);
+      const decodedError = decodeContractError(contractWithAbi.interface, body.error.data);
+      if (decodedError.name === 'NoSuchGroup') {
+        spinner.fail(
+          `Unable to disable group ${config.routerGroupNumber}: it does not exist in the router at ${config.routerContractAddress}`
+        );
+      } else {
+        spinner.fail(
+          `Could not disable group ${config.routerGroupNumber} in the router at ${config.routerContractAddress}`
+        );
+        console.error(e);
+      }
+    }
+  });
+}
+
+/** Decodes a contract error given a contract interface.
+ *
+ * Note that if the returned error is not part of the interface of the contract then the decoding
+ * will fail. Note that errors defined in superclasses are considered to be part of the interface of
+ * the contract. It will, however, decode string-encoded reverts.
+ *
+ * Note that errors in library code are not considered to be part of the interface. This means that
+ * any strongly-typed errors that libraries revert with will not be decoded successfully here.
+ *
+ * @param {Interface} iface The interface that the call is decoding errors from.
+ * @param {String} errorData The string containing the ABI-encoded return data.
+ * @returns {{name: string, sig: string, payload: Object, error: ErrorFragment}|undefined} The
+ *          decoded error if decoding is successful, otherwise `undefined`.
+ */
+function decodeContractError(iface, errorData) {
+  const availableErrors = iface.errors;
+
+  // The string revert is not part of the errors object by default, so we have to manually construct
+  // it and add it to the object to allow decoding these.
+  availableErrors['Error(string)'] = {
+    type: 'error',
+    name: 'Error',
+    inputs: [
+      {
+        name: 'message',
+        type: 'string',
+        indexed: null,
+        components: null,
+        arrayLength: null,
+        arrayChildren: null,
+        baseType: 'string',
+        _isParamType: true,
+      },
+    ],
+    _isFragment: true,
+  };
+
+  for (let error of Object.entries(availableErrors)) {
+    let errorSignature = error[0];
+    let errorFragment = availableErrors[errorSignature];
+
+    try {
+      const decoded = iface.decodeErrorResult(errorFragment, errorData);
+      const name = errorSignature.replace(/\(.*\)$/, '');
+      return { name: name, sig: errorSignature, error: errorFragment, payload: decoded };
+    } catch (e) {}
+  }
+
+  return undefined;
+}
+
 async function getPrivateKey(config) {
   if (!config.privateKey) {
     config.privateKey = process.env.PRIVATE_KEY;
@@ -482,6 +708,101 @@ async function getEnableStateBridge(config) {
   }
 }
 
+/** Gets the address for the WorldID router to be modified at.
+ *
+ * @param {Object} config The configuration for the script.
+ * @returns {Promise<void>} The route configuration is written into the `config` object.
+ */
+async function getRouterAddress(config) {
+  if (!config.routerContractAddress) {
+    config.routerContractAddress = process.env.ROUTER_CONTRACT_ADDRESS;
+  }
+
+  if (!config.routerContractAddress) {
+    config.routerContractAddress = await ask('Please provide the address of the router: ');
+  }
+
+  if (!config.routerContractAddress) {
+    console.error('No router address provided.');
+    process.exit(1);
+  }
+}
+
+/** Gets the configuration required to modify a route in the WorldID router.
+ *
+ * @param {Object} config The configuration for the script.
+ * @param {?boolean = false} isDisable Whether or not it is getting routing configuration to disable
+ *        a route or not.
+ * @returns {Promise<void>} The route configuration is written into the `config` object
+ */
+async function getRouteConfiguration(config, isDisable = false) {
+  if (!config.routerGroupNumber) {
+    config.routerGroupNumber = process.env.ROUTER_UPDATE_GROUP_NUMBER;
+  }
+
+  if (!config.routerGroupNumber) {
+    config.routerGroupNumber = await ask(
+      'Which group should be modified in the router? ',
+      'number'
+    );
+  }
+
+  if (!config.routerGroupNumber) {
+    console.error('No group number to modify provided but such a number is required.');
+    process.exit(1);
+  }
+
+  if (!isDisable) {
+    if (!config.routerTargetAddress) {
+      config.routerTargetAddress = process.env.ROUTER_UPDATE_TARGET_ADDRESS;
+    }
+
+    if (!config.routerTargetAddress) {
+      config.routerTargetAddress = await ask(
+        `Please provide the new target address for the router: `
+      );
+    }
+
+    if (!config.routerTargetAddress) {
+      console.error('No target for the update provided but such one is required.');
+      process.exit(1);
+    }
+  }
+}
+
+async function getRouterJointDeployConfiguration(config) {
+  if (!config.enableRouter) {
+    config.enableRouter = process.env.ENABLE_ROUTER;
+  }
+
+  if (!config.enableRouter) {
+    config.enableRouter = await ask('Enable WorldID Router? [y/N] ', 'bool');
+  }
+
+  if (!config.enableRouter) {
+    config.enableRouter = false;
+  }
+
+  if (config.enableRouter) {
+    if (!config.routerContractAddress) {
+      config.routerContractAddress = process.env.ROUTER_CONTRACT_ADDRESS;
+    }
+
+    if (!config.routerContractAddress) {
+      config.routerContractAddress = await ask(
+        'Enter the router address or leave blank to deploy it: '
+      );
+    }
+
+    if (config.routerContractAddress) {
+      config.groupNumber = await ask(
+        'Enter the group number to bind the contract to (leave blank to pick next available): ',
+        'number'
+      );
+    }
+  }
+}
+
 async function getStateBridgeAddress(config) {
   const stateBridgeDefault = config.wallet.address;
   if (config.enableStateBridge) {
@@ -501,21 +822,45 @@ async function getStateBridgeAddress(config) {
   }
 }
 
-async function getUpgradeTargetAddress(config) {
+/** Gets the target address for making an upgrade.
+ *
+ * @param {Object} config The process configuration.
+ * @param {string|undefined} defaultAddress The default address to use if none is provided.
+ * @returns {Promise<void>} The results are written to the `config`.
+ */
+async function getUpgradeTargetAddress(config, defaultAddress) {
   if (!config.upgradeTargetAddress) {
     config.upgradeTargetAddress = process.env.UPGRADE_TARGET_ADDRESS;
   }
   if (!config.upgradeTargetAddress) {
-    const message = config.identityManagerContractAddress
-      ? ` (${config.identityManagerContractAddress})`
-      : '';
+    const message = defaultAddress ? ` (${defaultAddress})` : '';
     config.upgradeTargetAddress = await ask(`Enter upgrade target address${message}: `);
   }
   if (!config.upgradeTargetAddress) {
-    config.upgradeTargetAddress = config.identityManagerContractAddress;
+    config.upgradeTargetAddress = defaultAddress;
   }
   if (!config.upgradeTargetAddress) {
     console.error('Unable to detect upgrade target address. Aborting...');
+    process.exit(1);
+  }
+}
+
+/** Gets the initial target address for group 0 in the router.
+ *
+ * @param {Object} config The process configuration.
+ * @returns {Promise<void>} The results are written to `config`.
+ */
+async function getRouterInitialRoute(config) {
+  if (!config.routerInitialRoute) {
+    config.routerInitialRoute = process.env.ROUTER_INITIAL_ROUTE;
+  }
+  if (!config.routerInitialRoute) {
+    config.routerInitialRoute = await ask(
+      `Enter the target address for the route for group 0 in the router: `
+    );
+  }
+  if (!config.routerInitialRoute) {
+    console.error('No initial route for group 0 provided. Aborting...');
     process.exit(1);
   }
 }
@@ -534,7 +879,7 @@ async function getImplContractAbi(config, nameField, abiField, defaultContract) 
   let answer = '';
   if (!config[nameField]) {
     answer = await ask(
-      `Please provide the name of the implementation contract to use for WorldID (${defaultContract}): `
+      `Please provide the name of the implementation contract to use for (${defaultContract}): `
     );
   }
   const spinner = ora('Obtaining contract ABI').start();
@@ -622,7 +967,7 @@ async function buildCall(config, targetAbiField, callInfoField, defaultFunction)
   spinner.succeed(`Using upgrade call with signature ${answer}`);
 
   const formatParamSpec = paramSpec => {
-    return `\`${paramSpec.name} : ${paramSpec.type} = ${paramSpec.jsValue}\``;
+    return `${paramSpec.name} : ${paramSpec.type} = ${paramSpec.jsValue}`;
   };
 
   if (
@@ -662,49 +1007,49 @@ async function buildCall(config, targetAbiField, callInfoField, defaultFunction)
   config[callInfoField] = upgradeCall;
 }
 
-async function deployUpgrade(plan, config) {
-  plan.add('Deploy WorldID Identity Manager Implementation Upgrade', async () => {
-    const spinner = ora('Deploying WorldID Identity Manager Implementation Upgrade...').start();
+async function planDeployUpgrade(plan, config, abiFieldName, callInfoFieldName) {
+  plan.add('Deploy Upgraded Implementation', async () => {
+    const spinner = ora('Deploying Implementation Upgrade...').start();
     const factory = new ContractFactory(
-      config.upgradeImplementationAbi.abi,
-      config.upgradeImplementationAbi.bytecode.object,
+      config[abiFieldName].abi,
+      config[abiFieldName].bytecode.object,
       config.wallet
     );
     const contract = await factory.deploy();
-    spinner.text = `Waiting for the WorldID Identity Manager implementation upgrade deployment transaction (address ${contract.address})`;
+    spinner.text = `Waiting for the implementation upgrade deployment transaction (address ${contract.address})`;
     await contract.deployTransaction.wait();
     config.upgradedImplementationContractAddress = contract.address;
     spinner.succeed(`Deployed upgraded implementation to ${contract.address}`);
   });
-  plan.add('Upgrade WorldIDIdentityManager', async () => {
+  plan.add('Upgrade Target Contract', async () => {
     // Encode the new initializer function call.
-    const spinner = ora('Upgrading WorldID Identity Manager...').start();
-    const iface = new Interface(config.upgradeImplementationAbi.abi);
+    const spinner = ora('Upgrading the selected contract...').start();
+    const iface = new Interface(config[abiFieldName].abi);
     const callData = iface.encodeFunctionData(
-      config.upgradeCallInfo.functionSpec,
-      config.upgradeCallInfo.paramValues.map(p => p.solValue)
+      config[callInfoFieldName].functionSpec,
+      config[callInfoFieldName].paramValues.map(p => p.solValue)
     );
 
     // Make the call.
-    spinner.text = `Upgrading identity manager implementation (address: ${config.identityManagerContractAddress})`;
+    spinner.text = `Upgrading target implementation (address: ${config.identityManagerContractAddress})`;
     const contractWithAbi = new Contract(
-      config.identityManagerContractAddress,
+      config.upgradeTargetAddress,
       IdentityManagerImpl.abi,
       config.wallet
     );
     try {
-      const result = await contractWithAbi.upgradeToAndCall(
+      await contractWithAbi.upgradeToAndCall(
         config.upgradedImplementationContractAddress,
         callData
       );
 
       spinner.succeed(
-        `Upgraded identity manager implementation to ${config.upgradedImplementationContractAddress}`
+        `Upgraded target implementation to ${config.upgradedImplementationContractAddress}`
       );
     } catch (e) {
       const message = JSON.parse(e.error.error.body).error.message;
       const errString = message ? message : e.message;
-      spinner.fail(`Unable to upgrade identity manager implementation: ${errString}`);
+      spinner.fail(`Unable to upgrade the target implementation: ${errString}`);
       process.exit(1);
     }
   });
@@ -758,7 +1103,7 @@ async function saveConfiguration(config) {
   fs.writeFileSync(CONFIG_FILENAME, data);
 }
 
-async function buildDeploymentActionPlan(plan, config) {
+async function buildIdentityManagerDeploymentActionPlan(plan, config) {
   dotenv.config();
 
   await getPrivateKey(config);
@@ -767,33 +1112,134 @@ async function buildDeploymentActionPlan(plan, config) {
   await getWallet(config);
   await getEnableStateBridge(config);
   await getStateBridgeAddress(config);
+  await getRouterJointDeployConfiguration(config);
 
   // TODO In future we may want to use the same call-encoding system as for the upgrade here.
   //   It may require some changes, or precomputing addresses.
   await ensureVerifierDeployment(plan, config);
   await ensureInitialRoot(plan, config);
   await deployIdentityManager(plan, config);
+  config.routerInitialRoute = config.identityManagerContractAddress;
+  await deployRouter(plan, config);
 }
 
-async function buildUpgradeActionPlan(plan, config) {
+async function buildRouterDeploymentActionPlan(plan, config) {
   dotenv.config();
 
   await getPrivateKey(config);
   await getRpcUrl(config);
   await getProvider(config);
   await getWallet(config);
-  await getUpgradeTargetAddress(config);
+  config.enableRouter = true;
+  await getRouterInitialRoute(config);
 
-  const abiFieldName = 'upgradeImplementationAbi';
+  await deployRouter(plan, config);
+}
 
-  await getImplContractAbi(
+async function buildIdentityManagerUpgradeActionPlan(plan, config) {
+  await buildUpgradeActionPlan(
+    plan,
     config,
-    'upgradeImplementationName',
-    abiFieldName,
-    DEFAULT_UPGRADE_CONTRACT_NAME
+    config.identityManagerContractAddress,
+    'upgradeIdentityManagerImplementationAbi',
+    'upgradeIdentityManagerCallInfo',
+    'upgradeIdentityManagerImplementationName',
+    DEFAULT_IDENTITY_MANAGER_UPGRADE_CONTRACT_NAME,
+    DEFAULT_IDENTITY_MANAGER_UPGRADE_FUNCTION
   );
-  await buildCall(config, abiFieldName, 'upgradeCallInfo', DEFAULT_UPGRADE_FUNCTION_SPEC);
-  await deployUpgrade(plan, config);
+}
+
+async function buildRouterUpgradeActionPlan(plan, config) {
+  await buildUpgradeActionPlan(
+    plan,
+    config,
+    config.routerTargetAddress,
+    'upgradeRouterImplementationAbi',
+    'upgradeRouterCallInfo',
+    'upgradeRouterImplementationName',
+    DEFAULT_ROUTER_UPGRADE_CONTRACT_NAME,
+    DEFAULT_ROUTER_UPGRADE_FUNCTION
+  );
+}
+
+/** Builds an action plan for upgrading an upgradable proxy-based contract that has already been
+ *  deployed to the blockchain.
+ *
+ * @param {Object} plan The action plan to insert actions into.
+ * @param {Object} config The configuration object for the script.
+ * @param {string|undefined} targetAddressDefault The default target address to be used. Need not be
+ *        specified.
+ * @param {string} abiFieldName The name of the field in the `config` object in which to store the
+ *        target contract ABI.
+ * @param {string} callInfoFieldName The name of the field in the `config` object in which to store
+ *        the upgrade function call data.
+ * @param {string} nameFieldName The name of the field in the `config` object in which to store the
+ *        name of the implementation to be upgraded to.
+ * @param {string} defaultContractName The name of the default upgrade target contract.
+ * @param {string} defaultUpgradeFunction The name of the default upgrade function to call when
+ *        upgrading.
+ * @returns {Promise<void>} Nothing
+ */
+async function buildUpgradeActionPlan(
+  plan,
+  config,
+  targetAddressDefault,
+  abiFieldName,
+  callInfoFieldName,
+  nameFieldName,
+  defaultContractName,
+  defaultUpgradeFunction
+) {
+  dotenv.config();
+
+  await getPrivateKey(config);
+  await getRpcUrl(config);
+  await getProvider(config);
+  await getWallet(config);
+  await getUpgradeTargetAddress(config, targetAddressDefault);
+
+  await getImplContractAbi(config, nameFieldName, abiFieldName, defaultContractName);
+  await buildCall(config, abiFieldName, callInfoFieldName, defaultUpgradeFunction);
+  await planDeployUpgrade(plan, config, abiFieldName, callInfoFieldName);
+}
+
+async function buildRouteAddActionPlan(plan, config) {
+  dotenv.config();
+
+  await getPrivateKey(config);
+  await getRpcUrl(config);
+  await getProvider(config);
+  await getWallet(config);
+  await getRouterAddress(config);
+  await getRouteConfiguration(config, false);
+
+  await planRouteAdd(plan, config);
+}
+
+async function buildRouteUpdateActionPlan(plan, config) {
+  dotenv.config();
+
+  await getPrivateKey(config);
+  await getRpcUrl(config);
+  await getProvider(config);
+  await getWallet(config);
+  await getRouterAddress(config);
+  await getRouteConfiguration(config, false);
+
+  await planRouteUpdate(plan, config);
+}
+
+async function buildRouteDisableActionPlan(plan, config) {
+  dotenv.config();
+
+  await getPrivateKey(config);
+  await getRpcUrl(config);
+  await getProvider(config);
+  await getWallet(config);
+  await getRouterAddress(config);
+  await getRouteConfiguration(config, true);
+
+  await planRouteDisable(plan, config);
 }
 
 /** Builds a plan using the provided function and then executes the plan.
@@ -827,7 +1273,7 @@ async function main() {
     .action(async () => {
       const options = program.opts();
       let config = await loadConfiguration(options.config);
-      await buildAndRunPlan(buildDeploymentActionPlan, config);
+      await buildAndRunPlan(buildIdentityManagerDeploymentActionPlan, config);
       await saveConfiguration(config);
     });
 
@@ -837,7 +1283,57 @@ async function main() {
     .action(async () => {
       const options = program.opts();
       let config = await loadConfiguration(options.config);
-      await buildAndRunPlan(buildUpgradeActionPlan, config);
+      await buildAndRunPlan(buildIdentityManagerUpgradeActionPlan, config);
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('deploy-router')
+    .description('Interactively deploys the WorldID router.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildRouterDeploymentActionPlan, config);
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('upgrade-router')
+    .description('Interactively upgrades the WorldID router.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildRouterUpgradeActionPlan, config);
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('route-add')
+    .description('Interactively adds a route for a group to the WorldID router.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildRouteAddActionPlan, config);
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('route-update')
+    .description('Interactively updates the route in the router.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildRouteUpdateActionPlan, config);
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('route-disable')
+    .description('Interactively disables a group in the router.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildRouteDisableActionPlan, config);
       await saveConfiguration(config);
     });
 

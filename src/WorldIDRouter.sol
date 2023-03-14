@@ -3,13 +3,11 @@ pragma solidity ^0.8.10;
 
 import {WorldIDProxy} from "./abstract/WorldIDProxy.sol";
 
-/// @title WorldID Identity Manager
+/// @title WorldID Router
 /// @author Worldcoin
-/// @notice An implementation of a batch-based identity manager for the WorldID protocol.
-/// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs
-///      to perform the insertions. This contract is a proxy contract that delegates actual logic to
-///      the implementation.
-contract WorldIDIdentityManager is WorldIDProxy {
+/// @notice A router component to allow external clients to get group addresses from a trusted
+///         source.
+contract WorldIDRouter is WorldIDProxy {
     ///////////////////////////////////////////////////////////////////////////////
     ///                    !!!! DO NOT ADD MEMBERS HERE !!!!                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -18,7 +16,7 @@ contract WorldIDIdentityManager is WorldIDProxy {
     ///                             CONSTRUCTION                                ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// @notice Constructs a new instance of the WorldID identity manager.
+    /// @notice Constructs a new instance of the WorldID router.
     /// @dev This constructor is only called once, and can be called with the encoded call necessary
     ///      to initialize the logic contract.
     ///

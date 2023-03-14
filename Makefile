@@ -6,11 +6,14 @@ all: install build
 # Install forge dependencies (not needed if submodules are already initialized).
 install:; forge install && npm install
 
-# Build contracts and inject the Poseidon library.
+# Build contracts.
 build:; forge build
 
 # Run tests, with debug information and gas reports.
 test:; FOUNDRY_PROFILE=debug forge test
+
+# Clean the solidity build directory.
+clean:; rm -rf out/
 
 # ===== Profiling Rules ===============================================================================================
 
@@ -27,6 +30,23 @@ deploy: install build; node --no-warnings scripts/deploy.js deploy
 
 # Upgrade contracts
 upgrade: install build; node --no-warnings scripts/deploy.js upgrade
+
+# ===== Router Management Rules =======================================================================================
+
+# Deploys the router contract.
+deploy-router: install build; node --no-warnings scripts/deploy.js deploy-router
+
+# Upgrades the router contract.
+upgrade-router: install build; node --no-warnings scripts/deploy.js upgrade-router
+
+# Add routes in the router.
+route-add: install build; node --no-warnings scripts/deploy.js route-add
+
+# Update routes in the router.
+route-update: install build; node --no-warnings scripts/deploy.js route-update
+
+# Disable routes in the router.
+route-disable: install build; node --no-warnings scripts/deploy.js route-disable
 
 # ===== Utility Rules =================================================================================================
 

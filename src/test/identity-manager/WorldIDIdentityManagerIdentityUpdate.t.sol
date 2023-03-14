@@ -3,12 +3,12 @@ pragma solidity ^0.8.10;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
-import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
-import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
+import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
+import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
+import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
 
-import {WorldIDIdentityManager as IdentityManager} from "../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Identity Update Tests
 /// @notice Contains tests for the WorldID identity manager.

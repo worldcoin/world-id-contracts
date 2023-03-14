@@ -3,17 +3,17 @@ pragma solidity ^0.8.10;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
+import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
+import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
-import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
-import {WorldIDIdentityManagerImplMock} from "./mock/WorldIDIdentityManagerImplMock.sol";
-import {CheckInitialized} from "../utils/CheckInitialized.sol";
+import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
+import {WorldIDIdentityManagerImplMock} from "../mock/WorldIDIdentityManagerImplMock.sol";
+import {CheckInitialized} from "../../utils/CheckInitialized.sol";
 
-import {WorldIDIdentityManager as IdentityManager} from "../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Ownership Management Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -21,10 +21,6 @@ import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityMan
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
 contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest {
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                        OWNERSHIP MANAGEMENT TESTS                       ///
-    ///////////////////////////////////////////////////////////////////////////////
-
     /// @notice Taken from OwnableUpgradable.sol
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 

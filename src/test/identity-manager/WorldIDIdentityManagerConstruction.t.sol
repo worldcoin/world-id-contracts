@@ -3,8 +3,8 @@ pragma solidity ^0.8.10;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {WorldIDIdentityManager as IdentityManager} from "../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Construction Tests
 /// @notice Contains tests for the WorldID identity manager
@@ -25,7 +25,7 @@ contract WorldIDIdentityManagerConstruction is WorldIDIdentityManagerTest {
         identityManager = new IdentityManager(dummy, data);
     }
 
-    /// @notice Tests that it is possible to properly construct and initialise
+    /// @notice Tests that it is possible to properly construct and initialise an identity manager.
     function testCanConstructIdentityManagerWithDelegate() public {
         // Setup
         vm.expectEmit(true, true, true, true);
