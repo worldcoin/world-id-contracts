@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {WorldIDIdentityManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDRouterImplV1} from "../../WorldIDRouterImplV1.sol";
 
-/// @title WorldID Identity Manager Implementation Mock
+/// @title WorldID Router Implementation Mock
 /// @author Worldcoin
-contract WorldIDIdentityManagerImplMock is WorldIDIdentityManagerImplV1 {
+contract WorldIDRouterImplMock is WorldIDRouterImplV1 {
     uint32 internal _someMoreData;
 
     constructor() {

@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.19;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {WorldIDIdentityManager as IdentityManager} from "../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Initialization Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -24,7 +24,16 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize, (treeDepth, initialRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy)
+            ManagerImpl.initialize,
+            (
+                treeDepth,
+                initialRoot,
+                treeVerifier,
+                unimplementedVerifier,
+                semaphoreVerifier,
+                isStateBridgeEnabled,
+                stateBridgeProxy
+            )
         );
 
         vm.expectEmit(true, true, true, true);
@@ -38,7 +47,16 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     function testInitializationOnlyOnce() public {
         // Setup
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize, (treeDepth, initialRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy)
+            ManagerImpl.initialize,
+            (
+                treeDepth,
+                initialRoot,
+                treeVerifier,
+                unimplementedVerifier,
+                semaphoreVerifier,
+                isStateBridgeEnabled,
+                stateBridgeProxy
+            )
         );
         bytes memory expectedReturn =
             encodeStringRevert("Initializable: contract is already initialized");
@@ -54,6 +72,14 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         vm.expectRevert("Initializable: contract is already initialized");
 
         // Test
-        localImpl.initialize(treeDepth, initialRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy);
+        localImpl.initialize(
+            treeDepth,
+            initialRoot,
+            treeVerifier,
+            unimplementedVerifier,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
+        );
     }
 }

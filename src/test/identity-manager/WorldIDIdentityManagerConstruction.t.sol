@@ -1,10 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.19;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {WorldIDIdentityManager as IdentityManager} from "../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
+import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
+
+import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Construction Tests
 /// @notice Contains tests for the WorldID identity manager
@@ -25,14 +27,23 @@ contract WorldIDIdentityManagerConstruction is WorldIDIdentityManagerTest {
         identityManager = new IdentityManager(dummy, data);
     }
 
-    /// @notice Tests that it is possible to properly construct and initialise
+    /// @notice Tests that it is possible to properly construct and initialise an identity manager.
     function testCanConstructIdentityManagerWithDelegate() public {
         // Setup
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
         managerImpl = new ManagerImpl();
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize, (treeDepth, initialRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy)
+            ManagerImpl.initialize,
+            (
+                treeDepth,
+                initialRoot,
+                treeVerifier,
+                unimplementedVerifier,
+                semaphoreVerifier,
+                isStateBridgeEnabled,
+                stateBridgeProxy
+            )
         );
 
         // Test

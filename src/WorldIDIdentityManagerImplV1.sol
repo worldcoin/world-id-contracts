@@ -1,15 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.19;
 
-import {CheckInitialized} from "./utils/CheckInitialized.sol";
+import {WorldIDImpl} from "./abstract/WorldIDImpl.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
-import {UnimplementedTreeVerifier} from "./utils/UnimplementedTreeVerifier.sol";
 import {ISemaphoreVerifier} from "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
 import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
-
-import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
-import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title WorldID Identity Manager Implementation Version 1
 /// @author Worldcoin
@@ -17,12 +13,7 @@ import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable
 /// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs
 ///      to perform the insertions.
 /// @dev This is the implementation delegated to by a proxy.
-contract WorldIDIdentityManagerImplV1 is
-    OwnableUpgradeable,
-    UUPSUpgradeable,
-    IWorldID,
-    CheckInitialized
-{
+contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -35,8 +26,9 @@ contract WorldIDIdentityManagerImplV1 is
     // - All functions that are less access-restricted than `private` should be marked `virtual` in
     //   order to enable the fixing of bugs in the existing interface.
     // - Any function that reads from or modifies state (i.e. is not marked `pure`) must be
-    //   annotated with the `onlyProxy` modifier. This ensures that it can only be called when it
-    //   has access to the data in the proxy, otherwise results are likely to be nonsensical.
+    //   annotated with the `onlyProxy` and `onlyInitialized` modifiers. This ensures that it can
+    //   only be called when it has access to the data in the proxy, otherwise results are likely to
+    //   be nonsensical.
     // - This contract deals with important data for the WorldID system. Ensure that all newly-added
     //   functionality is carefully access controlled using `onlyOwner`, or a more granular access
     //   mechanism.
@@ -232,8 +224,9 @@ contract WorldIDIdentityManagerImplV1 is
     /// @param _treeDepth The depth of the MerkeTree
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of the empty tree.
-    /// @param _merkleTreeVerifier The initial tree verifier to use.
-    /// @param _semaphoreVerifier The initial semaphore verifier to use.
+    /// @param _batchInsertionVerifier The initial tree verifier to use for batch insertions.
+    /// @param _batchUpdateVerifier The initial tree verifier to use for batch updates.
+    /// @param _semaphoreVerifier The verifier to use for semaphore protocol proofs.
     /// @param _enableStateBridge Whether or not the state bridge should be enabled when
     ///        initialising the identity manager.
     /// @param initialStateBridgeProxyAddress The initial state bridge proxy address to use.
@@ -243,8 +236,9 @@ contract WorldIDIdentityManagerImplV1 is
     function initialize(
         uint8 _treeDepth,
         uint256 initialRoot,
-        ITreeVerifier _merkleTreeVerifier,
-        ISemaphoreVerifier _semaphoreVerifier,
+        ITreeVerifier _batchInsertionVerifier,
+        ITreeVerifier _batchUpdateVerifier,
+        SemaphoreVerifier _semaphoreVerifier,
         bool _enableStateBridge,
         address initialStateBridgeProxyAddress
     ) public reinitializer(1) {
@@ -258,10 +252,9 @@ contract WorldIDIdentityManagerImplV1 is
         // Now perform the init logic for this contract.
         treeDepth = _treeDepth;
         rootHistoryExpiry = 1 hours;
-        ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
         _latestRoot = initialRoot;
-        batchInsertionVerifier = _merkleTreeVerifier;
-        identityUpdateVerifier = unimplementedVerifier;
+        batchInsertionVerifier = _batchInsertionVerifier;
+        identityUpdateVerifier = _batchUpdateVerifier;
         semaphoreVerifier = _semaphoreVerifier;
         _stateBridgeProxyAddress = initialStateBridgeProxyAddress;
         _isStateBridgeEnabled = _enableStateBridge;
@@ -942,25 +935,6 @@ contract WorldIDIdentityManagerImplV1 is
             revert("Expiry time cannot be zero.");
         }
         rootHistoryExpiry = newExpiryTime;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////
-    ///                             AUTHENTICATION                              ///
-    ///////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Is called when upgrading the contract to check whether it should be performed.
-    ///
-    /// @param newImplementation The address of the implementation being upgraded to.
-    ///
-    /// @custom:reverts string If the upgrade should not be performed.
-    function _authorizeUpgrade(address newImplementation)
-        internal
-        virtual
-        override
-        onlyProxy
-        onlyOwner
-    {
-        // No body needed as `onlyOwner` handles it.
     }
 
     ///////////////////////////////////////////////////////////////////////////////

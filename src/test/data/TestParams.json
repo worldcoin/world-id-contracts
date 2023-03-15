@@ -1,24 +1,24 @@
 {
-    "inputHash": "0x7d7f77c56064e1f8577de14bba99eff85599ab0e76d0caeadd1ad61674b8a9c3",
-    "startIndex": 0,
-    "preRoot": "0x18f43331537ee2af2e3d758d50f72106467c6eea50371dd528d57eb2b856d238",
-    "postRoot": "0x5c1e52b41a571293b30efacd2afdb7173b20cfaf1f646c4ac9f96eb75848270",
-    "identityCommitments": ["0x1", "0x2", "0x3"],
-    "merkleProofs": [
-        [
-            "0x0",
-            "0x2098f5fb9e239eab3ceac3f27b81e481dc3124d55ffed523a839ee8446b64864",
-            "0x1069673dcdb12263df301a6ff584a7ec261a44cb9dc68df067a4774460b1f1e1"
-        ],
-        [
-            "0x1",
-            "0x2098f5fb9e239eab3ceac3f27b81e481dc3124d55ffed523a839ee8446b64864",
-            "0x1069673dcdb12263df301a6ff584a7ec261a44cb9dc68df067a4774460b1f1e1"
-        ],
-        [
-            "0x0",
-            "0x115cc0f5e7d690413df64c6b9662e9cf2a3617f2743245519e19607a4417189a",
-            "0x1069673dcdb12263df301a6ff584a7ec261a44cb9dc68df067a4774460b1f1e1"
-        ]
+  "inputHash": "0x7d7f77c56064e1f8577de14bba99eff85599ab0e76d0caeadd1ad61674b8a9c3",
+  "startIndex": 0,
+  "preRoot": "0x18f43331537ee2af2e3d758d50f72106467c6eea50371dd528d57eb2b856d238",
+  "postRoot": "0x5c1e52b41a571293b30efacd2afdb7173b20cfaf1f646c4ac9f96eb75848270",
+  "identityCommitments": ["0x1", "0x2", "0x3"],
+  "merkleProofs": [
+    [
+      "0x0",
+      "0x2098f5fb9e239eab3ceac3f27b81e481dc3124d55ffed523a839ee8446b64864",
+      "0x1069673dcdb12263df301a6ff584a7ec261a44cb9dc68df067a4774460b1f1e1"
+    ],
+    [
+      "0x1",
+      "0x2098f5fb9e239eab3ceac3f27b81e481dc3124d55ffed523a839ee8446b64864",
+      "0x1069673dcdb12263df301a6ff584a7ec261a44cb9dc68df067a4774460b1f1e1"
+    ],
+    [
+      "0x0",
+      "0x115cc0f5e7d690413df64c6b9662e9cf2a3617f2743245519e19607a4417189a",
+      "0x1069673dcdb12263df301a6ff584a7ec261a44cb9dc68df067a4774460b1f1e1"
     ]
+  ]
 }

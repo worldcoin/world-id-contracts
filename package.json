@@ -1,42 +1,44 @@
 {
-    "name": "@worldcoin/world-id-contracts",
-    "version": "0.1.1",
-    "description": "Smart contracts powering the World ID protocol.",
-    "license": "MIT",
-    "files": [
-        "src/**/*.sol"
-    ],
-    "keywords": [
-        "blockchain",
-        "ethereum",
-        "smart-contracts",
-        "semaphore",
-        "identity",
-        "solidity",
-        "zero-knowledge",
-        "proof-of-uniqueness"
-    ],
-    "homepage": "https://github.com/worldcoin/world-id-contracts",
-    "repository": {
-        "type": "git",
-        "url": "git+https://github.com/worldcoin/world-id-contracts.git"
-    },
-    "bugs": {
-        "url": "https://github.com/worldcoin/world-id-contracts/issues"
-    },
-    "dependencies": {
-        "@zk-kit/identity": "^1.4.1",
-        "@zk-kit/protocols": "^1.11.0",
-        "circomlibjs": "0.0.8",
-        "commander": "^10.0.0",
-        "dotenv": "^16.0.3",
-        "ethers": "^5.7.2",
-        "ora": "^6.1.0",
-        "solc": "0.8.17"
-    },
-    "type": "module",
-    "devDependencies": {
-        "prettier": "^2.6.0",
-        "prettier-plugin-solidity": "^1.0.0-beta.19"
-    }
+  "name": "@worldcoin/world-id-contracts",
+  "version": "0.1.1",
+  "description": "Smart contracts powering the World ID protocol.",
+  "license": "MIT",
+  "files": [
+    "src/**/*.sol"
+  ],
+  "keywords": [
+    "blockchain",
+    "ethereum",
+    "smart-contracts",
+    "semaphore",
+    "identity",
+    "solidity",
+    "zero-knowledge",
+    "proof-of-uniqueness"
+  ],
+  "homepage": "https://github.com/worldcoin/world-id-contracts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/worldcoin/world-id-contracts.git"
+  },
+  "bugs": {
+    "url": "https://github.com/worldcoin/world-id-contracts/issues"
+  },
+  "dependencies": {
+    "@zk-kit/identity": "^1.4.1",
+    "@zk-kit/protocols": "^1.11.0",
+    "axios": "^1.3.4",
+    "circomlibjs": "0.0.8",
+    "commander": "^10.0.0",
+    "dotenv": "^16.0.3",
+    "ethers": "^5.7.2",
+    "ora": "^6.1.0",
+    "solc": "0.8.19",
+    "yargs": "^17.7.1"
+  },
+  "type": "module",
+  "devDependencies": {
+    "prettier": "^2.6.0",
+    "prettier-plugin-solidity": "^1.0.0-beta.19"
+  }
 }

@@ -1,4 +1,5 @@
-pragma solidity ^0.8.15;
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
 
 interface IBridge {
     /// @notice Sends the latest Semaphore root to Optimism.

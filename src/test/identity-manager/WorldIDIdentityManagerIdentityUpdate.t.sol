@@ -1,23 +1,23 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.19;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
-import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
-import {Verifier as TreeVerifier} from "./mock/TreeVerifier.sol";
+import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
+import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
+import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
 
-import {WorldIDIdentityManager as IdentityManager} from "../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
-/// @title World ID Identity Manager Identity Removal Tests
+/// @title World ID Identity Manager Identity Update Tests
 /// @notice Contains tests for the WorldID identity manager.
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
-contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
+contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
     /// @notice Checks that the proof validates properly with correct inputs.
-    function testRemoveIdentitiesWithCorrectInputs(
+    function testUpdateIdentitiesWithCorrectInputs(
         uint128[8] memory prf,
         uint128 newPreRoot,
         uint128 newPostRoot,
@@ -28,9 +28,9 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(treeDepth, newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy);
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareRemoveIdentitiesTestCase(identities, prf);
+            prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
+            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
         );
 
         // Expect that the state root was sent to the state bridge
@@ -42,7 +42,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
     }
 
     /// @notice Checks that it reverts if the provided proof is incorrect for the public inputs.
-    function testCannotRemoveIdentitiesWithIncorrectInputs(
+    function testCannotUpdateIdentitiesWithIncorrectInputs(
         uint128[8] memory prf,
         uint128 newPreRoot,
         uint128 newPostRoot,
@@ -53,9 +53,9 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(treeDepth, newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy);
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareRemoveIdentitiesTestCase(identities, prf);
+            prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
+            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
@@ -64,8 +64,8 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to remove identities as a non-manager.
-    function testCannotRemoveIdentitiesAsNonManager(
+    /// @notice Tests that it reverts if an attempt is made to update identities as a non-manager.
+    function testCannotUpdateIdentitiesAsNonManager(
         address nonManager,
         uint128[] memory identities,
         uint128[8] memory prf
@@ -73,9 +73,9 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(nonManager != address(this) && nonManager != address(0x0));
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareRemoveIdentitiesTestCase(identities, prf);
+            prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.removeIdentities, (actualProof, preRoot, preparedIdents, postRoot)
+            ManagerImpl.updateIdentities, (actualProof, preRoot, preparedIdents, postRoot)
         );
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(nonManager);
@@ -84,30 +84,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, errorData);
     }
 
-    /// @notice Ensures that it is not possible to remove identities if a provided commitment is
-    ///         not zero.
-    function testCannotRemoveIdentitiesIfNewCommitmentIsNonZero(
-        uint256 index,
-        uint128 commitment,
-        uint128[] memory identities,
-        uint128[8] memory prf
-    ) public {
-        // Setup
-        vm.assume(index < identities.length && commitment != 0);
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareRemoveIdentitiesTestCase(identities, prf);
-        preparedIdents[index].newCommitment = uint256(commitment);
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.removeIdentities, (actualProof, initialRoot, preparedIdents, postRoot)
-        );
-        bytes memory errorData =
-            abi.encodeWithSelector(ManagerImpl.InvalidCommitment.selector, index);
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, errorData);
-    }
-
-    /// @notice Tests that it reverts if an attempt is made to remove identities with an outdated
+    /// @notice Tests that it reverts if an attempt is made to update identities with an outdated
     ///         root.
     function testCannotRegisterIdentitiesWithOutdatedRoot(
         uint256 currentPreRoot,
@@ -121,12 +98,12 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
                 && actualRoot < SNARK_SCALAR_FIELD
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareRemoveIdentitiesTestCase(identities, prf);
+            prepareUpdateIdentitiesTestCase(identities, prf);
         makeNewIdentityManager(
-            treeDepth, uint256(currentPreRoot), treeVerifier, semaphoreVerifier,  isStateBridgeEnabled, stateBridgeProxy
+            treeDepth, uint256(currentPreRoot), treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
         );
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.removeIdentities, (actualProof, actualRoot, preparedIdents, postRoot)
+            ManagerImpl.updateIdentities, (actualProof, actualRoot, preparedIdents, postRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.NotLatestRoot.selector, actualRoot, uint256(currentPreRoot)
@@ -136,23 +113,28 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to remove identity commitments that
+    /// @notice Tests that it reverts if an attempt is made to update identity commitments that
     ///         are not in reduced form.
     function testCannotRegisterIdentitiesWithUnreducedIdentities(
         uint128 i,
         uint256 position,
         uint128 newPreRoot,
         uint128[] memory identities,
-        uint128[8] memory prf
+        uint128[8] memory prf,
+        bool changeOld
     ) public {
         // Setup
         vm.assume(position < identities.length);
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareRemoveIdentitiesTestCase(identities, prf);
+            prepareUpdateIdentitiesTestCase(identities, prf);
         makeNewIdentityManager(treeDepth, newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy);
-        preparedIdents[position].oldCommitment = SNARK_SCALAR_FIELD + i;
+        if (changeOld) {
+            preparedIdents[position].oldCommitment = SNARK_SCALAR_FIELD + i;
+        } else {
+            preparedIdents[position].newCommitment = SNARK_SCALAR_FIELD + i;
+        }
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, postRoot)
+            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, postRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -164,7 +146,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to remove identities with a pre root
+    /// @notice Tests that it reverts if an attempt is made to update identities with a pre root
     ///         that is not in reduced form.
     function testCannotUpdateIdentitiesWithUnreducedPreRoot(
         uint128 i,
@@ -174,9 +156,9 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         // Setup
         uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareRemoveIdentitiesTestCase(identities, prf);
+            prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, postRoot)
+            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, postRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -188,7 +170,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to remove identities with a postRoot
+    /// @notice Tests that it reverts if an attempt is made to update identities with a postRoot
     ///         that is not in reduced form.
     function testCannotUpdateIdentitiesWithUnreducedPostRoot(
         uint128 i,
@@ -198,9 +180,9 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         // Setup
         uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareRemoveIdentitiesTestCase(identities, prf);
+            prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.removeIdentities, (actualProof, initialRoot, preparedIdents, newPostRoot)
+            ManagerImpl.updateIdentities, (actualProof, initialRoot, preparedIdents, newPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -220,11 +202,11 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         // Setup
         address expectedOwner = managerImpl.owner();
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareRemoveIdentitiesTestCase(identities, prf);
+            prepareUpdateIdentitiesTestCase(identities, prf);
         vm.expectRevert("Function must be called through delegatecall");
         vm.prank(expectedOwner);
 
         // Test
-        managerImpl.removeIdentities(actualProof, initialRoot, preparedIdents, postRoot);
+        managerImpl.updateIdentities(actualProof, initialRoot, preparedIdents, postRoot);
     }
 }

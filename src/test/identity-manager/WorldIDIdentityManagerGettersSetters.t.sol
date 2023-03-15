@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.10;
+pragma solidity ^0.8.19;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
-import {SimpleVerifier, SimpleVerify} from "./mock/SimpleVerifier.sol";
+import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
+import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
 
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Getter and Setter Tests
 /// @notice Contains tests for the WorldID identity manager.
