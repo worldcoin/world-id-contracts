@@ -197,6 +197,11 @@ contract WorldIDIdentityManagerImplV1 is
     /// @notice Thrown when attempting to set the state bridge proxy address to the zero address.
     error InvalidStateBridgeProxyAddress();
 
+    /// @notice Thrown when tree depth is not supported.
+    ///
+    /// @param depth Passed tree depth.
+    error UnsupportedTreeDepth(uint8 depth);
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -207,6 +212,14 @@ contract WorldIDIdentityManagerImplV1 is
         // not the proxy. Calling this thereby ensures that the contract cannot be spuriously
         // initialized on its own.
         _disableInitializers();
+    }
+
+    /// @notice Checks if the provided `treeDepth` is amoung supported depths.
+    ///
+    /// @param treeDepth The tree depth to validate.
+    /// @return isSupportedDepth Returns `true` if `treeDepth` is 16, 20 or 30.
+    function isSupportedDepth(uint8 treeDepth) public virtual onlyProxy returns (bool isSupportedDepth) {
+        return treeDepth == 16 || treeDepth == 20 || treeDepth == 30;
     }
 
     /// @notice Initializes the contract.
@@ -226,6 +239,7 @@ contract WorldIDIdentityManagerImplV1 is
     /// @param initialStateBridgeProxyAddress The initial state bridge proxy address to use.
     ///
     /// @custom:reverts string If called more than once at the same initalisation number.
+    /// @custom:reverts UnsupportedTreeDepth If passed tree depth is not amoung defined values.
     function initialize(
         uint8 _treeDepth,
         uint256 initialRoot,
@@ -236,6 +250,10 @@ contract WorldIDIdentityManagerImplV1 is
     ) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
+
+         if (!isSupportedDepth(_treeDepth)) {
+            revert UnsupportedTreeDepth(_treeDepth);
+        }
 
         // Now perform the init logic for this contract.
         treeDepth = _treeDepth;
