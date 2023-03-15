@@ -3,7 +3,7 @@
 	url = https://github.com/dapphub/ds-test
 [submodule "lib/semaphore"]
 	path = lib/semaphore
-	url = https://github.com/cichaczem/semaphore
+	url = https://github.com/worldcoin/semaphore-v3
 [submodule "lib/forge-std"]
 	path = lib/forge-std
 	url = https://github.com/brockelmore/forge-std
