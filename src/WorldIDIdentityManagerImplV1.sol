@@ -4,7 +4,8 @@ pragma solidity ^0.8.19;
 import {WorldIDImpl} from "./abstract/WorldIDImpl.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
-import {ISemaphoreVerifier} from "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
+import {ISemaphoreVerifier} from
+    "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
 import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
 
 /// @title WorldID Identity Manager Implementation Version 1
@@ -210,7 +211,12 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @param treeDepth The tree depth to validate.
     /// @return isSupportedDepth Returns `true` if `treeDepth` is 16, 20 or 30.
-    function isSupportedDepth(uint8 treeDepth) public virtual onlyProxy returns (bool isSupportedDepth) {
+    function isSupportedDepth(uint8 treeDepth)
+        public
+        virtual
+        onlyProxy
+        returns (bool isSupportedDepth)
+    {
         return treeDepth == 16 || treeDepth == 20 || treeDepth == 30;
     }
 
@@ -245,7 +251,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
-         if (!isSupportedDepth(_treeDepth)) {
+        if (!isSupportedDepth(_treeDepth)) {
             revert UnsupportedTreeDepth(_treeDepth);
         }
 
@@ -961,12 +967,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ) public view virtual onlyProxy onlyInitialized {
         if (checkValidRoot(root)) {
             semaphoreVerifier.verifyProof(
-                root,
-                nullifierHash,
-                signalHash,
-                externalNullifierHash,
-                proof,
-                treeDepth
+                root, nullifierHash, signalHash, externalNullifierHash, proof, treeDepth
             );
         }
     }

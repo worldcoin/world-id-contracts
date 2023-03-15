@@ -7,7 +7,8 @@ import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleStateBridge} from "../mock/SimpleStateBridge.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {UnimplementedTreeVerifier} from "../../utils/UnimplementedTreeVerifier.sol";
-import {ISemaphoreVerifier} from "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
+import {ISemaphoreVerifier} from
+    "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
 import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
@@ -92,7 +93,14 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         treeVerifier = new SimpleVerifier();
         stateBridge = new SimpleStateBridge();
         stateBridgeProxy = address(stateBridge);
-        makeNewIdentityManager(treeDepth, initialRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy);
+        makeNewIdentityManager(
+            treeDepth,
+            initialRoot,
+            treeVerifier,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
+        );
 
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
