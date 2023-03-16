@@ -207,19 +207,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         _disableInitializers();
     }
 
-    /// @notice Checks if the provided `treeDepth` is amoung supported depths.
-    ///
-    /// @param treeDepth The tree depth to validate.
-    /// @return isSupportedDepth Returns `true` if `treeDepth` is 16, 20 or 30.
-    function isSupportedDepth(uint8 treeDepth)
-        public
-        virtual
-        onlyProxy
-        returns (bool isSupportedDepth)
-    {
-        return treeDepth == 16 || treeDepth == 20 || treeDepth == 30;
-    }
-
     /// @notice Initializes the contract.
     /// @dev Must be called exactly once.
     /// @dev This is marked `reinitializer()` to allow for updated initialisation steps when working
@@ -512,6 +499,19 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///////////////////////////////////////////////////////////////////////////////
     ///                             UTILITY FUNCTIONS                           ///
     ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Checks if the provided `treeDepth` is amoung supported depths.
+    ///
+    /// @param treeDepth The tree depth to validate.
+    /// @return isSupportedDepth Returns `true` if `treeDepth` is 16, 20 or 30.
+    function isSupportedDepth(uint8 treeDepth)
+        internal
+        virtual
+        onlyProxy
+        returns (bool isSupportedDepth)
+    {
+        return treeDepth == 16 || treeDepth == 20 || treeDepth == 30;
+    }
 
     /// @notice Calculates the input hash for the identity registration verifier.
     /// @dev Implements the computation described below.
