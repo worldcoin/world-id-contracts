@@ -238,7 +238,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
-
         if (!isSupportedDepth(_treeDepth)) {
             revert UnsupportedTreeDepth(_treeDepth);
         }
@@ -504,14 +503,14 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice Checks if the provided `treeDepth` is amoung supported depths.
     ///
     /// @param treeDepth The tree depth to validate.
-    /// @return isSupportedDepth Returns `true` if `treeDepth` is 16, 20 or 30.
+    /// @return isSupportedDepth Returns `true` if `treeDepth` is between 16 and 32 - depths supported by the Semaphore
     function isSupportedDepth(uint8 treeDepth)
         internal
         virtual
         onlyProxy
         returns (bool isSupportedDepth)
     {
-        return treeDepth == 16 || treeDepth == 20 || treeDepth == 30;
+        return treeDepth > 15 && treeDepth < 33;
     }
 
     /// @notice Calculates the input hash for the identity registration verifier.
