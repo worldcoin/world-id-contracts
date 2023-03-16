@@ -364,6 +364,23 @@ async function ensureUnimplementedTreeVerifierDeployment(plan, config) {
   });
 }
 
+// Deploying libraries, manual linking
+//
+// In case you encounteres a compilation error that looks something like this
+//   { ... reason: 'invalid bytecode', code: 'INVALID_ARGUMENT', argument: 'bytecode', ... }
+// or figured out that your code or 3rd party code uses a library
+// follow instructions below
+//
+// - In the problematic bytecode find a substring indicating a placeholder for library address
+//   It follows the pattern __$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx$__
+// - Compile and deploy the library. Save the addrsss it was deployed under!
+// - Compile the code that previously cause problem
+// - In the bytecode manually replace placeholder with the address of library
+// - Deploy the bytecode
+//
+// References
+// - https://docs.soliditylang.org/en/v0.8.19/using-the-compiler.html#library-linking
+
 async function ensureSemaphoreVerifierDeployment(plan, config) {
   plan.add('Deploy Semaphore Pairing Library', async () => {
     const spinner = ora('Deploying Semaphore pairing library...').start();
