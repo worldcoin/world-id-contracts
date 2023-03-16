@@ -88,7 +88,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice Boolean flag to enable/disable the state bridge.
     bool internal _isStateBridgeEnabled;
 
-    /// @notice MerkleTree depth
+    /// @notice The depth of the Semaphore merkle tree.
     uint8 internal treeDepth;
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -237,6 +237,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
+
 
         if (!isSupportedDepth(_treeDepth)) {
             revert UnsupportedTreeDepth(_treeDepth);

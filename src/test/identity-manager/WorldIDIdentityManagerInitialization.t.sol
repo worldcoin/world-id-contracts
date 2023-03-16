@@ -82,4 +82,31 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
             stateBridgeProxy
         );
     }
+
+    /// @notice Checks that it is impossible to initialize the contract with unsupported tree depth.
+    function testCannotPassUnsupportedTreeDepth() public {
+        // Setup
+        delete identityManager;
+        delete managerImpl;
+
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.initialize,
+            (
+                21,
+                initialRoot,
+                treeVerifier,
+                unimplementedVerifier,
+                semaphoreVerifier,
+                isStateBridgeEnabled,
+                stateBridgeProxy
+            )
+        );
+
+        vm.expectRevert(abi.encodeWithSignature("UnsupportedTreeDepth(uint8)", 21));
+
+        // Test
+        identityManager = new IdentityManager(managerImplAddress, callData);
+    }
 }
