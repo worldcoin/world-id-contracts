@@ -39,4 +39,30 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Test
         assertCallSucceedsOn(identityManagerAddress, verifyProofCallData);
     }
+
+    /// @notice Checks that the proof validates properly with the correct inputs.
+    function testProofVerificationWithInorrectProof() public {
+        // Setup
+        ISemaphoreVerifier actualSemaphoreVerifier = new SimpleSemaphoreVerifier();
+        makeNewIdentityManager(
+            treeDepth,
+            preRoot,
+            treeVerifier,
+            actualSemaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
+        );
+        uint256 nullifierHash = 0;
+        uint256 signalHash = 0;
+        uint256 externalNullifierHash = 0;
+        uint256[8] memory actualProof = [proof[0], proof[1], proof[2], proof[3], proof[4], proof[5], proof[6], 0];
+        bytes memory verifyProofCallData = abi.encodeCall(
+            ManagerImpl.verifyProof,
+            (preRoot, nullifierHash, signalHash, externalNullifierHash, actualProof)
+        );
+
+        vm.expectRevert("Semaphore__InvalidProof()");
+        // Test
+        identityManagerAddress.call(verifyProofCallData);
+    }
 }
