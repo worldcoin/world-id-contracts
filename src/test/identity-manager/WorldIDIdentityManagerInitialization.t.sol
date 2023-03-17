@@ -94,7 +94,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         bytes memory callData = abi.encodeCall(
             ManagerImpl.initialize,
             (
-                21,
+                15,
                 initialRoot,
                 treeVerifier,
                 unimplementedVerifier,
@@ -104,7 +104,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
             )
         );
 
-        vm.expectRevert(abi.encodeWithSignature("UnsupportedTreeDepth(uint8)", 21));
+        vm.expectRevert(abi.encodeWithSignature("UnsupportedTreeDepth(uint8)", 15));
 
         // Test
         identityManager = new IdentityManager(managerImplAddress, callData);
