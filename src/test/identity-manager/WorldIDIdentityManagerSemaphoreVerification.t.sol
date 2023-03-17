@@ -3,7 +3,8 @@ pragma solidity ^0.8.19;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {ISemaphoreVerifier} from "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
+import {ISemaphoreVerifier} from
+    "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {SimpleSemaphoreVerifier} from "../mock/SimpleSemaphoreVerifier.sol";
 
@@ -21,11 +22,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         ISemaphoreVerifier actualSemaphoreVerifier = new SimpleSemaphoreVerifier();
         makeNewIdentityManager(
-            preRoot,
-            treeVerifier,
-            actualSemaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridgeProxy
+            preRoot, treeVerifier, actualSemaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
         );
         uint256 nullifierHash = 0;
         uint256 signalHash = 0;
@@ -44,16 +41,13 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         ISemaphoreVerifier actualSemaphoreVerifier = new SimpleSemaphoreVerifier();
         makeNewIdentityManager(
-            preRoot,
-            treeVerifier,
-            actualSemaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridgeProxy
+            preRoot, treeVerifier, actualSemaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
         );
         uint256 nullifierHash = 0;
         uint256 signalHash = 0;
         uint256 externalNullifierHash = 0;
-        uint256[8] memory actualProof = [proof[0], proof[1], proof[2], proof[3], proof[4], proof[5], proof[6], 0];
+        uint256[8] memory actualProof =
+            [proof[0], proof[1], proof[2], proof[3], proof[4], proof[5], proof[6], 0];
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImpl.verifyProof,
             (preRoot, nullifierHash, signalHash, externalNullifierHash, actualProof)

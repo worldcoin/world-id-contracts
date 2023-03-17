@@ -27,11 +27,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(
-            newPreRoot,
-            treeVerifier,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridgeProxy
+            newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
@@ -58,11 +54,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(
-            newPreRoot,
-            treeVerifier,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridgeProxy
+            newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
@@ -144,11 +136,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
         makeNewIdentityManager(
-            newPreRoot,
-            treeVerifier,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridgeProxy
+            newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
         );
         if (changeOld) {
             preparedIdents[position].oldCommitment = SNARK_SCALAR_FIELD + i;

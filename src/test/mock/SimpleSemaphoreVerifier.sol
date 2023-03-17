@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {ISemaphoreVerifier} from "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
+import {ISemaphoreVerifier} from
+    "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
 
 /// @title Simple Verifier
 /// @author Worldcoin

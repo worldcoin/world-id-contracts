@@ -31,11 +31,7 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
         bytes memory callData = abi.encodeCall(ManagerImpl.disableStateBridge, ());
         ITreeVerifier actualVerifier = new TreeVerifier();
         makeNewIdentityManager(
-            preRoot,
-            actualVerifier,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridgeProxy
+            preRoot, actualVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
@@ -92,9 +88,7 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
     /// @notice Checks that the state bridge can be enabled if it is disabled.
     function testCanEnableStateBridgeIfDisabled() public {
         // Setup
-        makeNewIdentityManager(
-            preRoot, treeVerifier, semaphoreVerifier, false, stateBridgeProxy
-        );
+        makeNewIdentityManager(preRoot, treeVerifier, semaphoreVerifier, false, stateBridgeProxy);
         bytes memory callData = abi.encodeCall(ManagerImpl.enableStateBridge, ());
 
         // Test

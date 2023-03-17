@@ -17,11 +17,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     function testQueryCurrentRoot(uint128 newPreRoot) public {
         // Setup
         makeNewIdentityManager(
-            newPreRoot,
-            treeVerifier,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridgeProxy
+            newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
         );
         bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, newPreRoot);
         bytes memory returnData = abi.encode(ManagerImpl.RootInfo(newPreRoot, 0, true));
@@ -42,11 +38,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(
-            newPreRoot,
-            treeVerifier,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridgeProxy
+            newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -80,11 +72,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         makeNewIdentityManager(
-            newPreRoot,
-            treeVerifier,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridgeProxy
+            newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -136,11 +124,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     function testCanGetLatestRoot(uint256 actualRoot) public {
         // Setup
         makeNewIdentityManager(
-            actualRoot,
-            treeVerifier,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridgeProxy
+            actualRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
         );
         bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory returnData = abi.encode(actualRoot);

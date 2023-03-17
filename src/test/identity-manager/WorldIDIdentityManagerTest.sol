@@ -94,11 +94,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         stateBridge = new SimpleStateBridge();
         stateBridgeProxy = address(stateBridge);
         makeNewIdentityManager(
-            initialRoot,
-            treeVerifier,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridgeProxy
+            initialRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
         );
 
         hevm.label(address(this), "Sender");
