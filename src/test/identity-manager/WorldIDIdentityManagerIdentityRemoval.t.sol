@@ -27,7 +27,6 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(
-            treeDepth,
             newPreRoot,
             treeVerifier,
             semaphoreVerifier,
@@ -59,7 +58,6 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(
-            treeDepth,
             newPreRoot,
             treeVerifier,
             semaphoreVerifier,
@@ -137,7 +135,6 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         makeNewIdentityManager(
-            treeDepth,
             uint256(currentPreRoot),
             treeVerifier,
             semaphoreVerifier,
@@ -169,7 +166,6 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         makeNewIdentityManager(
-            treeDepth,
             newPreRoot,
             treeVerifier,
             semaphoreVerifier,

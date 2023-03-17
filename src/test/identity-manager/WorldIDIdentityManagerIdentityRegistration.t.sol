@@ -21,7 +21,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         ITreeVerifier actualVerifier = new TreeVerifier();
         makeNewIdentityManager(
-            treeDepth,
             preRoot,
             actualVerifier,
             semaphoreVerifier,
@@ -61,7 +60,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(
-            treeDepth,
             newPreRoot,
             treeVerifier,
             semaphoreVerifier,
@@ -95,7 +93,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(
-            treeDepth,
             newPreRoot,
             treeVerifier,
             semaphoreVerifier,
@@ -121,7 +118,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(newStartIndex != startIndex);
         ITreeVerifier actualVerifier = new TreeVerifier();
         makeNewIdentityManager(
-            treeDepth,
             preRoot,
             actualVerifier,
             semaphoreVerifier,
@@ -151,7 +147,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         identities[invalidSlot] = identity;
         ITreeVerifier actualVerifier = new TreeVerifier();
         makeNewIdentityManager(
-            treeDepth,
             preRoot,
             actualVerifier,
             semaphoreVerifier,
@@ -229,7 +224,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
                 && actualRoot < SNARK_SCALAR_FIELD
         );
         makeNewIdentityManager(
-            treeDepth,
             uint256(currentPreRoot),
             treeVerifier,
             semaphoreVerifier,

@@ -94,7 +94,6 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         stateBridge = new SimpleStateBridge();
         stateBridgeProxy = address(stateBridge);
         makeNewIdentityManager(
-            treeDepth,
             initialRoot,
             treeVerifier,
             semaphoreVerifier,
@@ -115,7 +114,6 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @notice Initialises a new identity manager using the provided information.
     /// @dev It is initialised in the globals.
     ///
-    /// @param actualTreeDepth The tree depth to use.
     /// @param actualPreRoot The pre-root to use.
     /// @param actualTreeVerifier The tree verifier instance to use.
     /// @param actualSemaphoreVerifier The Semaphore verifier instance to use.
@@ -123,7 +121,6 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///        bridge enabled.
     /// @param actualStateBridgeProxy The address of the state bridge.
     function makeNewIdentityManager(
-        uint8 actualTreeDepth,
         uint256 actualPreRoot,
         ITreeVerifier actualTreeVerifier,
         ISemaphoreVerifier actualSemaphoreVerifier,
@@ -136,7 +133,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         bytes memory initCallData = abi.encodeCall(
             ManagerImpl.initialize,
             (
-                actualTreeDepth,
+                treeDepth,
                 actualPreRoot,
                 actualTreeVerifier,
                 unimplementedVerifier,

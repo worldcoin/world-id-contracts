@@ -502,15 +502,15 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
     /// @notice Checks if the provided `treeDepth` is amoung supported depths.
     ///
-    /// @param treeDepth The tree depth to validate.
+    /// @param _treeDepth The tree depth to validate.
     /// @return supportedDepth Returns `true` if `treeDepth` is between 16 and 32 - depths supported by the Semaphore
-    function isSupportedDepth(uint8 treeDepth)
+    function isSupportedDepth(uint8 _treeDepth)
         internal
         virtual
         onlyProxy
         returns (bool supportedDepth)
     {
-        return treeDepth >= 16 && treeDepth <= 32;
+        return _treeDepth >= 16 && _treeDepth <= 32;
     }
 
     /// @notice Calculates the input hash for the identity registration verifier.

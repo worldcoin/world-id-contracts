@@ -17,7 +17,6 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     function testQueryCurrentRoot(uint128 newPreRoot) public {
         // Setup
         makeNewIdentityManager(
-            treeDepth,
             newPreRoot,
             treeVerifier,
             semaphoreVerifier,
@@ -43,7 +42,6 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(
-            treeDepth,
             newPreRoot,
             treeVerifier,
             semaphoreVerifier,
@@ -82,7 +80,6 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         makeNewIdentityManager(
-            treeDepth,
             newPreRoot,
             treeVerifier,
             semaphoreVerifier,
@@ -139,7 +136,6 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     function testCanGetLatestRoot(uint256 actualRoot) public {
         // Setup
         makeNewIdentityManager(
-            treeDepth,
             actualRoot,
             treeVerifier,
             semaphoreVerifier,

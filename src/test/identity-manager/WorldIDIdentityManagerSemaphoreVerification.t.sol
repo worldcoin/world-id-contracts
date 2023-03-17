@@ -21,7 +21,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         ISemaphoreVerifier actualSemaphoreVerifier = new SimpleSemaphoreVerifier();
         makeNewIdentityManager(
-            treeDepth,
             preRoot,
             treeVerifier,
             actualSemaphoreVerifier,
@@ -45,7 +44,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         ISemaphoreVerifier actualSemaphoreVerifier = new SimpleSemaphoreVerifier();
         makeNewIdentityManager(
-            treeDepth,
             preRoot,
             treeVerifier,
             actualSemaphoreVerifier,
@@ -63,6 +61,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         vm.expectRevert("Semaphore__InvalidProof()");
         // Test
-        identityManagerAddress.call(verifyProofCallData);
+        assertCallFailsOn(identityManagerAddress, verifyProofCallData);
     }
 }
