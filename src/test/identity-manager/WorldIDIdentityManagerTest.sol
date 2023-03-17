@@ -140,7 +140,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
                 actualPreRoot,
                 actualTreeVerifier,
                 unimplementedVerifier,
-                semaphoreVerifier,
+                actualSemaphoreVerifier,
                 enableStateBridge,
                 actualStateBridgeProxy
             )

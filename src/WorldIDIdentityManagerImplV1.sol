@@ -231,7 +231,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 initialRoot,
         ITreeVerifier _batchInsertionVerifier,
         ITreeVerifier _batchUpdateVerifier,
-        SemaphoreVerifier _semaphoreVerifier,
+        ISemaphoreVerifier _semaphoreVerifier,
         bool _enableStateBridge,
         address initialStateBridgeProxyAddress
     ) public reinitializer(1) {
@@ -503,14 +503,14 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice Checks if the provided `treeDepth` is amoung supported depths.
     ///
     /// @param treeDepth The tree depth to validate.
-    /// @return isSupportedDepth Returns `true` if `treeDepth` is between 16 and 32 - depths supported by the Semaphore
+    /// @return supportedDepth Returns `true` if `treeDepth` is between 16 and 32 - depths supported by the Semaphore
     function isSupportedDepth(uint8 treeDepth)
         internal
         virtual
         onlyProxy
-        returns (bool isSupportedDepth)
+        returns (bool supportedDepth)
     {
-        return treeDepth > 15 && treeDepth < 33;
+        return treeDepth >= 16 && treeDepth <= 32;
     }
 
     /// @notice Calculates the input hash for the identity registration verifier.
