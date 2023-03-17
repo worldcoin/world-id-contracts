@@ -4,6 +4,8 @@ pragma solidity ^0.8.19;
 import {WorldIDImpl} from "./abstract/WorldIDImpl.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
+import {SemaphoreTreeDepthValidator} from "./utils/SemaphoreTreeDepthValidator.sol";
+
 import {ISemaphoreVerifier} from
     "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
 import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
@@ -190,7 +192,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice Thrown when attempting to set the state bridge proxy address to the zero address.
     error InvalidStateBridgeProxyAddress();
 
-    /// @notice Thrown when tree depth is not supported.
+    /// @notice Thrown when Semaphore tree depth is not supported.
     ///
     /// @param depth Passed tree depth.
     error UnsupportedTreeDepth(uint8 depth);
@@ -238,7 +240,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
-        if (!isSupportedDepth(_treeDepth)) {
+        if (!SemaphoreTreeDepthValidator.validate(_treeDepth)) {
             revert UnsupportedTreeDepth(_treeDepth);
         }
 
@@ -941,6 +943,20 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             revert("Expiry time cannot be zero.");
         }
         rootHistoryExpiry = newExpiryTime;
+    }
+
+    /// @notice Gets the Semaphore tree depth the contract was initialized with.
+    ///
+    /// @return initializedTreeDepth Tree depth.
+    function getTreeDepth()
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (uint8 initializedTreeDepth)
+    {
+        return treeDepth;
     }
 
     ///////////////////////////////////////////////////////////////////////////////

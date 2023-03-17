@@ -21,7 +21,12 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         ITreeVerifier actualVerifier = new TreeVerifier();
         makeNewIdentityManager(
-            preRoot, actualVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
+            treeDepth,
+            preRoot,
+            actualVerifier,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
@@ -56,7 +61,12 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(
-            newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
+            treeDepth,
+            newPreRoot,
+            treeVerifier,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -85,7 +95,12 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(
-            newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
+            treeDepth,
+            newPreRoot,
+            treeVerifier,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -106,7 +121,12 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(newStartIndex != startIndex);
         ITreeVerifier actualVerifier = new TreeVerifier();
         makeNewIdentityManager(
-            preRoot, actualVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
+            treeDepth,
+            preRoot,
+            actualVerifier,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
@@ -131,7 +151,12 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         identities[invalidSlot] = identity;
         ITreeVerifier actualVerifier = new TreeVerifier();
         makeNewIdentityManager(
-            preRoot, actualVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
+            treeDepth,
+            preRoot,
+            actualVerifier,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities, (proof, preRoot, startIndex, identities, postRoot)
@@ -204,6 +229,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
                 && actualRoot < SNARK_SCALAR_FIELD
         );
         makeNewIdentityManager(
+            treeDepth,
             uint256(currentPreRoot),
             treeVerifier,
             semaphoreVerifier,

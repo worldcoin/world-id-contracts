@@ -22,7 +22,12 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         ISemaphoreVerifier actualSemaphoreVerifier = new SimpleSemaphoreVerifier();
         makeNewIdentityManager(
-            preRoot, treeVerifier, actualSemaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
+            treeDepth,
+            preRoot,
+            treeVerifier,
+            actualSemaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
         uint256 nullifierHash = 0;
         uint256 signalHash = 0;
@@ -41,7 +46,12 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         ISemaphoreVerifier actualSemaphoreVerifier = new SimpleSemaphoreVerifier();
         makeNewIdentityManager(
-            preRoot, treeVerifier, actualSemaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
+            treeDepth,
+            preRoot,
+            treeVerifier,
+            actualSemaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
         uint256 nullifierHash = 0;
         uint256 signalHash = 0;

@@ -27,7 +27,12 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(
-            newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
+            treeDepth,
+            newPreRoot,
+            treeVerifier,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
@@ -54,7 +59,12 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         makeNewIdentityManager(
-            newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
+            treeDepth,
+            newPreRoot,
+            treeVerifier,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
@@ -127,6 +137,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         makeNewIdentityManager(
+            treeDepth,
             uint256(currentPreRoot),
             treeVerifier,
             semaphoreVerifier,
@@ -158,7 +169,12 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
         makeNewIdentityManager(
-            newPreRoot, treeVerifier, semaphoreVerifier, isStateBridgeEnabled, stateBridgeProxy
+            treeDepth,
+            newPreRoot,
+            treeVerifier,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
         );
         preparedIdents[position].oldCommitment = SNARK_SCALAR_FIELD + i;
         bytes memory callData = abi.encodeCall(
