@@ -7,6 +7,7 @@ import {ISemaphoreVerifier} from
     "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {SimpleSemaphoreVerifier} from "../mock/SimpleSemaphoreVerifier.sol";
+import {SemaphoreTreeDepthValidator} from "../../utils/SemaphoreTreeDepthValidator.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -18,20 +19,25 @@ import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentity
 ///      so as to test everything in the context of how it will be deployed.
 contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTest {
     /// @notice Checks that the proof validates properly with the correct inputs.
-    function testProofVerificationWithCorrectInputs() public {
+    function testProofVerificationWithCorrectInputs(
+        uint8 actualTreeDepth,
+        uint256 nullifierHash,
+        uint256 signalHash,
+        uint256 externalNullifierHash,
+        uint256[8] memory prf
+    ) public {
         // Setup
         ISemaphoreVerifier actualSemaphoreVerifier = new SimpleSemaphoreVerifier();
+        vm.assume(SemaphoreTreeDepthValidator.validate(actualTreeDepth));
+        vm.assume(prf[0] != 0);
         makeNewIdentityManager(
-            treeDepth,
+            actualTreeDepth,
             preRoot,
             treeVerifier,
             actualSemaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
         );
-        uint256 nullifierHash = 0;
-        uint256 signalHash = 0;
-        uint256 externalNullifierHash = 0;
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImpl.verifyProof,
             (preRoot, nullifierHash, signalHash, externalNullifierHash, proof)
@@ -42,25 +48,28 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
     }
 
     /// @notice Checks that the proof validates properly with the correct inputs.
-    function testProofVerificationWithInorrectProof() public {
+    function testProofVerificationWithInorrectProof(
+        uint8 actualTreeDepth,
+        uint256 nullifierHash,
+        uint256 signalHash,
+        uint256 externalNullifierHash,
+        uint256[8] memory prf
+    ) public {
         // Setup
         ISemaphoreVerifier actualSemaphoreVerifier = new SimpleSemaphoreVerifier();
+        vm.assume(SemaphoreTreeDepthValidator.validate(actualTreeDepth));
+        vm.assume(prf[0] % 2 == 0);
         makeNewIdentityManager(
-            treeDepth,
+            actualTreeDepth,
             preRoot,
             treeVerifier,
             actualSemaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
         );
-        uint256 nullifierHash = 0;
-        uint256 signalHash = 0;
-        uint256 externalNullifierHash = 0;
-        uint256[8] memory actualProof =
-            [proof[0], proof[1], proof[2], proof[3], proof[4], proof[5], proof[6], 0];
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImpl.verifyProof,
-            (preRoot, nullifierHash, signalHash, externalNullifierHash, actualProof)
+            (preRoot, nullifierHash, signalHash, externalNullifierHash, prf)
         );
 
         vm.expectRevert("Semaphore__InvalidProof()");

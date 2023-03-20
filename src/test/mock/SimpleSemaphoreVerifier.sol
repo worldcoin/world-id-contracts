@@ -24,7 +24,7 @@ contract SimpleSemaphoreVerifier is ISemaphoreVerifier {
         delete externalNullifier;
         delete merkleTreeDepth;
 
-        if (proof[7] == 0) {
+        if (proof[0] % 2 == 0) {
             revert Semaphore__InvalidProof();
         }
     }
