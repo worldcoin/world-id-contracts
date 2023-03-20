@@ -17,7 +17,7 @@ import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentity
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
-contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTest {
+contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest {
     /// @notice Checks that the proof validates properly with the correct inputs.
     function testProofVerificationWithCorrectInputs(
         uint8 actualTreeDepth,
