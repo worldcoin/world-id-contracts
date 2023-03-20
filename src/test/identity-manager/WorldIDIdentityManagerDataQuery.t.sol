@@ -165,8 +165,8 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
 
     /// @notice Checks that it is possible to get the tree depth the contract was initialized with.
     function testCanGetTreeDepth(uint8 actualTreeDepth) public {
-        vm.assume(SemaphoreTreeDepthValidator.validate(actualTreeDepth));
         // Setup
+        vm.assume(SemaphoreTreeDepthValidator.validate(actualTreeDepth));
         makeNewIdentityManager(
             actualTreeDepth,
             preRoot,
