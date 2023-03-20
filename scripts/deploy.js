@@ -366,11 +366,7 @@ async function ensureUnimplementedTreeVerifierDeployment(plan, config) {
   plan.add('Deploy Unimplemented Tree Verifier', async () => {
     const spinner = ora('Deploying Unimplemented Tree Verifier contract...').start();
     let bytecode = UnimplementedTreeVerifier.bytecode.object;
-    const factory = new ContractFactory(
-      UnimplementedTreeVerifier.abi,
-      bytecode,
-      config.wallet
-    );
+    const factory = new ContractFactory(UnimplementedTreeVerifier.abi, bytecode, config.wallet);
     checkContractSize(spinner, bytecode);
     const contract = await factory.deploy();
     spinner.text = `Waiting for verifier deploy transaction (address: ${contract.address})...`;
@@ -555,11 +551,7 @@ async function deployIdentityManager(plan, config) {
     const spinner = ora('Deploying WorldID Identity Manager implementation...').start();
     let bytecode = IdentityManagerImpl.bytecode.object;
     checkContractSize(spinner, bytecode);
-    const factory = new ContractFactory(
-      IdentityManagerImpl.abi,
-      bytecode,
-      config.wallet
-    );
+    const factory = new ContractFactory(IdentityManagerImpl.abi, bytecode, config.wallet);
     const contract = await factory.deploy();
     spinner.text = `Waiting for the WorldID Identity Manager Implementation deployment transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
