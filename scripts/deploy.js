@@ -124,6 +124,16 @@ async function httpsGetWithRedirects(url) {
   });
 }
 
+function checkContractSize(spinner, bytecode) {
+  let warning_threshold = 18000;
+  let error_threshold = 24000;
+  const size = Buffer.byteLength(Buffer.from(bytecode, 'hex'));
+  if (size >= warning_threshold && size < error_threshold)
+    spinner.warn('Significant contract size : ' + size);
+  else if (size >= error_threshold)
+    spinner.fail('Contract size exceeds allowed maximum size: ' + size);
+}
+
 async function downloadSemaphoreMtbBinary(plan, config) {
   config.mtbBinary = MTB_BIN_PATH;
   if (process.platform === 'win32') {
@@ -309,6 +319,7 @@ async function compileVerifierContract(plan, _) {
       },
     };
     let output = solc.compile(JSON.stringify(input));
+
     fs.mkdirSync(MTB_CONTRACTS_DIR, { recursive: true });
     fs.writeFileSync(config.mtbVerifierContractOutFile, output);
   });
@@ -335,11 +346,9 @@ async function deployVerifierContract(plan, config) {
     let verifierBytecode = JSON.parse(
       fs.readFileSync(config.mtbVerifierContractOutFile).toString()
     );
-    let factory = new ContractFactory(
-      [],
-      verifierBytecode.contracts['Verifier.sol'].Verifier.evm.bytecode.object,
-      config.wallet
-    );
+    let bytecode = verifierBytecode.contracts['Verifier.sol'].Verifier.evm.bytecode.object;
+    let factory = new ContractFactory([], bytecode, config.wallet);
+    checkContractSize(spinner, bytecode);
     let contract = await factory.deploy();
     spinner.text = `Waiting for MTB Verifier deploy transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
@@ -351,11 +360,13 @@ async function deployVerifierContract(plan, config) {
 async function ensureUnimplementedTreeVerifierDeployment(plan, config) {
   plan.add('Deploy Unimplemented Tree Verifier', async () => {
     const spinner = ora('Deploying Unimplemented Tree Verifier contract...').start();
+    let bytecode = UnimplementedTreeVerifier.bytecode.object;
     const factory = new ContractFactory(
       UnimplementedTreeVerifier.abi,
-      UnimplementedTreeVerifier.bytecode.object,
+      bytecode,
       config.wallet
     );
+    checkContractSize(spinner, bytecode);
     const contract = await factory.deploy();
     spinner.text = `Waiting for verifier deploy transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
@@ -371,8 +382,10 @@ async function ensureUnimplementedTreeVerifierDeployment(plan, config) {
 // or figured out that your code or 3rd party code uses a library
 // follow instructions below
 //
-// - In the problematic bytecode find a substring indicating a placeholder for library address
-//   It follows the pattern __$xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx$__
+// - In the problematic bytecode find a substring indicating a placeholder for library address that's
+//   a 34 character prefix of the hex encoding of the keccak256 hash of the fully qualified library name
+//   between __$ and $__
+//   E.g. __$a0b3f842b95cabff7722bd983061aec5b3$__
 // - Compile and deploy the library. Save the addrsss it was deployed under!
 // - Compile the code that previously cause problem
 // - In the bytecode manually replace placeholder with the address of library
@@ -403,6 +416,7 @@ async function ensureSemaphoreVerifierDeployment(plan, config) {
       pairingPointer,
       pairingLibAddressWithout0x
     );
+    checkContractSize(spinner, newBytecode);
     const factory = new ContractFactory(SemaphorePairing.abi, newBytecode, config.wallet);
     const contract = await factory.deploy();
     spinner.text = `Waiting for Semaphore verifier deploy transaction (address: ${contract.address})...`;
@@ -482,7 +496,9 @@ async function deployRouter(plan, config) {
 
         // Deploy the proxy contract.
         spinner.text = 'Deploying the WorldID Router proxy...';
-        const factory = new ContractFactory(Router.abi, Router.bytecode.object, config.wallet);
+        let bytecode = Router.bytecode.object;
+        checkContractSize(spinner, bytecode);
+        const factory = new ContractFactory(Router.abi, bytecode, config.wallet);
         const contract = await factory.deploy(config.routerImplementationContractAddress, callData);
         spinner.text = `Waiting for the WorldID Router deployment transaction (address: ${contract.address})...`;
         await contract.deployTransaction.wait();
@@ -532,11 +548,13 @@ async function deployRouter(plan, config) {
 async function deployIdentityManager(plan, config) {
   plan.add('Deploy WorldID Identity Manager Implementation', async () => {
     const spinner = ora('Deploying WorldID Identity Manager implementation...').start();
+    let bytecode = IdentityManagerImpl.bytecode.object;
     const factory = new ContractFactory(
       IdentityManagerImpl.abi,
-      IdentityManagerImpl.bytecode.object,
+      bytecode,
       config.wallet
     );
+    checkContractSize(spinner, bytecode);
     const contract = await factory.deploy();
     spinner.text = `Waiting for the WorldID Identity Manager Implementation deployment transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
