@@ -366,7 +366,7 @@ async function ensureUnimplementedTreeVerifierDeployment(plan, config) {
 
 // Deploying libraries, manual linking
 //
-// In case you encounteres a compilation error that looks something like this
+// In case you encounter a compilation error that looks something like this
 //   { ... reason: 'invalid bytecode', code: 'INVALID_ARGUMENT', argument: 'bytecode', ... }
 // or figured out that your code or 3rd party code uses a library
 // follow instructions below
