@@ -9,7 +9,7 @@ library SemaphoreTreeDepthValidator {
     ///
     /// @param treeDepth The tree depth to validate.
     /// @return supportedDepth Returns `true` if `treeDepth` is between 16 and 32 - depths supported by the Semaphore
-    function validate(uint8 treeDepth) public pure returns (bool supportedDepth) {
+    function validate(uint8 treeDepth) internal pure returns (bool supportedDepth) {
         uint8 minDepth = 16;
         uint8 maxDepth = 32;
         return treeDepth >= minDepth && treeDepth <= maxDepth;
