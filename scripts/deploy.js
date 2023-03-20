@@ -45,6 +45,8 @@ const DEFAULT_IDENTITY_MANAGER_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerIm
 const DEFAULT_IDENTITY_MANAGER_UPGRADE_FUNCTION = 'initialize(uint32)';
 const DEFAULT_ROUTER_UPGRADE_CONTRACT_NAME = 'WorldIDRouterImplMock';
 const DEFAULT_ROUTER_UPGRADE_FUNCTION = 'initialize(uint32)';
+const CONTRACT_SIZE_WARNING_THRESHOLD_BYTES = 18000;
+const CONTRACT_SIZE_ERROR_THRESHOLD_BYTES = 24576;
 
 // === Implementation =============================================================================
 
@@ -130,12 +132,10 @@ async function httpsGetWithRedirects(url) {
 // Max contract size is 24kb
 // We set a warning threshold at 18kb
 function checkContractSize(spinner, bytecode) {
-  let warning_threshold = 18000;
-  let error_threshold = 24000;
   const size = bytecode.length / 2;
-  if (size >= warning_threshold && size < error_threshold)
+  if (size >= CONTRACT_SIZE_WARNING_THRESHOLD_BYTES && size < CONTRACT_SIZE_ERROR_THRESHOLD_BYTES)
     spinner.warn('Significant contract size : ' + size);
-  else if (size >= error_threshold)
+  else if (size >= CONTRACT_SIZE_ERROR_THRESHOLD_BYTES)
     spinner.fail('Contract size exceeds allowed maximum size: ' + size);
 }
 
