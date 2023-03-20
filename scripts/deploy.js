@@ -124,10 +124,15 @@ async function httpsGetWithRedirects(url) {
   });
 }
 
+// Function generates a warning or error depending on the contract bytecode size
+// It is only approximation based on the bytecode (constructor + bytecode)
+// Run forge build --sizes for stats about deployed bytecode size
+// Max contract size is 24kb
+// We set a warning threshold at 18kb
 function checkContractSize(spinner, bytecode) {
   let warning_threshold = 18000;
   let error_threshold = 24000;
-  const size = Buffer.byteLength(Buffer.from(bytecode, 'hex'));
+  const size = bytecode.length / 2;
   if (size >= warning_threshold && size < error_threshold)
     spinner.warn('Significant contract size : ' + size);
   else if (size >= error_threshold)
@@ -549,12 +554,12 @@ async function deployIdentityManager(plan, config) {
   plan.add('Deploy WorldID Identity Manager Implementation', async () => {
     const spinner = ora('Deploying WorldID Identity Manager implementation...').start();
     let bytecode = IdentityManagerImpl.bytecode.object;
+    checkContractSize(spinner, bytecode);
     const factory = new ContractFactory(
       IdentityManagerImpl.abi,
       bytecode,
       config.wallet
     );
-    checkContractSize(spinner, bytecode);
     const contract = await factory.deploy();
     spinner.text = `Waiting for the WorldID Identity Manager Implementation deployment transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
