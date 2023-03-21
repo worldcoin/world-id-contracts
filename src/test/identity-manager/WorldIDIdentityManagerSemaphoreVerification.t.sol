@@ -3,11 +3,9 @@ pragma solidity ^0.8.19;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {ISemaphoreVerifier} from
-    "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
-import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
-import {SimpleSemaphoreVerifier} from "../mock/SimpleSemaphoreVerifier.sol";
+import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
 import {SemaphoreTreeDepthValidator} from "../../utils/SemaphoreTreeDepthValidator.sol";
+import {SimpleSemaphoreVerifier} from "../mock/SimpleSemaphoreVerifier.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -33,7 +31,8 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         makeNewIdentityManager(
             actualTreeDepth,
             preRoot,
-            treeVerifier,
+            defaultInsertVerifiers,
+            defaultUpdateVerifiers,
             actualSemaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -62,7 +61,8 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         makeNewIdentityManager(
             actualTreeDepth,
             preRoot,
-            treeVerifier,
+            defaultInsertVerifiers,
+            defaultUpdateVerifiers,
             actualSemaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy

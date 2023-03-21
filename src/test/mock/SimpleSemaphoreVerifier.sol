@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {ISemaphoreVerifier} from
-    "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
+import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
 
 /// @title Simple Verifier
 /// @author Worldcoin
@@ -17,7 +16,7 @@ contract SimpleSemaphoreVerifier is ISemaphoreVerifier {
         uint256 externalNullifier,
         uint256[8] calldata proof,
         uint256 merkleTreeDepth
-    ) external view {
+    ) external pure {
         delete merkleTreeRoot;
         delete nullifierHash;
         delete signal;

@@ -8,6 +8,7 @@ interface IWorldID {
     /// @notice Verifies a WorldID zero knowledge proof.
     /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.
+    /// @dev It is highly recommended that the implementation is restricted to `view` if possible.
     ///
     /// @param root The of the Merkle tree
     /// @param signalHash A keccak256 hash of the Semaphore signal
@@ -22,5 +23,5 @@ interface IWorldID {
         uint256 nullifierHash,
         uint256 externalNullifierHash,
         uint256[8] calldata proof
-    ) external view;
+    ) external;
 }

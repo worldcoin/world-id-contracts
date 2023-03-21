@@ -5,7 +5,9 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
+import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
+import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -16,14 +18,21 @@ import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentity
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
 contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTest {
+    /// Taken from SimpleVerifier.sol
+    event VerifiedProof(uint256 batchSize);
+
     /// @notice Checks that the proof validates properly with the correct inputs.
     function testRegisterIdentitiesWithCorrectInputsFromKnown() public {
         // Setup
         ITreeVerifier actualVerifier = new TreeVerifier();
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([40]));
+        insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
             preRoot,
-            actualVerifier,
+            insertVerifiers,
+            updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -35,7 +44,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         bytes memory latestRootCallData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory queryRootCallData = abi.encodeCall(ManagerImpl.queryRoot, (postRoot));
 
-        // expect event that state root was sent to state bridge
+        // Expect the root to have been sent to the state bridge.
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(postRoot);
 
@@ -60,10 +69,14 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
+        vm.assume(identities.length <= 1000);
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
-            treeVerifier,
+            insertVerifiers,
+            updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -75,12 +88,101 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
         );
 
-        // expect event that state root was sent to state bridge
+        // Expect the root to have been sent to the state bridge.
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(newPostRoot);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData);
+    }
+
+    /// @notice Ensures that identity registration selects the correct verifier when registering
+    ///         identities.
+    function testRegisterIdentitiesSelectsCorrectVerifier(
+        uint128[8] memory prf,
+        uint32 newStartIndex,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
+        vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        vm.assume(newPreRoot != newPostRoot);
+        vm.assume(identities.length <= 1000 && identities.length > 0);
+        uint256 secondIdentsLength = identities.length / 2;
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length, secondIdentsLength]));
+        makeNewIdentityManager(
+            treeDepth,
+            newPreRoot,
+            insertVerifiers,
+            updateVerifiers,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
+        );
+        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareInsertIdentitiesTestCase(identities, prf);
+        uint256[] memory secondIdents = new uint256[](secondIdentsLength);
+        for (uint256 i = 0; i < secondIdentsLength; ++i) {
+            secondIdents[i] = preparedIdents[i];
+        }
+        bytes memory firstCallData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+        );
+        uint256 secondPostRoot = uint256(newPostRoot) + 1;
+        bytes memory secondCallData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (actualProof, newPostRoot, newStartIndex, secondIdents, secondPostRoot)
+        );
+
+        vm.expectEmit(true, true, true, true);
+        emit VerifiedProof(identities.length);
+        vm.expectEmit(true, true, true, true);
+        emit StateRootSentMultichain(newPostRoot);
+        vm.expectEmit(true, true, true, true);
+        emit VerifiedProof(identities.length / 2);
+        vm.expectEmit(true, true, true, true);
+        emit StateRootSentMultichain(secondPostRoot);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, firstCallData);
+        assertCallSucceedsOn(identityManagerAddress, secondCallData);
+    }
+
+    /// @notice Ensures that the contract reverts if passed a batch size it doesn't know about.
+    function testCannotRegisterIdentitiesWithInvalidBatchSize(
+        uint128[8] memory prf,
+        uint32 newStartIndex,
+        uint128 newPreRoot,
+        uint128 newPostRoot,
+        uint128[] memory identities
+    ) public {
+        vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
+        vm.assume(newPreRoot != newPostRoot);
+        vm.assume(identities.length > 0);
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length - 1]));
+        makeNewIdentityManager(
+            treeDepth,
+            newPreRoot,
+            insertVerifiers,
+            updateVerifiers,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
+        );
+        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
+            prepareInsertIdentitiesTestCase(identities, prf);
+
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.registerIdentities,
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+        );
+        bytes memory errorData = abi.encodeWithSelector(VerifierLookupTable.NoSuchVerifier.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, errorData);
     }
 
     /// @notice Checks that it reverts if the provided proof is incorrect for the public inputs.
@@ -94,10 +196,14 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
+        vm.assume(identities.length <= 1000);
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
-            treeVerifier,
+            insertVerifiers,
+            updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -120,10 +226,14 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         vm.assume(newStartIndex != startIndex);
         ITreeVerifier actualVerifier = new TreeVerifier();
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([70]));
+        insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
             preRoot,
-            actualVerifier,
+            insertVerifiers,
+            updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -150,10 +260,14 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         uint256[] memory identities = cloneArray(identityCommitments);
         identities[invalidSlot] = identity;
         ITreeVerifier actualVerifier = new TreeVerifier();
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([70]));
+        insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
             preRoot,
-            actualVerifier,
+            insertVerifiers,
+            updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -175,14 +289,17 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
         ITreeVerifier actualVerifier = new TreeVerifier();
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([70]));
+        insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
 
         bytes memory callData = abi.encodeCall(
             ManagerImpl.initialize,
             (
                 treeDepth,
                 preRoot,
-                actualVerifier,
-                unimplementedVerifier,
+                insertVerifiers,
+                updateVerifiers,
                 semaphoreVerifier,
                 isStateBridgeEnabled,
                 stateBridgeProxy
@@ -231,7 +348,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         makeNewIdentityManager(
             treeDepth,
             uint256(currentPreRoot),
-            treeVerifier,
+            defaultInsertVerifiers,
+            defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
@@ -282,9 +400,20 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         public
     {
         // Setup
-        vm.assume(identitiesLength != 0);
+        vm.assume(identitiesLength != 0 && identitiesLength <= 1000);
         vm.assume(zeroPosition < identitiesLength && zeroPosition > 0);
         uint256[] memory identities = new uint256[](identitiesLength);
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+            makeVerifierLookupTables(TC.makeDynArray([identitiesLength]));
+        makeNewIdentityManager(
+            treeDepth,
+            initialRoot,
+            insertVerifiers,
+            updateVerifiers,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
+        );
 
         for (uint256 i = 0; i < zeroPosition; ++i) {
             identities[i] = i + 1;

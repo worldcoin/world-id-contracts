@@ -8,6 +8,7 @@ interface IWorldIDGroups {
     /// @notice Verifies a WorldID zero knowledge proof.
     /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.
+    /// @dev It is highly recommended that the implementation is restricted to `view` if possible.
     ///
     /// @param groupId The group identifier for the group to verify a proof for.
     /// @param root The of the Merkle tree
@@ -25,5 +26,5 @@ interface IWorldIDGroups {
         uint256 nullifierHash,
         uint256 externalNullifierHash,
         uint256[8] calldata proof
-    ) external view;
+    ) external;
 }

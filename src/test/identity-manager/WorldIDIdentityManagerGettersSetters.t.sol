@@ -4,8 +4,10 @@ pragma solidity ^0.8.19;
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
+import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
-import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
+import {TypeConverter as TC} from "../utils/TypeConverter.sol";
+import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
@@ -17,49 +19,54 @@ import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentity
 contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     /// @notice Checks that it is possible to get the address of the contract currently being used
     ///         to verify identity registration proofs.
-    function testCanGetRegisterIdentitiesVerifierAddress() public {
+    function testCanGetRegisterIdentitiesVerifierLookupTableAddress() public {
         // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.getRegisterIdentitiesVerifierAddress, ());
-        bytes memory expectedReturn = abi.encode(address(treeVerifier));
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.getRegisterIdentitiesVerifierLookupTableAddress, ());
+        bytes memory expectedReturn = abi.encode(address(defaultInsertVerifiers));
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, expectedReturn);
     }
 
-    /// @notice Ensures that it is not possible to get the address of the verifier for identity
-    ///         registration unless called via the proxy.
-    function testCannotGetRegisterIdentitiesVerifierAddressUnlessViaProxy() public {
+    /// @notice Ensures that it is not possible to get the address of the verifier lookup table for
+    ///         identity registration unless called via the proxy.
+    function testCannotGetRegisterIdentitiesVerifierLookupTableAddressUnlessViaProxy() public {
         // Setup
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.getRegisterIdentitiesVerifierAddress();
+        managerImpl.getRegisterIdentitiesVerifierLookupTableAddress();
     }
 
-    /// @notice Checks that it is possible to set the contract currently being used to verify
+    /// @notice Checks that it is possible to set the lookup table currently being used to verify
     ///         identity registration proofs.
-    function testCanSetRegisterIdentitiesVerifier() public {
+    function testCanSetRegisterIdentitiesVerifierLookupTable() public {
         // Setup
-        ITreeVerifier newVerifier = new SimpleVerifier();
-        address newVerifierAddress = address(newVerifier);
-        bytes memory callData =
-            abi.encodeCall(ManagerImpl.setRegisterIdentitiesVerifier, (newVerifier));
+        (VerifierLookupTable insertionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        address newVerifiersAddress = address(insertionVerifiers);
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.setRegisterIdentitiesVerifierLookupTable, (insertionVerifiers)
+        );
         bytes memory checkCallData =
-            abi.encodeCall(ManagerImpl.getRegisterIdentitiesVerifierAddress, ());
-        bytes memory expectedReturn = abi.encode(newVerifierAddress);
+            abi.encodeCall(ManagerImpl.getRegisterIdentitiesVerifierLookupTableAddress, ());
+        bytes memory expectedReturn = abi.encode(newVerifiersAddress);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData);
         assertCallSucceedsOn(identityManagerAddress, checkCallData, expectedReturn);
     }
 
-    /// @notice Checks that the register identities verifier cannot be set except by the owner.
-    function testCannotSetRegisterIdentitiesVerifierUnlessOwner(address notOwner) public {
+    /// @notice Checks that the register identities lookup table cannot be set except by the owner.
+    function testCannotSetRegisterIdentitiesVerifierLookupTableUnlessOwner(address notOwner)
+        public
+    {
         // Setup
         vm.assume(notOwner != address(this) && notOwner != address(0x0));
-        ITreeVerifier newVerifier = new SimpleVerifier();
-        bytes memory callData =
-            abi.encodeCall(ManagerImpl.setRegisterIdentitiesVerifier, (newVerifier));
+        (VerifierLookupTable insertionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.setRegisterIdentitiesVerifierLookupTable, (insertionVerifiers)
+        );
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(notOwner);
 
@@ -67,46 +74,49 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, errorData);
     }
 
-    /// @notice Ensures that it is not possible to set the address of the verifier for identity
-    ///         registration unless called via the proxy.
-    function testCannotSetRegisterIdentitiesVerifierUnlessViaProxy() public {
+    /// @notice Ensures that it is not possible to set the address of the verifier lookup table for
+    ///         identity registration unless called via the proxy.
+    function testCannotSetRegisterIdentitiesVerifierLookupTableUnlessViaProxy() public {
         // Setup
-        ITreeVerifier newVerifier = new SimpleVerifier();
+        (VerifierLookupTable insertionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.setRegisterIdentitiesVerifier(newVerifier);
+        managerImpl.setRegisterIdentitiesVerifierLookupTable(insertionVerifiers);
     }
 
-    /// @notice Checks that it is possible to get the address of the contract currently being used
-    ///         to verify identity update proofs.
-    function testCanGetIdentityUpdateVerifierAddress() public {
+    /// @notice Checks that it is possible to get the address of the lookup table currently being
+    ///         used to verify identity update proofs.
+    function testCanGetIdentityUpdateVerifierLookupTableAddress() public {
         // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierAddress, ());
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierLookupTableAddress, ());
+        bytes memory expectedReturn = abi.encode(defaultUpdateVerifiers);
 
         // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
+        assertCallSucceedsOn(identityManagerAddress, callData, expectedReturn);
     }
 
-    /// @notice Ensures that it is not possible to get the address of the verifier for identity
-    ///         updates unless called via the proxy.
-    function testCannotGetIdentityUpdateVerifierAddressUnlessViaProxy() public {
+    /// @notice Ensures that it is not possible to get the address of the verifier lookup table for
+    ///         identity updates unless called via the proxy.
+    function testCannotGetIdentityUpdateVerifierLookupTableAddressUnlessViaProxy() public {
         // Setup
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.getIdentityUpdateVerifierAddress();
+        managerImpl.getIdentityUpdateVerifierLookupTableAddress();
     }
 
-    /// @notice Checks that it is possible to set the contract currently being used to verify
+    /// @notice Checks that it is possible to set the lookup table currently being used to verify
     ///         identity update proofs.
-    function testCanSetIdentityUpdateVerifier() public {
+    function testCanSetIdentityUpdateVerifierLookupTable() public {
         // Setup
-        ITreeVerifier newVerifier = new SimpleVerifier();
-        address newVerifierAddress = address(newVerifier);
-        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityUpdateVerifier, (newVerifier));
+        (, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        address newVerifierAddress = address(updateVerifiers);
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.setIdentityUpdateVerifierLookupTable, (updateVerifiers));
         bytes memory checkCallData =
-            abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierAddress, ());
+            abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierLookupTableAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifierAddress);
 
         // Test
@@ -114,12 +124,14 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         assertCallSucceedsOn(identityManagerAddress, checkCallData, expectedReturn);
     }
 
-    /// @notice Checks that the identity update verifier cannot be set except by the owner.
-    function testCannotSetIdentityUpdateVerifierUnlessOwner(address notOwner) public {
+    /// @notice Checks that the identity update verifier lookup table cannot be set except by the
+    ///         owner.
+    function testCannotSetIdentityUpdateVerifierLookupTableUnlessOwner(address notOwner) public {
         // Setup
         vm.assume(notOwner != address(this) && notOwner != address(0x0));
-        ITreeVerifier newVerifier = new SimpleVerifier();
-        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityUpdateVerifier, (newVerifier));
+        (, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.setIdentityUpdateVerifierLookupTable, (updateVerifiers));
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(notOwner);
 
@@ -127,15 +139,15 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, errorData);
     }
 
-    /// @notice Ensures that it is not possible to set the address of the verifier for identity
-    ///         removal unless called via the proxy.
-    function testCannotSetIdentityUpdateVerifierUnlessViaProxy() public {
+    /// @notice Ensures that it is not possible to set the address of the verifier lookup table for
+    ///         identity removal unless called via the proxy.
+    function testCannotSetIdentityUpdateVerifierLookupTableUnlessViaProxy() public {
         // Setup
-        ITreeVerifier newVerifier = new SimpleVerifier();
+        (, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([40]));
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.setIdentityUpdateVerifier(newVerifier);
+        managerImpl.setIdentityUpdateVerifierLookupTable(updateVerifiers);
     }
 
     /// @notice Ensures that we can get the address of the semaphore verifier.
