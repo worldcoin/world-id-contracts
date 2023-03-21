@@ -26,20 +26,8 @@ contract VerifierLookupTableQuery is VerifierLookupTableTest {
     /// @notice Ensures that it reverts when queried for a missing batch size.
     function testCannotGetVerifierForMissingBatchSize(uint256 batchSize) public {
         // Setup
-        vm.assume(batchSize <= lookupTable.maximumBatchSize() && batchSize != defaultBatchSize);
+        vm.assume(batchSize != defaultBatchSize);
         vm.expectRevert(abi.encodeWithSelector(VerifierLookupTable.NoSuchVerifier.selector));
-
-        // Test
-        lookupTable.getVerifierFor(batchSize);
-    }
-
-    /// @notice Ensures that it reverts when queried for a
-    function testCanotGetVerifierForInvalidBatchSize(uint256 batchSize) public {
-        // Setup
-        vm.assume(batchSize > lookupTable.maximumBatchSize() && batchSize != defaultBatchSize);
-        vm.expectRevert(
-            abi.encodeWithSelector(VerifierLookupTable.BatchTooLarge.selector, batchSize)
-        );
 
         // Test
         lookupTable.getVerifierFor(batchSize);
@@ -54,7 +42,7 @@ contract VerifierLookupTableQuery is VerifierLookupTableTest {
         public
     {
         // Setup
-        vm.assume(batchSize != defaultBatchSize && batchSize <= lookupTable.maximumBatchSize());
+        vm.assume(batchSize != defaultBatchSize);
         vm.assume(newVerifier != nullVerifier);
 
         // Test
@@ -63,22 +51,9 @@ contract VerifierLookupTableQuery is VerifierLookupTableTest {
         assertEq(address(result), address(newVerifier));
     }
 
-    /// @notice Ensures that the lookup table will not add a verifier with an invalid batch size.
-    function testCannotAddVerifierWithInvalidBatchSize(uint256 batchSize) public {
-        // Setup
-        vm.assume(batchSize > lookupTable.maximumBatchSize());
-        vm.expectRevert(
-            abi.encodeWithSelector(VerifierLookupTable.BatchTooLarge.selector, batchSize)
-        );
-
-        // Test
-        lookupTable.addVerifier(batchSize, defaultVerifier);
-    }
-
     /// @notice Ensures that you cannot inadvertently overwrite an existing verifier.
     function testCannotAddVerifierForBatchSizeThatAlreadyExists(uint256 batchSize) public {
         // Setup
-        vm.assume(batchSize <= lookupTable.maximumBatchSize());
         if (batchSize != defaultBatchSize) {
             lookupTable.addVerifier(batchSize, defaultVerifier);
         }
@@ -114,22 +89,6 @@ contract VerifierLookupTableQuery is VerifierLookupTableTest {
         assertEq(address(result), address(newVerifier));
     }
 
-    /// @notice Ensures that verifiers cannot be updated if the batch size is invalid.
-    function testCannotUpdateVerifierIfBatchSizeTooLarge(
-        uint256 batchSize,
-        ITreeVerifier newVerifier
-    ) public {
-        // Setup
-        vm.assume(batchSize > lookupTable.maximumBatchSize());
-        vm.assume(newVerifier != defaultVerifier);
-        vm.expectRevert(
-            abi.encodeWithSelector(VerifierLookupTable.BatchTooLarge.selector, batchSize)
-        );
-
-        // Test
-        lookupTable.updateVerifier(batchSize, newVerifier);
-    }
-
     /// @notice Ensures that verifiers cannot be updated except by the owner.
     function testCannotUpdateVerifierIfNotOwner(address naughty) public {
         // Setup
@@ -148,7 +107,6 @@ contract VerifierLookupTableQuery is VerifierLookupTableTest {
     /// @notice Ensures that it is possible to disable the verifier.
     function testCanDisableVerifier(uint256 batchSize) public {
         // Setup
-        vm.assume(batchSize <= lookupTable.maximumBatchSize());
         if (batchSize != defaultBatchSize) {
             lookupTable.addVerifier(batchSize, defaultVerifier);
         }
@@ -157,19 +115,6 @@ contract VerifierLookupTableQuery is VerifierLookupTableTest {
         lookupTable.disableVerifier(batchSize);
         vm.expectRevert(abi.encodeWithSelector(VerifierLookupTable.NoSuchVerifier.selector));
         lookupTable.getVerifierFor(batchSize);
-    }
-
-    /// @notice Ensures that the contract reverts if requested to disable a verifier for an invalid
-    ///         batch size.
-    function testCannotDisableVerifierForInvalidBatchSize(uint256 batchSize) public {
-        // Setup
-        vm.assume(batchSize > lookupTable.maximumBatchSize());
-        vm.expectRevert(
-            abi.encodeWithSelector(VerifierLookupTable.BatchTooLarge.selector, batchSize)
-        );
-
-        // Test
-        lookupTable.disableVerifier(batchSize);
     }
 
     /// @notice Ensures that only the contract owner is able to disable verifiers.
@@ -181,18 +126,5 @@ contract VerifierLookupTableQuery is VerifierLookupTableTest {
 
         // Test
         lookupTable.disableVerifier(defaultBatchSize);
-    }
-
-    ////////////////////////////////////////////////////////////////////////////////
-    ///                            BASIC DATA QUERY                              ///
-    ////////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Ensures that it is possible to query the maximum batch size no matter who you are.
-    function testCanAlwaysGetMaximumBatchSize(address caller) public {
-        // Setup
-        vm.prank(caller);
-
-        // Test
-        assertEq(lookupTable.maximumBatchSize(), 1000);
     }
 }

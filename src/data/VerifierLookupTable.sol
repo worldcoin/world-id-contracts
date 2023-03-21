@@ -15,9 +15,6 @@ contract VerifierLookupTable is Ownable {
     ///                                   DATA                                   ///
     ////////////////////////////////////////////////////////////////////////////////
 
-    /// The maximum size of a batch that will be used by the WorldID Identity Manager.
-    uint256 internal constant MAXIMUM_BATCH_SIZE = 1000;
-
     /// The null address.
     address internal constant nullAddress = address(0x0);
 
@@ -33,11 +30,6 @@ contract VerifierLookupTable is Ownable {
     ////////////////////////////////////////////////////////////////////////////////
     ///                                  ERRORS                                  ///
     ////////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Raised if a too large batch is inserted or requested.
-    ///
-    /// @param requestedBatch The size of the batch that was requested.
-    error BatchTooLarge(uint256 requestedBatch);
 
     /// @notice Raised if a batch size is requested that the lookup table doesn't know about.
     error NoSuchVerifier();
@@ -89,9 +81,6 @@ contract VerifierLookupTable is Ownable {
     /// @custom:reverts BatchTooLarge If `batchSize` exceeds the maximum batch size.
     /// @custom:reverts string If the caller is not the owner.
     function addVerifier(uint256 batchSize, ITreeVerifier verifier) public onlyOwner {
-        // Ensure that the batch size is within bounds.
-        validateBatchSize(batchSize);
-
         // Check that there is no entry for that batch size.
         if (verifier_lut[batchSize] != nullVerifier) {
             revert VerifierExists();
@@ -115,10 +104,6 @@ contract VerifierLookupTable is Ownable {
         onlyOwner
         returns (ITreeVerifier oldVerifier)
     {
-        // Ensure that the batch size is within bounds.
-        validateBatchSize(batchSize);
-
-        // Set the verifier in the table.
         oldVerifier = verifier_lut[batchSize];
         verifier_lut[batchSize] = verifier;
     }
@@ -139,27 +124,9 @@ contract VerifierLookupTable is Ownable {
         return updateVerifier(batchSize, ITreeVerifier(nullAddress));
     }
 
-    /// @notice Gets the maximum batch size supported by this lookup table.
-    ///
-    /// @return batchSize The maximum batch size.
-    function maximumBatchSize() public pure returns (uint256 batchSize) {
-        return MAXIMUM_BATCH_SIZE;
-    }
-
     ////////////////////////////////////////////////////////////////////////////////
     ///                          INTERNAL FUNCTIONALITY                          ///
     ////////////////////////////////////////////////////////////////////////////////
-
-    /// @notice Checks if the batch size is valid.
-    ///
-    /// @param batchSize The batch size to check.
-    ///
-    /// @custom:reverts BatchTooLarge If `batchSize` exceeds the maximum batch size.
-    function validateBatchSize(uint256 batchSize) internal pure {
-        if (batchSize > MAXIMUM_BATCH_SIZE) {
-            revert BatchTooLarge(batchSize);
-        }
-    }
 
     /// @notice Checks if the entry for the provided `batchSize` is a valid verifier.
     ///
@@ -168,8 +135,6 @@ contract VerifierLookupTable is Ownable {
     /// @custom:reverts NoSuchVerifier If `batchSize` does not have an associated verifier.
     /// @custom:reverts BatchTooLarge If `batchSize` exceeds the maximum batch size.
     function validateVerifier(uint256 batchSize) internal view {
-        validateBatchSize(batchSize);
-
         if (verifier_lut[batchSize] == nullVerifier) {
             revert NoSuchVerifier();
         }

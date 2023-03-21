@@ -11,7 +11,8 @@ remappings = [
   'ds-test/=lib/ds-test/src/',
   '@zk-kit/=lib/zk-kit/packages/',
   'openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/',
-  'contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/'
+  'contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/',
+  'semaphore/=lib/semaphore/packages/contracts/contracts/'
 ]
 
 # The default is to optimise, but let's be clear about it.

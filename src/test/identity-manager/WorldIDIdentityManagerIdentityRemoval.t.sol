@@ -134,14 +134,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
         bytes memory callData = abi.encodeCall(
             ManagerImpl.removeIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
         );
-        bytes memory errorData;
-        if (identities.length > 1000) {
-            errorData = abi.encodeWithSelector(
-                VerifierLookupTable.BatchTooLarge.selector, identities.length
-            );
-        } else {
-            errorData = abi.encodeWithSelector(VerifierLookupTable.NoSuchVerifier.selector);
-        }
+        bytes memory errorData = abi.encodeWithSelector(VerifierLookupTable.NoSuchVerifier.selector);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, errorData);
