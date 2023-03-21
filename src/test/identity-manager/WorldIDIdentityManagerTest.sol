@@ -7,7 +7,9 @@ import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleStateBridge} from "../mock/SimpleStateBridge.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {UnimplementedTreeVerifier} from "../../utils/UnimplementedTreeVerifier.sol";
-import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
+import {ISemaphoreVerifier} from
+    "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
+import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -25,8 +27,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     IdentityManager internal identityManager;
     ManagerImpl internal managerImpl;
 
-    ITreeVerifier internal verifier;
+    ITreeVerifier internal treeVerifier;
     uint256 internal initialRoot = 0x0;
+    uint8 internal treeDepth = 16;
 
     address internal identityManagerAddress;
     address internal managerImplAddress;
@@ -87,10 +90,17 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @notice This function runs before every single test.
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
-        verifier = new SimpleVerifier();
+        treeVerifier = new SimpleVerifier();
         stateBridge = new SimpleStateBridge();
         stateBridgeProxy = address(stateBridge);
-        makeNewIdentityManager(initialRoot, verifier, isStateBridgeEnabled, stateBridgeProxy);
+        makeNewIdentityManager(
+            treeDepth,
+            initialRoot,
+            treeVerifier,
+            semaphoreVerifier,
+            isStateBridgeEnabled,
+            stateBridgeProxy
+        );
 
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
@@ -106,13 +116,16 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @dev It is initialised in the globals.
     ///
     /// @param actualPreRoot The pre-root to use.
-    /// @param actualVerifier The verifier instance to use.
+    /// @param actualTreeVerifier The tree verifier instance to use.
+    /// @param actualSemaphoreVerifier The Semaphore verifier instance to use.
     /// @param enableStateBridge Whether or not the new identity manager should have the state
     ///        bridge enabled.
     /// @param actualStateBridgeProxy The address of the state bridge.
     function makeNewIdentityManager(
+        uint8 actualTreeDepth,
         uint256 actualPreRoot,
-        ITreeVerifier actualVerifier,
+        ITreeVerifier actualTreeVerifier,
+        ISemaphoreVerifier actualSemaphoreVerifier,
         bool enableStateBridge,
         address actualStateBridgeProxy
     ) public {
@@ -122,10 +135,11 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         bytes memory initCallData = abi.encodeCall(
             ManagerImpl.initialize,
             (
+                actualTreeDepth,
                 actualPreRoot,
-                actualVerifier,
+                actualTreeVerifier,
                 unimplementedVerifier,
-                semaphoreVerifier,
+                actualSemaphoreVerifier,
                 enableStateBridge,
                 actualStateBridgeProxy
             )

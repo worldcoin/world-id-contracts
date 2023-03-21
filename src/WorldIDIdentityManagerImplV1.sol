@@ -4,7 +4,11 @@ pragma solidity ^0.8.19;
 import {WorldIDImpl} from "./abstract/WorldIDImpl.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
-import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
+import {SemaphoreTreeDepthValidator} from "./utils/SemaphoreTreeDepthValidator.sol";
+
+import {ISemaphoreVerifier} from
+    "semaphore/packages/contracts/contracts/interfaces/ISemaphoreVerifier.sol";
+import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
 
 /// @title WorldID Identity Manager Implementation Version 1
 /// @author Worldcoin
@@ -78,13 +82,16 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ITreeVerifier internal identityUpdateVerifier;
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
-    SemaphoreVerifier internal semaphoreVerifier;
+    ISemaphoreVerifier internal semaphoreVerifier;
 
     /// @notice The interface of the bridge contract from L1 to supported target chains.
     address internal _stateBridgeProxyAddress;
 
     /// @notice Boolean flag to enable/disable the state bridge.
     bool internal _isStateBridgeEnabled;
+
+    /// @notice The depth of the Semaphore merkle tree.
+    uint8 internal treeDepth;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                               PUBLIC TYPES                              ///
@@ -185,6 +192,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice Thrown when attempting to set the state bridge proxy address to the zero address.
     error InvalidStateBridgeProxyAddress();
 
+    /// @notice Thrown when Semaphore tree depth is not supported.
+    ///
+    /// @param depth Passed tree depth.
+    error UnsupportedTreeDepth(uint8 depth);
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -204,6 +216,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
     ///      replaced by use of setters.
     ///
+    /// @param _treeDepth The depth of the MerkeTree
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of the empty tree.
     /// @param _batchInsertionVerifier The initial tree verifier to use for batch insertions.
@@ -214,18 +227,25 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param initialStateBridgeProxyAddress The initial state bridge proxy address to use.
     ///
     /// @custom:reverts string If called more than once at the same initalisation number.
+    /// @custom:reverts UnsupportedTreeDepth If passed tree depth is not amoung defined values.
     function initialize(
+        uint8 _treeDepth,
         uint256 initialRoot,
         ITreeVerifier _batchInsertionVerifier,
         ITreeVerifier _batchUpdateVerifier,
-        SemaphoreVerifier _semaphoreVerifier,
+        ISemaphoreVerifier _semaphoreVerifier,
         bool _enableStateBridge,
         address initialStateBridgeProxyAddress
     ) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
+        if (!SemaphoreTreeDepthValidator.validate(_treeDepth)) {
+            revert UnsupportedTreeDepth(_treeDepth);
+        }
+
         // Now perform the init logic for this contract.
+        treeDepth = _treeDepth;
         rootHistoryExpiry = 1 hours;
         _latestRoot = initialRoot;
         batchInsertionVerifier = _batchInsertionVerifier;
@@ -912,6 +932,20 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         rootHistoryExpiry = newExpiryTime;
     }
 
+    /// @notice Gets the Semaphore tree depth the contract was initialized with.
+    ///
+    /// @return initializedTreeDepth Tree depth.
+    function getTreeDepth()
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (uint8 initializedTreeDepth)
+    {
+        return treeDepth;
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                    SEMAPHORE PROOF VALIDATION LOGIC                     ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -934,14 +968,9 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 externalNullifierHash,
         uint256[8] calldata proof
     ) public view virtual onlyProxy onlyInitialized {
-        uint256[4] memory publicSignals = [root, nullifierHash, signalHash, externalNullifierHash];
-
         if (checkValidRoot(root)) {
             semaphoreVerifier.verifyProof(
-                [proof[0], proof[1]],
-                [[proof[2], proof[3]], [proof[4], proof[5]]],
-                [proof[6], proof[7]],
-                publicSignals
+                root, nullifierHash, signalHash, externalNullifierHash, proof, treeDepth
             );
         }
     }

@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {Verifier as SemaphoreVerifier} from "semaphore/base/Verifier.sol";
+import {SemaphoreVerifier} from "semaphore/packages/contracts/contracts/base/SemaphoreVerifier.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -36,8 +36,9 @@ contract WorldIDIdentityManagerConstruction is WorldIDIdentityManagerTest {
         bytes memory callData = abi.encodeCall(
             ManagerImpl.initialize,
             (
+                treeDepth,
                 initialRoot,
-                verifier,
+                treeVerifier,
                 unimplementedVerifier,
                 semaphoreVerifier,
                 isStateBridgeEnabled,

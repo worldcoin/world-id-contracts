@@ -26,8 +26,9 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         bytes memory callData = abi.encodeCall(
             ManagerImpl.initialize,
             (
+                treeDepth,
                 initialRoot,
-                verifier,
+                treeVerifier,
                 unimplementedVerifier,
                 semaphoreVerifier,
                 isStateBridgeEnabled,
@@ -48,8 +49,9 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         bytes memory callData = abi.encodeCall(
             ManagerImpl.initialize,
             (
+                treeDepth,
                 initialRoot,
-                verifier,
+                treeVerifier,
                 unimplementedVerifier,
                 semaphoreVerifier,
                 isStateBridgeEnabled,
@@ -71,12 +73,42 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
 
         // Test
         localImpl.initialize(
+            treeDepth,
             initialRoot,
-            verifier,
+            treeVerifier,
             unimplementedVerifier,
             semaphoreVerifier,
             isStateBridgeEnabled,
             stateBridgeProxy
         );
+    }
+
+    /// @notice Checks that it is impossible to initialize the contract with unsupported tree depth.
+    function testCannotPassUnsupportedTreeDepth() public {
+        // Setup
+        delete identityManager;
+        delete managerImpl;
+
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+        uint8 unsupportedDepth = 15;
+
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.initialize,
+            (
+                unsupportedDepth,
+                initialRoot,
+                treeVerifier,
+                unimplementedVerifier,
+                semaphoreVerifier,
+                isStateBridgeEnabled,
+                stateBridgeProxy
+            )
+        );
+
+        vm.expectRevert(abi.encodeWithSelector(ManagerImpl.UnsupportedTreeDepth.selector, 15));
+
+        // Test
+        identityManager = new IdentityManager(managerImplAddress, callData);
     }
 }

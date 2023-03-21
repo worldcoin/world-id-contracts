@@ -63,8 +63,9 @@ contract WorldIDIdentityManagerUpdate is WorldIDIdentityManagerTest {
         bytes memory initCall = abi.encodeCall(
             ManagerImpl.initialize,
             (
+                treeDepth,
                 initialRoot,
-                verifier,
+                treeVerifier,
                 unimplementedVerifier,
                 semaphoreVerifier,
                 isStateBridgeEnabled,

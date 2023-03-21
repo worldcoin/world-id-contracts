@@ -14,8 +14,8 @@ import { poseidon } from 'circomlibjs';
 import IdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
 import UnimplementedTreeVerifier from '../out/UnimplementedTreeVerifier.sol/UnimplementedTreeVerifier.json' assert { type: 'json' };
-import { default as SemaphoreVerifier } from '../out/Verifier.sol/Verifier.json' assert { type: 'json' };
-import { default as SemaphorePairing } from '../out/Verifier.sol/Pairing.json' assert { type: 'json' };
+import { default as SemaphoreVerifier } from '../out/SemaphoreVerifier.sol/SemaphoreVerifier.json' assert { type: 'json' };
+import { default as SemaphorePairing } from '../out/Pairing.sol/Pairing.json' assert { type: 'json' };
 import Router from '../out/WorldIDRouter.sol/WorldIDRouter.json' assert { type: 'json' };
 import RouterImpl from '../out/WorldIDRouterImplV1.sol/WorldIDRouterImplV1.json' assert { type: 'json' };
 import { BigNumber } from '@ethersproject/bignumber';
@@ -45,6 +45,8 @@ const DEFAULT_IDENTITY_MANAGER_UPGRADE_CONTRACT_NAME = 'WorldIDIdentityManagerIm
 const DEFAULT_IDENTITY_MANAGER_UPGRADE_FUNCTION = 'initialize(uint32)';
 const DEFAULT_ROUTER_UPGRADE_CONTRACT_NAME = 'WorldIDRouterImplMock';
 const DEFAULT_ROUTER_UPGRADE_FUNCTION = 'initialize(uint32)';
+const CONTRACT_SIZE_WARNING_THRESHOLD_BYTES = 18000;
+const CONTRACT_SIZE_ERROR_THRESHOLD_BYTES = 24576;
 
 // === Implementation =============================================================================
 
@@ -122,6 +124,19 @@ async function httpsGetWithRedirects(url) {
       reject(err);
     });
   });
+}
+
+// Function generates a warning or error depending on the contract bytecode size
+// It is only approximation based on the bytecode (constructor + bytecode)
+// Run forge build --sizes for stats about deployed bytecode size
+// Max contract size is 24kb
+// We set a warning threshold at 18kb
+function checkContractSize(spinner, bytecode) {
+  const size = bytecode.length / 2;
+  if (size >= CONTRACT_SIZE_WARNING_THRESHOLD_BYTES && size < CONTRACT_SIZE_ERROR_THRESHOLD_BYTES)
+    spinner.warn('Significant contract size : ' + size);
+  else if (size >= CONTRACT_SIZE_ERROR_THRESHOLD_BYTES)
+    spinner.fail('Contract size exceeds allowed maximum size: ' + size);
 }
 
 async function downloadSemaphoreMtbBinary(plan, config) {
@@ -309,6 +324,7 @@ async function compileVerifierContract(plan, _) {
       },
     };
     let output = solc.compile(JSON.stringify(input));
+
     fs.mkdirSync(MTB_CONTRACTS_DIR, { recursive: true });
     fs.writeFileSync(config.mtbVerifierContractOutFile, output);
   });
@@ -335,11 +351,9 @@ async function deployVerifierContract(plan, config) {
     let verifierBytecode = JSON.parse(
       fs.readFileSync(config.mtbVerifierContractOutFile).toString()
     );
-    let factory = new ContractFactory(
-      [],
-      verifierBytecode.contracts['Verifier.sol'].Verifier.evm.bytecode.object,
-      config.wallet
-    );
+    let bytecode = verifierBytecode.contracts['Verifier.sol'].Verifier.evm.bytecode.object;
+    let factory = new ContractFactory([], bytecode, config.wallet);
+    checkContractSize(spinner, bytecode);
     let contract = await factory.deploy();
     spinner.text = `Waiting for MTB Verifier deploy transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
@@ -351,11 +365,9 @@ async function deployVerifierContract(plan, config) {
 async function ensureUnimplementedTreeVerifierDeployment(plan, config) {
   plan.add('Deploy Unimplemented Tree Verifier', async () => {
     const spinner = ora('Deploying Unimplemented Tree Verifier contract...').start();
-    const factory = new ContractFactory(
-      UnimplementedTreeVerifier.abi,
-      UnimplementedTreeVerifier.bytecode.object,
-      config.wallet
-    );
+    let bytecode = UnimplementedTreeVerifier.bytecode.object;
+    const factory = new ContractFactory(UnimplementedTreeVerifier.abi, bytecode, config.wallet);
+    checkContractSize(spinner, bytecode);
     const contract = await factory.deploy();
     spinner.text = `Waiting for verifier deploy transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
@@ -363,6 +375,25 @@ async function ensureUnimplementedTreeVerifierDeployment(plan, config) {
     config.unimplementedTreeVerifierContractAddress = contract.address;
   });
 }
+
+// Deploying libraries, manual linking
+//
+// In case you encounter a compilation error that looks something like this
+//   { ... reason: 'invalid bytecode', code: 'INVALID_ARGUMENT', argument: 'bytecode', ... }
+// or figured out that your code or 3rd party code uses a library
+// follow instructions below
+//
+// - In the problematic bytecode find a substring indicating a placeholder for library address that's
+//   a 34 character prefix of the hex encoding of the keccak256 hash of the fully qualified library name
+//   between __$ and $__
+//   E.g. __$a0b3f842b95cabff7722bd983061aec5b3$__
+// - Compile and deploy the library. Save the addrsss it was deployed under!
+// - Compile the code that previously cause problem
+// - In the bytecode manually replace placeholder with the address of library
+// - Deploy the bytecode
+//
+// References
+// - https://docs.soliditylang.org/en/v0.8.19/using-the-compiler.html#library-linking
 
 async function ensureSemaphoreVerifierDeployment(plan, config) {
   plan.add('Deploy Semaphore Pairing Library', async () => {
@@ -380,12 +411,13 @@ async function ensureSemaphoreVerifierDeployment(plan, config) {
   });
   plan.add('Deploy Semaphore Verifier Contract', async () => {
     const spinner = ora('Deploying Semaphore Verifier contract...').start();
-    const pairingPointer = '__$c3727049c0bbe32374ed9d5522c13a9bf7$__';
+    const pairingPointer = '__$a0b3f842b95cabff7722bd983061aec5b3$__';
     const pairingLibAddressWithout0x = config.semaphorePairingLibraryAddress.substring(2);
     const newBytecode = SemaphoreVerifier.bytecode.object.replaceAll(
       pairingPointer,
       pairingLibAddressWithout0x
     );
+    checkContractSize(spinner, newBytecode);
     const factory = new ContractFactory(SemaphorePairing.abi, newBytecode, config.wallet);
     const contract = await factory.deploy();
     spinner.text = `Waiting for Semaphore verifier deploy transaction (address: ${contract.address})...`;
@@ -465,7 +497,9 @@ async function deployRouter(plan, config) {
 
         // Deploy the proxy contract.
         spinner.text = 'Deploying the WorldID Router proxy...';
-        const factory = new ContractFactory(Router.abi, Router.bytecode.object, config.wallet);
+        let bytecode = Router.bytecode.object;
+        checkContractSize(spinner, bytecode);
+        const factory = new ContractFactory(Router.abi, bytecode, config.wallet);
         const contract = await factory.deploy(config.routerImplementationContractAddress, callData);
         spinner.text = `Waiting for the WorldID Router deployment transaction (address: ${contract.address})...`;
         await contract.deployTransaction.wait();
@@ -515,11 +549,9 @@ async function deployRouter(plan, config) {
 async function deployIdentityManager(plan, config) {
   plan.add('Deploy WorldID Identity Manager Implementation', async () => {
     const spinner = ora('Deploying WorldID Identity Manager implementation...').start();
-    const factory = new ContractFactory(
-      IdentityManagerImpl.abi,
-      IdentityManagerImpl.bytecode.object,
-      config.wallet
-    );
+    let bytecode = IdentityManagerImpl.bytecode.object;
+    checkContractSize(spinner, bytecode);
+    const factory = new ContractFactory(IdentityManagerImpl.abi, bytecode, config.wallet);
     const contract = await factory.deploy();
     spinner.text = `Waiting for the WorldID Identity Manager Implementation deployment transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
@@ -532,6 +564,7 @@ async function deployIdentityManager(plan, config) {
     const iface = new Interface(IdentityManagerImpl.abi);
     const processedStateBridgeAddress = utils.getAddress(config.stateBridgeContractAddress);
     const callData = iface.encodeFunctionData('initialize', [
+      config.treeDepth,
       config.initialRoot,
       config.verifierContractAddress,
       config.unimplementedTreeVerifierContractAddress,
