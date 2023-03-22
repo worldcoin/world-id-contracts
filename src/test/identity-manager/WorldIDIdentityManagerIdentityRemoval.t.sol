@@ -41,7 +41,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
@@ -77,7 +77,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
@@ -127,7 +127,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
@@ -160,7 +160,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareRemoveIdentitiesTestCase(identities, prf);
@@ -239,7 +239,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
             defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         bytes memory callData = abi.encodeCall(
             ManagerImpl.removeIdentities, (actualProof, actualRoot, preparedIdents, postRoot)
@@ -275,7 +275,7 @@ contract WorldIDIdentityManagerIdentityRemoval is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         preparedIdents[position].oldCommitment = SNARK_SCALAR_FIELD + i;
         bytes memory callData = abi.encodeCall(

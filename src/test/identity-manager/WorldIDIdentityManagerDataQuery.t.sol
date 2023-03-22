@@ -26,7 +26,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, newPreRoot);
         bytes memory returnData = abi.encode(ManagerImpl.RootInfo(newPreRoot, 0, true));
@@ -56,7 +56,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -99,7 +99,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -157,7 +157,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory returnData = abi.encode(actualRoot);
@@ -186,7 +186,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         bytes memory callData = abi.encodeCall(ManagerImpl.getTreeDepth, ());
         bytes memory returnData = abi.encode(actualTreeDepth);

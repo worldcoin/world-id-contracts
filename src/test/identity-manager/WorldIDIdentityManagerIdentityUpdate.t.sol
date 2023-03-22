@@ -41,7 +41,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
@@ -77,7 +77,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
@@ -127,7 +127,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
@@ -160,7 +160,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareUpdateIdentitiesTestCase(identities, prf);
@@ -219,7 +219,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities, (actualProof, actualRoot, preparedIdents, postRoot)
@@ -256,7 +256,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         if (changeOld) {
             preparedIdents[position].oldCommitment = SNARK_SCALAR_FIELD + i;

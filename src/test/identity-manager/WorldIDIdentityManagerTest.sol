@@ -5,6 +5,7 @@ import {WorldIDTest} from "../WorldIDTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
+import {IBridge} from "../../interfaces/IBridge.sol";
 
 import {SimpleStateBridge} from "../mock/SimpleStateBridge.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
@@ -54,9 +55,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     uint256 internal constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
-    // StateBridgeProxy mock
-    SimpleStateBridge internal stateBridge;
-    address internal stateBridgeProxy;
+    // StateBridgemock
+    SimpleStateBridge internal simpleStateBridge;
+    IBridge internal stateBridge;
     bool internal isStateBridgeEnabled = true;
 
     event StateRootSentMultichain(uint256 indexed root);
@@ -101,7 +102,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         defaultInsertVerifiers = new VerifierLookupTable(initialBatchSize, treeVerifier);
         defaultUpdateVerifiers = new VerifierLookupTable(initialBatchSize, treeVerifier);
         stateBridge = new SimpleStateBridge();
-        stateBridgeProxy = address(stateBridge);
+        stateBridge = IBridge(stateBridge);
         makeNewIdentityManager(
             treeDepth,
             initialRoot,
@@ -109,13 +110,13 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
 
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
         hevm.label(managerImplAddress, "ManagerImplementation");
-        hevm.label(stateBridgeProxy, "StateBridgeProxy");
+        hevm.label(address(stateBridge), "StateBridge");
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -131,7 +132,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @param actualSemaphoreVerifier The Semaphore verifier instance to use.
     /// @param enableStateBridge Whether or not the new identity manager should have the state
     ///        bridge enabled.
-    /// @param actualStateBridgeProxy The address of the state bridge.
+    /// @param actualStateBridge The current state bridge.
     function makeNewIdentityManager(
         uint8 actualTreeDepth,
         uint256 actualPreRoot,
@@ -139,7 +140,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         VerifierLookupTable updateVerifiers,
         ISemaphoreVerifier actualSemaphoreVerifier,
         bool enableStateBridge,
-        address actualStateBridgeProxy
+        IBridge actualStateBridge
     ) public {
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
@@ -153,7 +154,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
                 updateVerifiers,
                 actualSemaphoreVerifier,
                 enableStateBridge,
-                actualStateBridgeProxy
+                actualStateBridge
             )
         );
 
@@ -167,7 +168,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @param actualPreRoot The pre-root to use.
     /// @param enableStateBridge Whether or not the new identity manager should have the state
     ///        bridge enabled.
-    /// @param actualStateBridgeProxy The address of the state bridge.
+    /// @param actualStateBridge The current state bridge.
     /// @param batchSizes The batch sizes to create verifiers for. Verifiers will be created for
     ///        both insertions and updates. Must be non-empty.
     ///
@@ -176,7 +177,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     function makeNewIdentityManager(
         uint256 actualPreRoot,
         bool enableStateBridge,
-        address actualStateBridgeProxy,
+        IBridge actualStateBridge,
         uint256[] calldata batchSizes
     ) public {
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
@@ -192,7 +193,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             updateVerifiers,
             semaphoreVerifier,
             enableStateBridge,
-            actualStateBridgeProxy
+            actualStateBridge
         );
     }
 
