@@ -6,6 +6,7 @@ import {WorldIDImpl} from "./abstract/WorldIDImpl.sol";
 import {IWorldID} from "./interfaces/IWorldID.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
 import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
+import {IBridge} from "./interfaces/IBridge.sol";
 
 import {SemaphoreTreeDepthValidator} from "./utils/SemaphoreTreeDepthValidator.sol";
 import {VerifierLookupTable} from "./data/VerifierLookupTable.sol";
@@ -85,7 +86,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ISemaphoreVerifier internal semaphoreVerifier;
 
     /// @notice The interface of the bridge contract from L1 to supported target chains.
-    address internal _stateBridgeProxyAddress;
+    IBridge internal _stateBridge;
 
     /// @notice Boolean flag to enable/disable the state bridge.
     bool internal _isStateBridgeEnabled;
@@ -180,17 +181,14 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///         history.
     error NonExistentRoot();
 
-    /// @notice Thrown when attempting to send a transaction to the state bridge proxy that fails.
-    error StateBridgeProxySendRootMultichainFailure();
-
     /// @notice Thrown when attempting to enable the bridge when it is already enabled.
     error StateBridgeAlreadyEnabled();
 
     /// @notice Thrown when attempting to disable the bridge when it is already disabled.
     error StateBridgeAlreadyDisabled();
 
-    /// @notice Thrown when attempting to set the state bridge proxy address to the zero address.
-    error InvalidStateBridgeProxyAddress();
+    /// @notice Thrown when attempting to set the state bridge address to the zero address.
+    error InvalidStateBridgeAddress();
 
     /// @notice Thrown when Semaphore tree depth is not supported.
     ///
@@ -224,7 +222,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param _semaphoreVerifier The verifier to use for semaphore protocol proofs.
     /// @param _enableStateBridge Whether or not the state bridge should be enabled when
     ///        initialising the identity manager.
-    /// @param initialStateBridgeProxyAddress The initial state bridge proxy address to use.
+    /// @param stateBridge The initial state bridge contract to use.
     ///
     /// @custom:reverts string If called more than once at the same initalisation number.
     /// @custom:reverts UnsupportedTreeDepth If passed tree depth is not amoung defined values.
@@ -235,7 +233,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         VerifierLookupTable _batchUpdateVerifiers,
         ISemaphoreVerifier _semaphoreVerifier,
         bool _enableStateBridge,
-        address initialStateBridgeProxyAddress
+        IBridge stateBridge
     ) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
@@ -251,7 +249,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         batchInsertionVerifiers = _batchInsertionVerifiers;
         identityUpdateVerifiers = _batchUpdateVerifiers;
         semaphoreVerifier = _semaphoreVerifier;
-        _stateBridgeProxyAddress = initialStateBridgeProxyAddress;
+        _stateBridge = stateBridge;
         _isStateBridgeEnabled = _enableStateBridge;
 
         // Say that the contract is initialized.
@@ -591,50 +589,45 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @dev Only sends if the state bridge address is not the zero address.
     ///
     function sendRootToStateBridge() internal virtual onlyProxy onlyInitialized {
-        if (_isStateBridgeEnabled && _stateBridgeProxyAddress != address(0)) {
-            (bool success,) = _stateBridgeProxyAddress.call(
-                abi.encodeWithSignature("sendRootMultichain(uint256)", _latestRoot)
-            );
-
-            // If the call to the state bridge proxy failed, we revert with a failure.
-            if (!success) revert StateBridgeProxySendRootMultichainFailure();
+        if (_isStateBridgeEnabled && address(_stateBridge) != address(0)) {
+            _stateBridge.sendRootMultichain(_latestRoot);
         }
     }
 
-    /// @notice Allows a caller to query the address of the current stateBridgeProxy.
+    /// @notice Allows a caller to query the address of the current stateBridge.
     ///
-    /// @return proxy The address of the currently used stateBridgeProxy
-    function stateBridgeProxyAddress()
+    /// @return stateBridge The address of the currently used stateBridge
+    function stateBridge()
         public
         view
         virtual
         onlyProxy
         onlyInitialized
-        returns (address proxy)
+        returns (IBridge stateBridge)
     {
-        return _stateBridgeProxyAddress;
+        return _stateBridge;
     }
 
-    /// @notice Allows a caller to upgrade the stateBridgeProxy.
+    /// @notice Allows a caller to upgrade the stateBridge.
     /// @dev Only the owner of the contract can call this function.
     ///
-    /// @param newStateBridgeProxyAddress The address of the new stateBridgeProxy
-    function setStateBridgeProxyAddress(address newStateBridgeProxyAddress)
+    /// @param newStateBridge The new stateBridge contract
+    function setStateBridge(IBridge newStateBridge)
         public
         virtual
         onlyProxy
         onlyInitialized
         onlyOwner
     {
-        if (newStateBridgeProxyAddress == address(0)) {
-            revert InvalidStateBridgeProxyAddress();
+        if (address(newStateBridge) == address(0)) {
+            revert InvalidStateBridgeAddress();
         }
 
         if (!_isStateBridgeEnabled) {
             enableStateBridge();
         }
 
-        _stateBridgeProxyAddress = newStateBridgeProxyAddress;
+        _stateBridge = newStateBridge;
     }
 
     /// @notice Enables the state bridge.

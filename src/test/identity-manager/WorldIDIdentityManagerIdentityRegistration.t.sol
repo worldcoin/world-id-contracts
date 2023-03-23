@@ -35,7 +35,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
@@ -79,7 +79,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -118,7 +118,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -170,7 +170,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -206,7 +206,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -236,7 +236,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
@@ -270,7 +270,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities, (proof, preRoot, startIndex, identities, postRoot)
@@ -302,7 +302,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
                 updateVerifiers,
                 semaphoreVerifier,
                 isStateBridgeEnabled,
-                stateBridgeProxy
+                stateBridge
             )
         );
 
@@ -352,7 +352,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
@@ -412,7 +412,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
 
         for (uint256 i = 0; i < zeroPosition; ++i) {

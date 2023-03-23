@@ -32,7 +32,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
                 defaultUpdateVerifiers,
                 semaphoreVerifier,
                 isStateBridgeEnabled,
-                stateBridgeProxy
+                stateBridge
             )
         );
 
@@ -55,7 +55,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
                 defaultUpdateVerifiers,
                 semaphoreVerifier,
                 isStateBridgeEnabled,
-                stateBridgeProxy
+                stateBridge
             )
         );
         bytes memory expectedReturn =
@@ -79,7 +79,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
             defaultUpdateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
     }
 
@@ -102,7 +102,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
                 defaultUpdateVerifiers,
                 semaphoreVerifier,
                 isStateBridgeEnabled,
-                stateBridgeProxy
+                stateBridge
             )
         );
 

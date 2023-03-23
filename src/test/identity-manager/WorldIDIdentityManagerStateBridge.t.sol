@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
+import {IBridge} from "../../interfaces/IBridge.sol";
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
@@ -16,18 +17,19 @@ import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentity
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
 contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
-    /// @notice Tests that it is possible to upgrade `stateBridgeProxy` to a new implementation.
-    function testCanUpgradeStateBridgeProxy(address newStateBridgeProxy) public {
-        vm.assume(newStateBridgeProxy != address(0x0) && newStateBridgeProxy != address(this));
+    /// @notice Tests that it is possible to upgrade `stateBridge` to a new implementation.
+    function testCanUpgradestateBridge(IBridge newstateBridge) public {
+        vm.assume(
+            address(newstateBridge) != address(0x0) && address(newstateBridge) != address(this)
+        );
         // Setup
-        bytes memory callData =
-            abi.encodeCall(ManagerImpl.setStateBridgeProxyAddress, (newStateBridgeProxy));
+        bytes memory callData = abi.encodeCall(ManagerImpl.setStateBridge, (newstateBridge));
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));
     }
 
-    /// @notice Tests that it is possible to disable the `stateBridgeProxy`.
+    /// @notice Tests that it is possible to disable the `stateBridge`.
     function testCanDisableStateBridgeFunctionality() public {
         // Setup
         bytes memory callData = abi.encodeCall(ManagerImpl.disableStateBridge, ());
@@ -41,7 +43,7 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
             updateVerifiers,
             semaphoreVerifier,
             isStateBridgeEnabled,
-            stateBridgeProxy
+            stateBridge
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
@@ -65,28 +67,26 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
         assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));
     }
 
-    /// @notice Tests that it is not possible to upgrade `stateBridgeProxy` to the 0x0 address.
+    /// @notice Tests that it is not possible to upgrade `stateBridge` to the 0x0 address.
     function testCannotUpgradeStateBridgeToZeroAddress() public {
         // address used to disable the state bridge functionality
         address zeroAddress = address(0x0);
         // Setup
-        bytes memory callData =
-            abi.encodeCall(ManagerImpl.setStateBridgeProxyAddress, (zeroAddress));
+        bytes memory callData = abi.encodeCall(ManagerImpl.setStateBridge, (IBridge(zeroAddress)));
 
         bytes memory expectedError =
-            abi.encodeWithSelector(ManagerImpl.InvalidStateBridgeProxyAddress.selector);
+            abi.encodeWithSelector(ManagerImpl.InvalidStateBridgeAddress.selector);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Checks that it is impossible to call `setStateBridgeProxyAddress` as a non-owner.
+    /// @notice Checks that it is impossible to call `setStateBridge` as a non-owner.
     function testCannotUpdateStateBridgeAsNonOwner(address nonManager) public {
         // Setup
         vm.assume(nonManager != address(this) && nonManager != address(0x0));
 
-        bytes memory callData =
-            abi.encodeCall(ManagerImpl.setStateBridgeProxyAddress, (address(0x1)));
+        bytes memory callData = abi.encodeCall(ManagerImpl.setStateBridge, (IBridge(address(0x1))));
 
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(nonManager);
@@ -105,7 +105,7 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
             defaultUpdateVerifiers,
             semaphoreVerifier,
             false,
-            stateBridgeProxy
+            stateBridge
         );
         bytes memory callData = abi.encodeCall(ManagerImpl.enableStateBridge, ());
 
@@ -113,7 +113,7 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
         assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));
     }
 
-    /// @notice Tests that it is impossible to enable the `stateBridgeProxy` if it is already
+    /// @notice Tests that it is impossible to enable the `stateBridge` if it is already
     ///         enabled.
     function testCannotEnableStateBridgeIfAlreadyEnabled() public {
         // Setup
@@ -125,7 +125,7 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it is impossible to disabled the `stateBridgeProxy` if it is already
+    /// @notice Tests that it is impossible to disabled the `stateBridge` if it is already
     ///         disabled.
     function testCannotDisableStateBridgeIfAlreadyDisabled() public {
         // Setup
