@@ -86,7 +86,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ISemaphoreVerifier internal semaphoreVerifier;
 
     /// @notice The interface of the bridge contract from L1 to supported target chains.
-    IBridge _stateBridge;
+    IBridge internal _stateBridge;
 
     /// @notice Boolean flag to enable/disable the state bridge.
     bool internal _isStateBridgeEnabled;
