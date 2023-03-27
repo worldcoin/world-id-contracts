@@ -39,7 +39,7 @@ binary should have been downloaded. To generate a test batch, run
 ./mtb/bin/mtb gen-test-params --tree-depth=... --batch-size=...
 ```
 
-where the paremeters MUST match the parameters passed for contract deployment. To transform these
+where the parameters MUST match the parameters passed for contract deployment. To transform these
 into a proof, run the `prove` command, passing the params on stdin:
 
 ```
