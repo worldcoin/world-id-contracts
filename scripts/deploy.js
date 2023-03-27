@@ -493,7 +493,7 @@ function computeRoot(depth) {
     result = poseidon([result, result]);
   }
 
-  return '0x' + result.toString(16);
+  return '0x0' + result.toString(16);
 }
 
 async function ensureInitialRoot(plan, config) {
