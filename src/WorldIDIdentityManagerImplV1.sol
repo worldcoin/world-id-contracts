@@ -222,7 +222,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param _semaphoreVerifier The verifier to use for semaphore protocol proofs.
     /// @param _enableStateBridge Whether or not the state bridge should be enabled when
     ///        initialising the identity manager.
-    /// @param stateBridge The initial state bridge contract to use.
+    /// @param __stateBridge The initial state bridge contract to use.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
     /// @custom:reverts UnsupportedTreeDepth If passed tree depth is not among defined values.
@@ -233,7 +233,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         VerifierLookupTable _batchUpdateVerifiers,
         ISemaphoreVerifier _semaphoreVerifier,
         bool _enableStateBridge,
-        IBridge stateBridge
+        IBridge __stateBridge
     ) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
@@ -249,7 +249,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         batchInsertionVerifiers = _batchInsertionVerifiers;
         identityUpdateVerifiers = _batchUpdateVerifiers;
         semaphoreVerifier = _semaphoreVerifier;
-        _stateBridge = stateBridge;
+        _stateBridge = __stateBridge;
         _isStateBridgeEnabled = _enableStateBridge;
 
         // Say that the contract is initialized.
@@ -596,14 +596,14 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
     /// @notice Allows a caller to query the address of the current stateBridge.
     ///
-    /// @return stateBridge The address of the currently used stateBridge
+    /// @return stateBridgeContract The address of the currently used stateBridge
     function stateBridge()
         public
         view
         virtual
         onlyProxy
         onlyInitialized
-        returns (IBridge stateBridge)
+        returns (IBridge stateBridgeContract)
     {
         return _stateBridge;
     }
