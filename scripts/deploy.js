@@ -493,7 +493,25 @@ function computeRoot(depth) {
     result = poseidon([result, result]);
   }
 
-  return '0x0' + result.toString(16);
+  return formatToAddress(result.toString(16));
+}
+
+// Prepends 0x at the beginning
+// Prepends zeros to make a string with 66 characters
+function formatToAddress(str) {
+  let maxLength = 64;
+  let maxAddressLength = 66;
+  if (str.length > maxLength) {
+    console.error("Root address too long");
+    return;
+  }
+
+  var prefix = '0x';
+  while (prefix.length + str.length < maxAddressLength) {
+    prefix += '0';
+  }
+
+  return prefix + str;
 }
 
 async function ensureInitialRoot(plan, config) {
