@@ -224,8 +224,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///        initialising the identity manager.
     /// @param stateBridge The initial state bridge contract to use.
     ///
-    /// @custom:reverts string If called more than once at the same initalisation number.
-    /// @custom:reverts UnsupportedTreeDepth If passed tree depth is not amoung defined values.
+    /// @custom:reverts string If called more than once at the same initialisation number.
+    /// @custom:reverts UnsupportedTreeDepth If passed tree depth is not among defined values.
     function initialize(
         uint8 _treeDepth,
         uint256 initialRoot,
@@ -523,7 +523,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @param startIndex The index in the tree from which inserting started.
     /// @param preRoot The root value of the tree before these insertions were made.
-    /// @param postRoot The root value of the tree after these insertsions were made.
+    /// @param postRoot The root value of the tree after these insertions were made.
     /// @param identityCommitments The identities that were added to the tree to produce `postRoot`.
     ///
     /// @return hash The input hash calculated as described below.
@@ -548,7 +548,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @dev Implements the computation described below.
     ///
     /// @param preRoot The root value of the tree before the updates were made.
-    /// @param postRoot The root value of the tree after the udpates were made.
+    /// @param postRoot The root value of the tree after the updates were made.
     /// @param identities The identity structures providing the identity data.
     ///
     /// @return hash The input hash calculated as described below.
@@ -736,7 +736,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         }
     }
 
-    /// @notice Vaslidates an array of identity commitments as part of identity removal.
+    /// @notice Validates an array of identity commitments as part of identity removal.
     /// @dev Identities are not valid for identity removal if the provided commitment value is
     ///      non-zero.
     ///
@@ -822,7 +822,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice Gets the address for the lookup table of merkle tree verifiers used for identity
     ///         registrations.
     ///
-    /// @return addr The addresss of the contract being used as the verifier lookup table.
+    /// @return addr The address of the contract being used as the verifier lookup table.
     function getRegisterIdentitiesVerifierLookupTableAddress()
         public
         view
@@ -854,7 +854,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///         updates.
     /// @dev The update verifier is also used for member removals.
     ///
-    /// @return addr The addresss of the contract being used as the verifier lookup table.
+    /// @return addr The address of the contract being used as the verifier lookup table.
     function getIdentityUpdateVerifierLookupTableAddress()
         public
         view
@@ -884,7 +884,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
     /// @notice Gets the address of the verifier used for verification of semaphore proofs.
     ///
-    /// @return addr The addresss of the contract being used as the verifier.
+    /// @return addr The address of the contract being used as the verifier.
     function getSemaphoreVerifierAddress()
         public
         view
