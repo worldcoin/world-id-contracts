@@ -260,7 +260,8 @@ async function getOwnableContractAddress(config) {
   }
 
   if (!config.ownableContractAddress) {
-    console.log('Provide ownable contract address to continue.');
+    console.error('Provide ownable contract address to continue.');
+    process.exit(1);
   }
 }
 
@@ -276,7 +277,8 @@ async function getTargetWalletAddress(config) {
   }
 
   if (!config.targetWalletAddress) {
-    console.log('Provide target owner address to continue.');
+    console.error('Provide target owner address to continue.');
+    process.exit(1);
   }
 }
 
