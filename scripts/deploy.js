@@ -493,7 +493,14 @@ function computeRoot(depth) {
     result = poseidon([result, result]);
   }
 
-  return '0x' + result.toString(16);
+  return formatToAddress(result.toString(16));
+}
+
+// This function ensures the address string has correct format and 66 characters
+// E.g. 0x0818d46bf52298b034413f4a1a1c11594e7a7a3f6ae08cb43d1a2a230e1959ef
+// Prepends 0x and zeros to make a string with 66 characters
+function formatToAddress(str) {
+  return '0x' + str.padStart(64, '0');
 }
 
 async function ensureInitialRoot(plan, config) {
