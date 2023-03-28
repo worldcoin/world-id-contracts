@@ -14,6 +14,7 @@ import { poseidon } from 'circomlibjs';
 import IdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
 import UnimplementedTreeVerifier from '../out/UnimplementedTreeVerifier.sol/UnimplementedTreeVerifier.json' assert { type: 'json' };
+import Ownable from '../out/Ownable.sol/Ownable.json' assert { type: 'json' };
 import { default as SemaphoreVerifier } from '../out/SemaphoreVerifier.sol/SemaphoreVerifier.json' assert { type: 'json' };
 import { default as SemaphorePairing } from '../out/Pairing.sol/Pairing.json' assert { type: 'json' };
 import VerifierLookupTable from '../out/VerifierLookupTable.sol/VerifierLookupTable.json' assert { type: 'json' };
@@ -244,6 +245,40 @@ async function getVerifierLUTAddress(config, targetField, name) {
     config[targetField] = await ask(
       `Please provide the address of the ${name} verifier LUT (or leave blank to deploy): `
     );
+  }
+}
+
+async function getOwnableContractAddress(config) {
+  if (!config.ownableContractAddress) {
+    config.ownableContractAddress = process.env.OWNABLE_CONTRACT_ADDRESS;
+  }
+
+  if (!config.ownableContractAddress) {
+    config.ownableContractAddress = await ask(
+      `Enter the address of the ownable contract to transfer: `
+    );
+  }
+
+  if (!config.ownableContractAddress) {
+    console.error('Provide ownable contract address to continue.');
+    process.exit(1);
+  }
+}
+
+async function getTargetWalletAddress(config) {
+  if (!config.targetWalletAddress) {
+    config.targetWalletAddress = process.env.TARGET_WALLET_ADDRESS;
+  }
+
+  if (!config.targetWalletAddress) {
+    config.targetWalletAddress = await ask(
+      `Enter target wallet address to which transfer ownership: `
+    );
+  }
+
+  if (!config.targetWalletAddress) {
+    console.error('Provide target owner address to continue.');
+    process.exit(1);
   }
 }
 
@@ -775,6 +810,25 @@ async function deployIdentityManager(plan, config, insertLUTTargetField, updateL
       spinner.fail(
         `Could not communicate with the WorldID Identity Manager at ${contract.address}`
       );
+    }
+  });
+}
+
+async function transferIdentityManagerOwnership(plan, config) {
+  plan.add('Transfer Ownership', async () => {
+    const spinner = ora('Building transfer ownership call...').start();
+    const contract = new Contract(config.ownableContractAddress, Ownable.abi, config.wallet);
+
+    spinner.text = `Transferring ownership of contract at ${config.ownableContractAddress} to wallet at ${config.targetWalletAddress}...`;
+
+    try {
+      await contract.transferOwnership(config.targetWalletAddress);
+      spinner.succeed(
+        `Transferred ownership of contract at ${config.ownableContractAddress} to ${config.targetWalletAddress}`
+      );
+    } catch (e) {
+      spinner.fail('Something went wrong during ownership transfer');
+      console.error(e);
     }
   });
 }
@@ -1603,6 +1657,19 @@ async function buildVerifierActionPlan(plan, config, type) {
   }
 }
 
+async function buildTransferActionPlan(plan, config) {
+  dotenv.config();
+
+  await getPrivateKey(config);
+  await getRpcUrl(config);
+  await getProvider(config);
+  await getWallet(config);
+  await getOwnableContractAddress(config);
+  await getTargetWalletAddress(config);
+
+  await transferIdentityManagerOwnership(plan, config);
+}
+
 /** Builds a plan using the provided function and then executes the plan.
  *
  * @param {(plan: Object, config: Object) => Promise<void>} planner The function that performs the
@@ -1731,6 +1798,16 @@ async function main() {
         (plan, config) => buildVerifierActionPlan(plan, config, 'disable'),
         config
       );
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('transfer')
+    .description('Move WorldID identity manager contract ownership.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildTransferActionPlan, config);
       await saveConfiguration(config);
     });
 

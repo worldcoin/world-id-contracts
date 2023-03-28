@@ -34,6 +34,9 @@ deploy: install build; node --no-warnings scripts/deploy.js deploy
 # Upgrade contracts
 upgrade: install build; node --no-warnings scripts/deploy.js upgrade
 
+# Deploy contracts
+transfer-ownership: install build; node --no-warnings scripts/deploy.js transfer
+
 # ===== Verifier Management Rules =====================================================================================
 
 verifier-add: install build; node --no-warnings scripts/deploy.js verifier-add
