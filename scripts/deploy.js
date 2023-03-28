@@ -496,22 +496,11 @@ function computeRoot(depth) {
   return formatToAddress(result.toString(16));
 }
 
-// Prepends 0x at the beginning
-// Prepends zeros to make a string with 66 characters
+// This function ensures the address string has correct format and 66 characters
+// E.g. 0x0818d46bf52298b034413f4a1a1c11594e7a7a3f6ae08cb43d1a2a230e1959ef
+// Prepends 0x and zeros to make a string with 66 characters
 function formatToAddress(str) {
-  let maxLength = 64;
-  let maxAddressLength = 66;
-  if (str.length > maxLength) {
-    console.error("Root address too long");
-    return;
-  }
-
-  var prefix = '0x';
-  while (prefix.length + str.length < maxAddressLength) {
-    prefix += '0';
-  }
-
-  return prefix + str;
+  return '0x' + str.padStart(64, '0');
 }
 
 async function ensureInitialRoot(plan, config) {
