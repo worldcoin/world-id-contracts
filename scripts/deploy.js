@@ -1633,10 +1633,14 @@ async function buildVerifierActionPlan(plan, config, type) {
     await getTargetVerifierAddress(config);
   }
 
+  const isDelete = type === "disable";
   const isAddOrUpdate = (type === "add") || (type === "update");
   const shouldDeploy = config.targetVerifierAddress === undefined || config.targetVerifierAddress === "";
 
-  if (isAddOrUpdate && shouldDeploy) {
+  // We want to query the user for the type of verifier
+  // pretty much always, except if this script is being run with the verifier
+  // already deployed and we're doing an update or add
+  if ((isAddOrUpdate && shouldDeploy) || isDelete) {
     await getTypeOfVerifierToDeploy(config);
   }
 
