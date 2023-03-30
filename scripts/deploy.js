@@ -1025,14 +1025,16 @@ async function getEnableStateBridge(config) {
  *
  * @param {Object} config The configuration for the script.
  * @returns {Promise<void>} The IdentityManager contract address might be written into the `config` object.
-*/
+ */
 async function getIdentityManagerContractAddress(config) {
   if (!config.identityManagerContractAddress) {
     config.identityManagerContractAddress = process.env.IDENTITY_MANAGER_CONTRACT_ADDRESS;
   }
 
   if (!config.identityManagerContractAddress) {
-    config.identityManagerContractAddress = await ask('Please provide the address of the IdentityManager (or leave blank if not needed): ');
+    config.identityManagerContractAddress = await ask(
+      'Please provide the address of the IdentityManager (or leave blank if not needed): '
+    );
   }
 }
 
@@ -1068,11 +1070,15 @@ async function getLookupTableAddress(config) {
   }
 
   if (!config.lookupTableAddress && config.identityManagerContractAddress) {
-    const contract = new Contract(config.identityManagerContractAddress, IdentityManagerImpl.abi, config.provider);
+    const contract = new Contract(
+      config.identityManagerContractAddress,
+      IdentityManagerImpl.abi,
+      config.provider
+    );
 
-    if (config.typeOfVerifierToDeploy === "insert") {
+    if (config.typeOfVerifierToDeploy === 'insert') {
       config.lookupTableAddress = await contract.getRegisterIdentitiesVerifierLookupTableAddress();
-    } else if (config.typeOfVerifierToDeploy === "update") {
+    } else if (config.typeOfVerifierToDeploy === 'update') {
       config.lookupTableAddress = await contract.getIdentityUpdateVerifierLookupTableAddress();
     } else {
       console.error('Invalid type of verifier to deploy');
@@ -1081,7 +1087,9 @@ async function getLookupTableAddress(config) {
   }
 
   if (!config.lookupTableAddress) {
-    console.error('No lookup table address provided & failed to acquire from the identity manager contract.');
+    console.error(
+      'No lookup table address provided & failed to acquire from the identity manager contract.'
+    );
     process.exit(1);
   }
 }
@@ -1110,8 +1118,7 @@ async function getTypeOfVerifierToDeploy(config) {
       'Enter the type of verifier to deploy ["insert" | "update"]: '
     );
 
-    if (config.typeOfVerifierToDeploy !== "insert"
-    && config.typeOfVerifierToDeploy !== "update") {
+    if (config.typeOfVerifierToDeploy !== 'insert' && config.typeOfVerifierToDeploy !== 'update') {
       console.error('Invalid verifier type provided.');
       process.exit(1);
     }
@@ -1687,9 +1694,10 @@ async function buildVerifierActionPlan(plan, config, type) {
     await getTargetVerifierAddress(config);
   }
 
-  const isDelete = type === "disable";
-  const isAddOrUpdate = (type === "add") || (type === "update");
-  const shouldDeploy = config.targetVerifierAddress === undefined || config.targetVerifierAddress === "";
+  const isDelete = type === 'disable';
+  const isAddOrUpdate = type === 'add' || type === 'update';
+  const shouldDeploy =
+    config.targetVerifierAddress === undefined || config.targetVerifierAddress === '';
 
   // We want to query the user for the type of verifier
   // pretty much always, except if this script is being run with the verifier
@@ -1703,16 +1711,17 @@ async function buildVerifierActionPlan(plan, config, type) {
   await getBatchSize(config);
 
   if (isAddOrUpdate && shouldDeploy) {
-    if (config.typeOfVerifierToDeploy === "insert") {
+    if (config.typeOfVerifierToDeploy === 'insert') {
       await ensureVerifierDeployment(plan, config);
-    } else if (config.typeOfVerifierToDeploy === "update") {
+    } else if (config.typeOfVerifierToDeploy === 'update') {
       await ensureUnimplementedTreeVerifierDeployment(plan, config);
     } else {
-      console.error(`INTERNAL ERROR: Unrecognised type of verifier to deploy: ${config.typeOfVerifierToDeploy}`);
+      console.error(
+        `INTERNAL ERROR: Unrecognised type of verifier to deploy: ${config.typeOfVerifierToDeploy}`
+      );
       process.exit(0);
     }
   }
-
 
   if (type === 'add') {
     await addVerifierToLUT(plan, config);
