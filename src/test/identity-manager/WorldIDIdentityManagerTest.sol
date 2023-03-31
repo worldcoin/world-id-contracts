@@ -98,8 +98,10 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @dev It is run before every single iteration of a property-based fuzzing test.
     function setUp() public {
         treeVerifier = new SimpleVerifier(initialBatchSize);
-        defaultInsertVerifiers = new VerifierLookupTable(initialBatchSize, treeVerifier);
-        defaultUpdateVerifiers = new VerifierLookupTable(initialBatchSize, treeVerifier);
+        defaultInsertVerifiers = new VerifierLookupTable();
+        defaultInsertVerifiers.addVerifier(initialBatchSize, treeVerifier);
+        defaultUpdateVerifiers = new VerifierLookupTable();
+        defaultUpdateVerifiers.addVerifier(initialBatchSize, treeVerifier);
         stateBridge = new SimpleStateBridge();
         stateBridge = IBridge(stateBridge);
         makeNewIdentityManager(
@@ -219,9 +221,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             revert("batch size greater than 1000.");
         }
         ITreeVerifier initialVerifier = new SimpleVerifier(batchSizes[0]);
-        insertVerifiers = new VerifierLookupTable(batchSizes[0], initialVerifier);
-        updateVerifiers = new VerifierLookupTable(batchSizes[0], initialVerifier);
-        for (uint256 i = 1; i < batchSizes.length; ++i) {
+        insertVerifiers = new VerifierLookupTable();
+        updateVerifiers = new VerifierLookupTable();
+        for (uint256 i = 0; i < batchSizes.length; ++i) {
             uint256 batchSize = batchSizes[i];
             if (batchSize > 1000) {
                 revert("batch size greater than 1000.");

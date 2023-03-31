@@ -10,8 +10,8 @@ import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 /// @author Worldcoin
 contract BatchLookupTableConstruction is VerifierLookupTableTest {
     /// @notice Tests that it is possible to properly construct and initialise a router.
-    function testCanConstructLookupTable(uint256 batchSize) public {
+    function testCanConstructLookupTable() public {
         // Test
-        lookupTable = new VerifierLookupTable(batchSize, defaultVerifier);
+        lookupTable = new VerifierLookupTable();
     }
 }

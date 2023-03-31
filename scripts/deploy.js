@@ -13,7 +13,6 @@ import { ErrorFragment, Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
 import IdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
-import UnimplementedTreeVerifier from '../out/UnimplementedTreeVerifier.sol/UnimplementedTreeVerifier.json' assert { type: 'json' };
 import Ownable from '../out/Ownable.sol/Ownable.json' assert { type: 'json' };
 import { default as SemaphoreVerifier } from '../out/SemaphoreVerifier.sol/SemaphoreVerifier.json' assert { type: 'json' };
 import { default as SemaphorePairing } from '../out/Pairing.sol/Pairing.json' assert { type: 'json' };
@@ -442,20 +441,6 @@ async function deployVerifierContract(plan, config) {
   });
 }
 
-async function ensureUnimplementedTreeVerifierDeployment(plan, config) {
-  plan.add('Deploy Unimplemented Tree Verifier', async () => {
-    const spinner = ora('Deploying Unimplemented Tree Verifier contract...').start();
-    let bytecode = UnimplementedTreeVerifier.bytecode.object;
-    const factory = new ContractFactory(UnimplementedTreeVerifier.abi, bytecode, config.wallet);
-    checkContractSize(spinner, bytecode);
-    const contract = await factory.deploy();
-    spinner.text = `Waiting for verifier deploy transaction (address: ${contract.address})...`;
-    await contract.deployTransaction.wait();
-    spinner.succeed(`Deployed Unimplemented Tree Verifier contract to ${contract.address}`);
-    config.unimplementedTreeVerifierContractAddress = contract.address;
-  });
-}
-
 // Deploying libraries, manual linking
 //
 // In case you encounter a compilation error that looks something like this
@@ -659,11 +644,17 @@ async function deployVerifierLookupTable(
       VerifierLookupTable.bytecode.object,
       config.wallet
     );
-    const targetAddress = config[targetVerifierAddressField];
-    const contract = await factory.deploy(config.batchSize, targetAddress);
+    const contract = await factory.deploy();
     spinner.text = `Waiting for the verifier lookup table deployment transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
     config[targetFieldName] = contract.address;
+    const targetAddress = config[targetVerifierAddressField];
+    if (targetAddress) {
+      spinner.text = `Associating verifier with deployed lookup table at ${contract.address}...`;
+      await contract.addVerifier(config.batchSize, targetAddress);
+    } else {
+      spinner.text = `Deploying lookup table without verifier...`;
+    }
     spinner.succeed(`Deployed ${name} Verifier Lookup Table to ${contract.address}`);
   });
 }
@@ -1531,7 +1522,6 @@ async function buildIdentityManagerDeploymentActionPlan(plan, config) {
   }
 
   await ensureVerifierDeployment(plan, config);
-  await ensureUnimplementedTreeVerifierDeployment(plan, config);
   await ensureSemaphoreVerifierDeployment(plan, config);
   await ensureInitialRoot(plan, config);
   if (!config[insertLUTTargetField]) {
@@ -1714,12 +1704,13 @@ async function buildVerifierActionPlan(plan, config, type) {
     if (config.typeOfVerifierToDeploy === 'insert') {
       await ensureVerifierDeployment(plan, config);
     } else if (config.typeOfVerifierToDeploy === 'update') {
-      await ensureUnimplementedTreeVerifierDeployment(plan, config);
+      console.error('No update verifiers currently available');
+      process.exit(1);
     } else {
       console.error(
         `INTERNAL ERROR: Unrecognised type of verifier to deploy: ${config.typeOfVerifierToDeploy}`
       );
-      process.exit(0);
+      process.exit(1);
     }
   }
 
@@ -1731,7 +1722,7 @@ async function buildVerifierActionPlan(plan, config, type) {
     await disableVerifierInLUT(plan, config);
   } else {
     console.error(`INTERNAL ERROR: Unrecognised type of verifier action plan: ${type}`);
-    process.exit(0);
+    process.exit(1);
   }
 }
 
