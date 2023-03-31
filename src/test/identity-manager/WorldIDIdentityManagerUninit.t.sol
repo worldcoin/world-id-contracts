@@ -43,10 +43,15 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         makeUninitIdentityManager();
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareUpdateIdentitiesTestCase(identities, prf);
+        (
+            uint32[] memory leafIndices,
+            uint256[] memory oldIdents,
+            uint256[] memory newIdents,
+            uint256[8] memory actualProof
+        ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, initialRoot, preparedIdents, postRoot)
+            ManagerImpl.updateIdentities,
+            (actualProof, initialRoot, leafIndices, oldIdents, newIdents, postRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
@@ -55,29 +60,9 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Checks that it is impossible to call `removeIdentities` while the contract is not
-    ///         initialised.
-    function testShouldNotCallRemoveIdentitiesWhileUninit(
-        uint128[] memory identities,
-        uint128[8] memory prf
-    ) public {
-        // Setup
-        makeUninitIdentityManager();
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareRemoveIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.removeIdentities, (actualProof, initialRoot, preparedIdents, postRoot)
-        );
-        bytes memory expectedError =
-            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
-    /// @notice Checks that it is impossible to call `calculateTreeVerifierInputHash` while the
-    ///         contract is not initialised.
-    function testShouldNotCallCalculateInputHash() public {
+    /// @notice Checks that it is impossible to call `calculateIdentityRegistrationInputHash` while
+    ///         the contract is not initialised.
+    function testShouldNotCallCalculateIdentityRegistrationInputHash() public {
         // Setup
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(

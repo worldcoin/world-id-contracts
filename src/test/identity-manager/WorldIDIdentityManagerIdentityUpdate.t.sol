@@ -31,7 +31,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        vm.assume(identities.length <= 1000);
+        vm.assume(identities.length <= 1000); // Keeps the test time sane-ish.
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
@@ -43,10 +43,15 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             isStateBridgeEnabled,
             stateBridge
         );
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareUpdateIdentitiesTestCase(identities, prf);
+        (
+            uint32[] memory leafIndices,
+            uint256[] memory oldIdents,
+            uint256[] memory newIdents,
+            uint256[8] memory actualProof
+        ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
+            ManagerImpl.updateIdentities,
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot)
         );
 
         // Expect that the state root was sent to the state bridge
@@ -79,27 +84,85 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             isStateBridgeEnabled,
             stateBridge
         );
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareUpdateIdentitiesTestCase(identities, prf);
-        ManagerImpl.IdentityUpdate[] memory secondIdents =
-            new ManagerImpl.IdentityUpdate[](secondIdentsLength);
+        (
+            uint32[] memory leafIndices,
+            uint256[] memory oldIdents,
+            uint256[] memory newIdents,
+            uint256[8] memory actualProof
+        ) = prepareUpdateIdentitiesTestCase(identities, prf);
+
+        part2TestUpdateIdentitiesSelectsCorrectVerifier(
+            actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot
+        );
+    }
+
+    /// @notice Exists to work around local variable limits.
+    function part2TestUpdateIdentitiesSelectsCorrectVerifier(
+        uint256[8] memory actualProof,
+        uint256 newPreRoot,
+        uint32[] memory leafIndices,
+        uint256[] memory oldIdents,
+        uint256[] memory newIdents,
+        uint256 newPostRoot
+    ) public {
+        uint256 secondIdentsLength = leafIndices.length / 2;
+        uint32[] memory secondLeafIndices = new uint32[](secondIdentsLength);
+        uint256[] memory secondOldIdents = new uint256[](secondIdentsLength);
+        uint256[] memory secondNewIdents = new uint256[](secondIdentsLength);
         for (uint256 i = 0; i < secondIdentsLength; ++i) {
-            secondIdents[i] = preparedIdents[i];
+            secondLeafIndices[i] = leafIndices[i];
+            secondOldIdents[i] = oldIdents[i];
+            secondNewIdents[i] = newIdents[i];
         }
+
+        part3TestUpdateIdentitiesSelectsCorrectVerifier(
+            actualProof,
+            newPreRoot,
+            leafIndices,
+            oldIdents,
+            newIdents,
+            newPostRoot,
+            secondLeafIndices,
+            secondOldIdents,
+            secondNewIdents
+        );
+    }
+
+    /// @notice Exists to work around local variable limits.
+    function part3TestUpdateIdentitiesSelectsCorrectVerifier(
+        uint256[8] memory actualProof,
+        uint256 newPreRoot,
+        uint32[] memory leafIndices,
+        uint256[] memory oldIdents,
+        uint256[] memory newIdents,
+        uint256 newPostRoot,
+        uint32[] memory secondLeafIndices,
+        uint256[] memory secondOldIdents,
+        uint256[] memory secondNewIdents
+    ) public {
         bytes memory firstCallData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
+            ManagerImpl.updateIdentities,
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot)
         );
         uint256 secondPostRoot = uint256(newPostRoot) + 1;
         bytes memory secondCallData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, newPostRoot, secondIdents, secondPostRoot)
+            ManagerImpl.updateIdentities,
+            (
+                actualProof,
+                newPostRoot,
+                secondLeafIndices,
+                secondOldIdents,
+                secondNewIdents,
+                secondPostRoot
+            )
         );
 
         vm.expectEmit(true, true, true, true);
-        emit VerifiedProof(identities.length);
+        emit VerifiedProof(oldIdents.length);
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(newPostRoot);
         vm.expectEmit(true, true, true, true);
-        emit VerifiedProof(identities.length / 2);
+        emit VerifiedProof(secondOldIdents.length);
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(secondPostRoot);
 
@@ -129,10 +192,15 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             isStateBridgeEnabled,
             stateBridge
         );
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareUpdateIdentitiesTestCase(identities, prf);
+        (
+            uint32[] memory leafIndices,
+            uint256[] memory oldIdents,
+            uint256[] memory newIdents,
+            uint256[8] memory actualProof
+        ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
+            ManagerImpl.updateIdentities,
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot)
         );
         bytes memory errorData = abi.encodeWithSelector(VerifierLookupTable.NoSuchVerifier.selector);
 
@@ -162,10 +230,15 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             isStateBridgeEnabled,
             stateBridge
         );
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareUpdateIdentitiesTestCase(identities, prf);
+        (
+            uint32[] memory leafIndices,
+            uint256[] memory oldIdents,
+            uint256[] memory newIdents,
+            uint256[8] memory actualProof
+        ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, newPostRoot)
+            ManagerImpl.updateIdentities,
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
@@ -182,10 +255,15 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         vm.assume(nonManager != address(this) && nonManager != address(0x0));
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareUpdateIdentitiesTestCase(identities, prf);
+        (
+            uint32[] memory leafIndices,
+            uint256[] memory oldIdents,
+            uint256[] memory newIdents,
+            uint256[8] memory actualProof
+        ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, preRoot, preparedIdents, postRoot)
+            ManagerImpl.updateIdentities,
+            (actualProof, preRoot, leafIndices, oldIdents, newIdents, postRoot)
         );
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(nonManager);
@@ -208,8 +286,12 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
                 && actualRoot < SNARK_SCALAR_FIELD
         );
         vm.assume(identities.length <= 1000);
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareUpdateIdentitiesTestCase(identities, prf);
+        (
+            uint32[] memory leafIndices,
+            uint256[] memory oldIdents,
+            uint256[] memory newIdents,
+            uint256[8] memory actualProof
+        ) = prepareUpdateIdentitiesTestCase(identities, prf);
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
@@ -222,7 +304,8 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             stateBridge
         );
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, actualRoot, preparedIdents, postRoot)
+            ManagerImpl.updateIdentities,
+            (actualProof, actualRoot, leafIndices, oldIdents, newIdents, postRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.NotLatestRoot.selector, actualRoot, uint256(currentPreRoot)
@@ -245,8 +328,12 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(position < identities.length);
         vm.assume(identities.length <= 1000);
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareUpdateIdentitiesTestCase(identities, prf);
+        (
+            uint32[] memory leafIndices,
+            uint256[] memory oldIdents,
+            uint256[] memory newIdents,
+            uint256[8] memory actualProof
+        ) = prepareUpdateIdentitiesTestCase(identities, prf);
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
@@ -259,12 +346,13 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             stateBridge
         );
         if (changeOld) {
-            preparedIdents[position].oldCommitment = SNARK_SCALAR_FIELD + i;
+            oldIdents[position] = SNARK_SCALAR_FIELD + i;
         } else {
-            preparedIdents[position].newCommitment = SNARK_SCALAR_FIELD + i;
+            newIdents[position] = SNARK_SCALAR_FIELD + i;
         }
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, postRoot)
+            ManagerImpl.updateIdentities,
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, postRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -285,10 +373,15 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareUpdateIdentitiesTestCase(identities, prf);
+        (
+            uint32[] memory leafIndices,
+            uint256[] memory oldIdents,
+            uint256[] memory newIdents,
+            uint256[8] memory actualProof
+        ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, newPreRoot, preparedIdents, postRoot)
+            ManagerImpl.updateIdentities,
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, postRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -309,10 +402,15 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareUpdateIdentitiesTestCase(identities, prf);
+        (
+            uint32[] memory leafIndices,
+            uint256[] memory oldIdents,
+            uint256[] memory newIdents,
+            uint256[8] memory actualProof
+        ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.updateIdentities, (actualProof, initialRoot, preparedIdents, newPostRoot)
+            ManagerImpl.updateIdentities,
+            (actualProof, initialRoot, leafIndices, oldIdents, newIdents, newPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -331,12 +429,18 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
     ) public {
         // Setup
         address expectedOwner = managerImpl.owner();
-        (ManagerImpl.IdentityUpdate[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareUpdateIdentitiesTestCase(identities, prf);
+        (
+            uint32[] memory leafIndices,
+            uint256[] memory oldIdents,
+            uint256[] memory newIdents,
+            uint256[8] memory actualProof
+        ) = prepareUpdateIdentitiesTestCase(identities, prf);
         vm.expectRevert("Function must be called through delegatecall");
         vm.prank(expectedOwner);
 
         // Test
-        managerImpl.updateIdentities(actualProof, initialRoot, preparedIdents, postRoot);
+        managerImpl.updateIdentities(
+            actualProof, initialRoot, leafIndices, oldIdents, newIdents, postRoot
+        );
     }
 }

@@ -42,15 +42,8 @@ contract VerifierLookupTable is Ownable {
     ////////////////////////////////////////////////////////////////////////////////
 
     /// @notice Constructs a new batch lookup table.
-    ///
-    /// @param initialBatchSize The size of the initial batch (the size of the batch in
-    ///        `initialVerifier`).
-    /// @param initialVerifier The verifier for batches of size `initialBatchSize`.
-    ///
-    /// @custom:reverts BatchTooLarge If the `initialBatchSize` exceeds the maximum batch size.
-    constructor(uint256 initialBatchSize, ITreeVerifier initialVerifier) Ownable() {
-        addVerifier(initialBatchSize, initialVerifier);
-    }
+    /// @dev It is initially constructed without any verifiers.
+    constructor() Ownable() {}
 
     ////////////////////////////////////////////////////////////////////////////////
     ///                                ACCESSORS                                 ///

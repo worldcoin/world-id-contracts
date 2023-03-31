@@ -45,10 +45,11 @@ contract VerifierLookupTableTest is WorldIDTest {
     ///
     /// @param initialBatchSize The first batch size. Must be less than `MAXIMUM_BATCH_SIZE`.
     function makeNewLUT(uint256 initialBatchSize) public {
-        defaultVerifier = new SimpleVerifier(defaultBatchSize);
+        defaultVerifier = new SimpleVerifier(initialBatchSize);
         defaultVerifierAddress = address(defaultVerifier);
 
-        lookupTable = new VerifierLookupTable(initialBatchSize, defaultVerifier);
+        lookupTable = new VerifierLookupTable();
         lookupTableAddress = address(lookupTable);
+        lookupTable.addVerifier(initialBatchSize, defaultVerifier);
     }
 }

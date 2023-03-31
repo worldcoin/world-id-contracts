@@ -79,27 +79,33 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
         uint256 newIdent2
     ) public {
         // Setup
-        ManagerImpl.IdentityUpdate memory ident1 =
-            ManagerImpl.IdentityUpdate(startIndex1, oldIdent1, newIdent1);
-        ManagerImpl.IdentityUpdate memory ident2 =
-            ManagerImpl.IdentityUpdate(startIndex2, oldIdent2, newIdent2);
-        ManagerImpl.IdentityUpdate[] memory newIdents = new ManagerImpl.IdentityUpdate[](2);
-        newIdents[0] = ident1;
-        newIdents[1] = ident2;
+        uint32[] memory leafIndices = new uint32[](2);
+        leafIndices[0] = startIndex1;
+        leafIndices[1] = startIndex2;
+
+        uint256[] memory oldIdents = new uint256[](2);
+        oldIdents[0] = oldIdent1;
+        oldIdents[1] = oldIdent2;
+
+        uint256[] memory newIdents = new uint256[](2);
+        newIdents[0] = newIdent1;
+        newIdents[1] = newIdent2;
+
         bytes32 expectedResult = keccak256(
             abi.encodePacked(
                 preRoot,
                 postRoot,
-                startIndex1,
+                uint256(startIndex1),
+                uint256(startIndex2),
                 oldIdent1,
-                newIdent1,
-                startIndex2,
                 oldIdent2,
+                newIdent1,
                 newIdent2
             )
         );
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.calculateIdentityUpdateInputHash, (preRoot, postRoot, newIdents)
+            ManagerImpl.calculateIdentityUpdateInputHash,
+            (preRoot, postRoot, leafIndices, oldIdents, newIdents)
         );
         bytes memory expectedReturn = abi.encode(expectedResult);
 
@@ -107,27 +113,21 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
         assertCallSucceedsOn(identityManagerAddress, callData, expectedReturn);
     }
 
+    /// @notice Ensures that the identity update hash can only be calculated when called via the
+    ///         proxy.
     function testCannotCalculateIdentityUpdateHashIfNotViaProxy(
         uint256 preRoot,
         uint256 postRoot,
-        uint32 startIndex1,
-        uint32 startIndex2,
-        uint256 oldIdent1,
-        uint256 oldIdent2,
-        uint256 newIdent1,
-        uint256 newIdent2
+        uint32[] memory leafIndices,
+        uint256[] memory oldIdents,
+        uint256[] memory newIdents
     ) public {
         // Setup
-        ManagerImpl.IdentityUpdate memory ident1 =
-            ManagerImpl.IdentityUpdate(startIndex1, oldIdent1, newIdent1);
-        ManagerImpl.IdentityUpdate memory ident2 =
-            ManagerImpl.IdentityUpdate(startIndex2, oldIdent2, newIdent2);
-        ManagerImpl.IdentityUpdate[] memory newIdents = new ManagerImpl.IdentityUpdate[](2);
-        newIdents[0] = ident1;
-        newIdents[1] = ident2;
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.calculateIdentityUpdateInputHash(preRoot, postRoot, newIdents);
+        managerImpl.calculateIdentityUpdateInputHash(
+            preRoot, postRoot, leafIndices, oldIdents, newIdents
+        );
     }
 }
