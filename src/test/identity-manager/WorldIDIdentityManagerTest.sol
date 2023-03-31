@@ -220,7 +220,6 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         if (batchSizes[0] > 1000) {
             revert("batch size greater than 1000.");
         }
-        ITreeVerifier initialVerifier = new SimpleVerifier(batchSizes[0]);
         insertVerifiers = new VerifierLookupTable();
         updateVerifiers = new VerifierLookupTable();
         for (uint256 i = 0; i < batchSizes.length; ++i) {
