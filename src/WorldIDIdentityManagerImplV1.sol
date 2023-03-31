@@ -111,19 +111,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         bool isValid;
     }
 
-    /// @notice A structure representing an identity when it needs to be paired to an index.
-    ///
-    /// @param leafIndex The index in the merkle tree at which `commitment` can be found.
-    /// @param oldCommitment The previous value of the identity commitment at the provided
-    ///        `leafIndex` in the merkle tree.
-    /// @param newCommitment The new value of the identity commitment at the provided `leafIndex` in
-    ///        the merkle tree.
-    struct IdentityUpdate {
-        uint32 leafIndex;
-        uint256 oldCommitment;
-        uint256 newCommitment;
-    }
-
     /// @notice Represents the kind of element that has not been provided in reduced form.
     enum UnreducedElementType {
         PreRoot,
@@ -751,27 +738,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             }
             if (!isInputInReducedForm(newIdentity)) {
                 revert UnreducedElement(UnreducedElementType.IdentityCommitment, newIdentity);
-            }
-        }
-    }
-
-    /// @notice Validates an array of identity commitments as part of identity removal.
-    /// @dev Identities are not valid for identity removal if the provided commitment value is
-    ///      non-zero.
-    ///
-    /// @param identities The array of identity commitments to be validated.
-    ///
-    /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid due
-    ///                 to being non-zero.
-    function validateIdentityCommitmentsForRemoval(IdentityUpdate[] calldata identities)
-        internal
-        view
-        virtual
-    {
-        for (uint256 i = 0; i < identities.length; ++i) {
-            IdentityUpdate memory commitmentValue = identities[i];
-            if (commitmentValue.newCommitment != 0) {
-                revert InvalidCommitment(i);
             }
         }
     }
