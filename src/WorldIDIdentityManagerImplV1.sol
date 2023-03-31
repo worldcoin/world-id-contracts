@@ -195,6 +195,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param depth Passed tree depth.
     error UnsupportedTreeDepth(uint8 depth);
 
+    /// @notice Thrown when the inputs to `removeIdentities` or `updateIdentities` do not match in
+    ///         length.
+    error MismatchedInputLengths();
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -376,51 +380,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         }
     }
 
-    /// @notice Removes identities from the WorldID system.
-    /// @dev Can only be called by the owner.
-    /// @dev The removal is performed off-chain and verified on-chain via the `removalProof`. This
-    ///      saves gas and time over removing identities one at a time.
-    ///
-    /// @param removalProof The proof that, given the conditions (`preRoot`, `startIndex` and
-    ///        `removedIdentities`), removal from the tree results in `postRoot`. Elements 0 and 1
-    ///        are the `x` and `y` coordinates for `ar` respectively. Elements 2 and 3 are the `x`
-    ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
-    ///        and 7 are the `x` and `y` coordinates for `krs`.
-    /// @param preRoot The value for the root of the tree before the `removedIdentities` have been
-    ////       removed. Must be an element of the field `Kr`.
-    /// @param removedIdentities The identities that were removed from the tree. As they each hold
-    ///        their own leaf index, these need not be contiguous. All of the commitments must be
-    ///        elements of the field `Kr`.
-    /// @param postRoot The root obtained after removing all of `removedIdentities` from the tree
-    ///        described by `preRoot`. Must be an element of the field `Kr`.
-    ///
-    /// @custom:reverts Unauthorized If the message sender is not authorised to remove identities.
-    /// @custom:reverts InvalidCommitment If one or more of the provided identities is invalid.
-    /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
-    /// @custom:reverts ProofValidationFailure If `removalProof` cannot be verified using the
-    ///                 provided inputs.
-    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
-    ///                 `removedIdentities` is not an element of the field `Kr`. It describes the
-    ///                 type and value of the unreduced element.
-    /// @custom:reverts VerifierLookupTable.NoSuchVerifier If the batch sizes doesn't match a known
-    ///                 verifier.
-    /// @custom:reverts VerifierLookupTable.BatchTooLarge If the batch size exceeds the maximum
-    ///                 batch size.
-    function removeIdentities(
-        uint256[8] calldata removalProof,
-        uint256 preRoot,
-        IdentityUpdate[] calldata removedIdentities,
-        uint256 postRoot
-    ) public virtual onlyProxy onlyInitialized onlyOwner {
-        // We need to validate that all of the new commitments for the provided removedIdentities
-        // are equal to zero.
-        validateIdentityCommitmentsForRemoval(removedIdentities);
-
-        // Removing identities is just a special case of updating identities with the target
-        // identities. With the validation done we can just delegate.
-        updateIdentities(removalProof, preRoot, removedIdentities, postRoot);
-    }
-
     /// @notice Updates identities in the WorldID system.
     /// @dev Can only be called by the owner.
     /// @dev The update is performed off-chain and verified on-chain via the `updateProof`. This
@@ -428,21 +387,29 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @dev This function can perform arbitrary identity alterations and does not require any
     ///      preconditions on the inputs other than that the identities are in reduced form.
     ///
-    /// @param removalProof The proof that, given the conditions (`preRoot`, `startIndex` and
+    /// @param updateProof The proof that, given the conditions (`preRoot`, `startIndex` and
     ///        `removedIdentities`), updates in the tree results in `postRoot`. Elements 0 and 1 are
     ///        the `x` and `y` coordinates for `ar` respectively. Elements 2 and 3 are the `x`
     ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
     ///        and 7 are the `x` and `y` coordinates for `krs`.
     /// @param preRoot The value for the root of the tree before the `updatedIdentities` have been
     ////       altered. Must be an element of the field `Kr`.
-    /// @param updatedIdentities The identities that were updated in the tree. As they each hold
-    ///        their own leaf index, these need not be contiguous. All of the commitments must be
-    ///        elements of the field `Kr`.
+    /// @param leafIndices The array of leaf indices at which the update operations take place in
+    ///        the tree. Elements in this array are extended to 256 bits when encoding.
+    /// @param oldIdentities The array of old values for the identities. Length must match that of
+    ///        `leafIndices`.
+    /// @param newIdentities The array of new values for the identities. Length must match that of
+    ///        `leafIndices`.
     /// @param postRoot The root obtained after removing all of `removedIdentities` from the tree
     ///        described by `preRoot`. Must be an element of the field `Kr`.
     ///
+    /// The arrays `leafIndices`, `oldIdentities` and `newIdentities` are arranged such that the
+    /// triple at an element `i` in those arrays corresponds to one update operation.
+    ///
     /// @custom:reverts Unauthorized If the message sender is not authorised to update identities.
     /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
+    /// @custom:reverts MismatchedInputLengths If the provided arrays for `leafIndices`,
+    ///                 `oldIdentities` and `newIdentities` do not match in length.
     /// @custom:reverts ProofValidationFailure If `removalProof` cannot be verified using the
     ///                 provided inputs.
     /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and `identities` is not
@@ -452,7 +419,9 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     function updateIdentities(
         uint256[8] calldata updateProof,
         uint256 preRoot,
-        IdentityUpdate[] calldata updatedIdentities,
+        uint32[] calldata leafIndices,
+        uint256[] calldata oldIdentities,
+        uint256[] calldata newIdentities,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyOwner {
         // We can only operate on the latest root in reduced form.
@@ -468,27 +437,72 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
         }
 
+        // We also need the arrays to be of the same length.
+        if (
+            leafIndices.length != oldIdentities.length || leafIndices.length != newIdentities.length
+        ) {
+            revert MismatchedInputLengths();
+        }
+
         // We only operate on identities that are in reduced form.
-        validateIdentitiesInReducedForm(updatedIdentities);
+        validateIdentitiesForUpdate(oldIdentities, newIdentities);
 
         // With valid preconditions we can calculate the input to the proof.
-        bytes32 inputHash = calculateIdentityUpdateInputHash(preRoot, postRoot, updatedIdentities);
+        bytes32 inputHash = calculateIdentityUpdateInputHash(
+            preRoot, postRoot, leafIndices, oldIdentities, newIdentities
+        );
 
         // No matter what, the input hashing process can result in a hash that is not an element of
         // the field Fr. We reduce it into the field to give it safely to the verifier.
         uint256 reducedInputHash = reduceInputElementInSnarkScalarField(uint256(inputHash));
 
         // We have to look up the correct verifier before we can verify.
-        ITreeVerifier updateVerifier =
-            identityUpdateVerifiers.getVerifierFor(updatedIdentities.length);
+        ITreeVerifier updateVerifier = identityUpdateVerifiers.getVerifierFor(leafIndices.length);
 
-        // With all of that done we can hand it to the verifier to check the proof.
-        try updateVerifier.verifyProof(
-            [updateProof[0], updateProof[1]],
-            [[updateProof[2], updateProof[3]], [updateProof[4], updateProof[5]]],
-            [updateProof[6], updateProof[7]],
-            [reducedInputHash]
-        ) returns (bool verifierResult) {
+        // Now we delegate to another function in order to avoid the limit on stack variables.
+        performIdentityUpdate(updateVerifier, updateProof, reducedInputHash, preRoot, postRoot);
+    }
+
+    /// @notice Performs the verification of the identity update proof.
+    /// @dev This function only exists because `updateIdentities` ended up with more than 16 local
+    ///      variables, and hence ran into the limit on the EVM. It will be called as a direct call
+    ///      and is hence relatively cheap.
+    /// @dev Can only be called by the owner.
+    /// @dev The update is performed off-chain and verified on-chain via the `updateProof`. This
+    ///      saves gas and time over removing identities one at a time.
+    /// @dev This function can perform arbitrary identity alterations and does not require any
+    ///      preconditions on the inputs other than that the identities are in reduced form.
+    ///
+    /// @param updateVerifier The merkle tree verifier to use for updates of the correct batch size.
+    /// @param updateProof The proof that, given the conditions (`preRoot`, `startIndex` and
+    ///        `removedIdentities`), updates in the tree results in `postRoot`. Elements 0 and 1 are
+    ///        the `x` and `y` coordinates for `ar` respectively. Elements 2 and 3 are the `x`
+    ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
+    ///        and 7 are the `x` and `y` coordinates for `krs`.
+    /// @param inputHash The input hash for the update operation.
+    /// @param preRoot The value for the root of the tree before the `updatedIdentities` have been
+    ////       altered. Must be an element of the field `Kr`.
+    /// @param postRoot The root obtained after removing all of `removedIdentities` from the tree
+    ///        described by `preRoot`. Must be an element of the field `Kr`.
+    ///
+    /// @custom:reverts ProofValidationFailure If `removalProof` cannot be verified using the
+    ///                 provided inputs.
+    function performIdentityUpdate(
+        ITreeVerifier updateVerifier,
+        uint256[8] calldata updateProof,
+        uint256 inputHash,
+        uint256 preRoot,
+        uint256 postRoot
+    ) internal virtual onlyProxy onlyInitialized onlyOwner {
+        // Pull out the proof terms and verifier input.
+        uint256[2] memory ar = [updateProof[0], updateProof[1]];
+        uint256[2][2] memory bs =
+            [[updateProof[2], updateProof[3]], [updateProof[4], updateProof[5]]];
+        uint256[2] memory krs = [updateProof[6], updateProof[7]];
+        uint256[1] memory proofInput = [inputHash];
+
+        // Now it's possible to verify the proof.
+        try updateVerifier.verifyProof(ar, bs, krs, proofInput) returns (bool verifierResult) {
             // If the proof did not verify, we revert with a failure.
             if (!verifierResult) {
                 revert ProofValidationFailure();
@@ -549,31 +563,38 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @param preRoot The root value of the tree before the updates were made.
     /// @param postRoot The root value of the tree after the updates were made.
-    /// @param identities The identity structures providing the identity data.
+    /// @param leafIndices The array of leaf indices at which the update operations take place in
+    ///        the tree. Elements in this array are extended to 256 bits when encoding.
+    /// @param oldIdentities The array of old values for the identities. Length must match that of
+    ///        `leafIndices`.
+    /// @param newIdentities The array of new values for the identities. Length must match that of
+    ///        `leafIndices`.
     ///
     /// @return hash The input hash calculated as described below.
     ///
+    /// The arrays `leafIndices`, `oldIdentities` and `newIdentities` are arranged such that the
+    /// triple at an element `i` in those arrays corresponds to one update operation.
+    ///
     /// We keccak hash all input to save verification gas. The inputs are arranged as follows:
     ///
-    /// preRoot || postRoot || id[0].leafIndex || id[0].oldCommitment || id[0].newCommitment || ... || id[n].leafIndex || id[n].oldCommitment || id[n].newCommitment
-    ///   256   ||    256   ||        32       ||         256         ||          256        || ... ||        32       ||         256         ||          256
+    /// preRoot || postRoot || ix[0] || ... || ix[n] || oi[0] || ... || oi[n] || ni[0] || ... || ni[n] ||
+    ///   256   ||    256   ||  256  || ... ||  256  ||  256  || ... ||  256  ||  256  || ... ||  256  ||
     ///
     /// where:
-    /// - `id[n] == identities[n]`
+    /// - `ix[i] == leafIndices[i]`
+    /// - `oi[i] == oldIdentities[i]`
+    /// - `ni[i] == newIdentities[i]`
+    /// - `id[i] == identities[i]`
     /// - `n == batchSize - 1`
     function calculateIdentityUpdateInputHash(
         uint256 preRoot,
         uint256 postRoot,
-        IdentityUpdate[] calldata identities
+        uint32[] calldata leafIndices,
+        uint256[] calldata oldIdentities,
+        uint256[] calldata newIdentities
     ) public view virtual onlyProxy onlyInitialized returns (bytes32 hash) {
-        bytes memory identityBytes = new bytes(0);
-        for (uint256 i = 0; i < identities.length; ++i) {
-            IdentityUpdate memory ident = identities[i];
-            bytes memory newBytes =
-                abi.encodePacked(ident.leafIndex, ident.oldCommitment, ident.newCommitment);
-            identityBytes = bytes.concat(identityBytes, newBytes);
-        }
-        bytes memory bytesToHash = abi.encodePacked(preRoot, postRoot, identityBytes);
+        bytes memory bytesToHash =
+            abi.encodePacked(preRoot, postRoot, leafIndices, oldIdentities, newIdentities);
 
         hash = keccak256(bytesToHash);
     }
@@ -711,27 +732,25 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
     /// @notice Validates the array of identities for each of the old and new commitments being in
     ///         reduced form.
+    /// @dev Must be called with arrays of the same length.
     ///
-    /// @param identities The array of (old, new) identity pairs with their indices to validate.
+    /// @param oldIdentities The array of old values for the identities.
+    /// @param newIdentities The array of new values for the identities.
     ///
     /// @custom:reverts UnreducedElement If one or more of the provided commitments is not in
     ////                reduced form.
-    function validateIdentitiesInReducedForm(IdentityUpdate[] calldata identities)
-        internal
-        view
-        virtual
-    {
-        for (uint256 i = 0; i < identities.length; ++i) {
-            IdentityUpdate memory identity = identities[i];
-            if (!isInputInReducedForm(identity.oldCommitment)) {
-                revert UnreducedElement(
-                    UnreducedElementType.IdentityCommitment, identity.oldCommitment
-                );
+    function validateIdentitiesForUpdate(
+        uint256[] calldata oldIdentities,
+        uint256[] calldata newIdentities
+    ) internal view virtual {
+        for (uint256 i = 0; i < oldIdentities.length; ++i) {
+            uint256 oldIdentity = oldIdentities[i];
+            uint256 newIdentity = newIdentities[i];
+            if (!isInputInReducedForm(oldIdentity)) {
+                revert UnreducedElement(UnreducedElementType.IdentityCommitment, oldIdentity);
             }
-            if (!isInputInReducedForm(identity.newCommitment)) {
-                revert UnreducedElement(
-                    UnreducedElementType.IdentityCommitment, identity.newCommitment
-                );
+            if (!isInputInReducedForm(newIdentity)) {
+                revert UnreducedElement(UnreducedElementType.IdentityCommitment, newIdentity);
             }
         }
     }
