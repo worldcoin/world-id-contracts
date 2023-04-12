@@ -7,7 +7,7 @@
 This repository contains the underlying contracts that make World ID work, powered by the
 [Semaphore library](http://semaphore.appliedzkp.org/).
 
-## <img align="left" width="28" height="28" src="https://github.com/worldcoin/world-id-docs/raw/main/public/icons/logo.svg" alt="" style="margin-right: 0;" /> About World ID
+## <img align="left" width="28" height="28" src="https://raw.githubusercontent.com/worldcoin/world-id-docs/main/public/images/shared-readme/readme-world-id.png" alt="" style="margin-right: 0;" /> About World ID
 
 World ID is a protocol that lets you **prove a human is doing an action only once without revealing
 any personal data**. Stop bots, stop abuse.
