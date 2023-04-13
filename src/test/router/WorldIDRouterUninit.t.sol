@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import {WorldIDRouterTest} from "./WorldIDRouterTest.sol";
 
 import {CheckInitialized} from "../../utils/CheckInitialized.sol";
+import {IWorldID} from "../../interfaces/IWorldID.sol";
 
 import {WorldIDRouter as Router} from "../../WorldIDRouter.sol";
 import {WorldIDRouterImplV1 as RouterImpl} from "../../WorldIDRouterImplV1.sol";
@@ -15,7 +16,7 @@ import {WorldIDRouterImplV1 as RouterImpl} from "../../WorldIDRouterImplV1.sol";
 ///      so as to test everything in the context of how it will be deployed.
 contract WorldIDRouterUninit is WorldIDRouterTest {
     /// @notice Ensures that a group cannot be added while the contract is not initialised.
-    function testCannotAddGroupWhileUninit(uint256 groupId, address target) public {
+    function testCannotAddGroupWhileUninit(uint256 groupId, IWorldID target) public {
         // Setup
         makeUninitRouter();
         bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (groupId, target));
@@ -52,7 +53,7 @@ contract WorldIDRouterUninit is WorldIDRouterTest {
     }
 
     /// @notice Ensures that routes cannot be updated while the contract is not initialized.
-    function testCannotUpdateGroupWhileUninit(uint256 groupId, address newTarget) public {
+    function testCannotUpdateGroupWhileUninit(uint256 groupId, IWorldID newTarget) public {
         // Setup
         makeUninitRouter();
         bytes memory callData = abi.encodeCall(RouterImpl.updateGroup, (groupId, newTarget));

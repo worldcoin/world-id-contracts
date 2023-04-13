@@ -3,6 +3,8 @@ pragma solidity ^0.8.19;
 
 import {WorldIDRouterTest} from "./WorldIDRouterTest.sol";
 
+import {IWorldID} from "../../interfaces/IWorldID.sol";
+
 import {WorldIDRouter as Router} from "../../WorldIDRouter.sol";
 import {WorldIDRouterImplV1 as RouterImpl} from "../../WorldIDRouterImplV1.sol";
 
@@ -23,18 +25,20 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
         // Setup
         vm.assume(caller != nullAddress);
         vm.assume(targetAddress != nullAddress);
+
+        IWorldID targetManager = IWorldID(targetAddress);
         for (uint256 i = 1; i <= groupId; ++i) {
-            address target = nullAddress;
+            IWorldID target = nullManager;
             if (i == groupId) {
-                target = targetAddress;
+                target = IWorldID(targetAddress);
             }
             bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, target));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory callData = abi.encodeCall(RouterImpl.routeFor, (groupId));
-        address expectedReturnAddress = targetAddress;
+        IWorldID expectedReturnAddress = targetManager;
         if (groupId == 0) {
-            expectedReturnAddress = thisAddress;
+            expectedReturnAddress = thisWorldID;
         }
         bytes memory expectedReturn = abi.encode(expectedReturnAddress);
         vm.prank(caller);
@@ -61,7 +65,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
         // Setup
         vm.assume(groupId != 0);
         for (uint256 i = 1; i <= groupId; ++i) {
-            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, nullAddress));
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, nullManager));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory callData = abi.encodeCall(RouterImpl.routeFor, (groupId));
@@ -85,9 +89,9 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Ensures that groups can be added to the router.
-    function testCanAddGroup(address target) public {
+    function testCanAddGroup(IWorldID target) public {
         // Setup
-        vm.assume(target != nullAddress);
+        vm.assume(target != nullManager);
         bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (1, target));
         bytes memory checkCallData = abi.encodeCall(RouterImpl.routeFor, (1));
         bytes memory expectedCheckReturn = abi.encode(target);
@@ -98,7 +102,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
     }
 
     /// @notice Ensures that duplicate groups cannot be added.
-    function testCannotAddDuplicateGroup(address addr) public {
+    function testCannotAddDuplicateGroup(IWorldID addr) public {
         // Setup
         bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (0, addr));
         bytes memory expectedError = abi.encodeWithSelector(RouterImpl.DuplicateGroup.selector, 0);
@@ -108,7 +112,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
     }
 
     /// @notice Ensures that groups can't be added unless they are done in sequence.
-    function testCannotAddGroupUnlessNumbersSequential(uint256 groupNumber, address addr) public {
+    function testCannotAddGroupUnlessNumbersSequential(uint256 groupNumber, IWorldID addr) public {
         // Setup
         vm.assume(groupNumber > 1);
         bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (groupNumber, addr));
@@ -120,10 +124,10 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
     }
 
     /// @notice Ensures that groups can't be added except by the owner.
-    function testCannotAddGroupUnlessOwner(address naughty) public {
+    function testCannotAddGroupUnlessOwner(address naughty, IWorldID worldID) public {
         // Setup
         vm.assume(naughty != thisAddress && naughty != nullAddress);
-        bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (0, naughty));
+        bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (0, worldID));
         bytes memory expectedError = encodeStringRevert("Ownable: caller is not the owner");
 
         vm.prank(naughty);
@@ -133,7 +137,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
     }
 
     /// @notice Ensures that a group cannot be added unless via the proxy.
-    function testCannotAddGroupUnlessViaProxy(address group) public {
+    function testCannotAddGroupUnlessViaProxy(IWorldID group) public {
         // Setup
         vm.expectRevert("Function must be called through delegatecall");
 
@@ -146,18 +150,18 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Ensures that it is possible to update the routing for a group.
-    function testCanUpdateGroup(uint8 groupId, address newTarget) public {
+    function testCanUpdateGroup(uint8 groupId, IWorldID newTarget) public {
         // Setup
-        vm.assume(newTarget != nullAddress);
+        vm.assume(newTarget != nullManager);
         for (uint256 i = 1; i <= groupId; ++i) {
-            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, nullAddress));
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, nullManager));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory callData =
             abi.encodeCall(RouterImpl.updateGroup, (uint256(groupId), newTarget));
-        address returnAddress = nullAddress;
+        IWorldID returnAddress = nullManager;
         if (groupId == 0) {
-            returnAddress = thisAddress;
+            returnAddress = thisWorldID;
         }
         bytes memory expectedReturn = abi.encode(returnAddress);
         bytes memory checkCallData = abi.encodeCall(RouterImpl.routeFor, (uint256(groupId)));
@@ -169,7 +173,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
     }
 
     /// @notice Ensures that it is not possible to update a group that does not exist.
-    function testShouldRevertOnUpdatingNonexistentGroup(uint256 groupId, address newTarget)
+    function testShouldRevertOnUpdatingNonexistentGroup(uint256 groupId, IWorldID newTarget)
         public
     {
         // Setup
@@ -186,7 +190,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
     function testCannotUpdateGroupUnlessOwner(address naughty) public {
         // Setup
         vm.assume(naughty != thisAddress);
-        bytes memory callData = abi.encodeCall(RouterImpl.updateGroup, (0, nullAddress));
+        bytes memory callData = abi.encodeCall(RouterImpl.updateGroup, (0, nullManager));
         bytes memory expectedError = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(naughty);
 
@@ -195,7 +199,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
     }
 
     /// @notice Ensures that a group cannot be updated except via the proxy.
-    function testCannotUpdateGroupUnlessViaProxy(uint256 groupId, address newTarget) public {
+    function testCannotUpdateGroupUnlessViaProxy(uint256 groupId, IWorldID newTarget) public {
         // Setup
         vm.expectRevert("Function must be called through delegatecall");
 
@@ -208,17 +212,17 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Ensures that it is possible to disable routing for a group.
-    function testCanDisableGroup(uint8 groupId, address newTarget) public {
+    function testCanDisableGroup(uint8 groupId, IWorldID newTarget) public {
         // Setup
-        vm.assume(newTarget != nullAddress);
+        vm.assume(newTarget != nullManager);
         for (uint256 i = 1; i <= groupId; ++i) {
             bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, newTarget));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory callData = abi.encodeCall(RouterImpl.disableGroup, (uint256(groupId)));
-        address returnAddress = newTarget;
+        IWorldID returnAddress = newTarget;
         if (groupId == 0) {
-            returnAddress = thisAddress;
+            returnAddress = thisWorldID;
         }
         bytes memory expectedReturn = abi.encode(returnAddress);
         bytes memory checkCallData = abi.encodeCall(RouterImpl.routeFor, (uint256(groupId)));
