@@ -57,9 +57,6 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// The routing table used to dispatch from groups to addresses.
     IWorldID[] internal routingTable;
 
-    /// The number of groups currently set in the routing table.
-    uint256 internal _groupCount;
-
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  ERRORS                                 ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -114,9 +111,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         __delegateInit();
 
         // Now we can perform our own internal initialisation.
-        routingTable = new IWorldID[](DEFAULT_ROUTING_TABLE_SIZE);
-        routingTable[0] = initialGroupIdentityManager;
-        _groupCount = 1;
+        routingTable.push(initialGroupIdentityManager);
 
         // Mark the contract as initialized.
         __setInitialized();
@@ -202,7 +197,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         }
 
         // Insert the entry into the routing table.
-        insertNewTableEntry(groupId, groupIdentityManager);
+        insertNewTableEntry(groupIdentityManager);
     }
 
     /// @notice Updates the target address for a group in the router.
@@ -259,7 +254,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     ///
     /// @return count The number of groups in the table.
     function groupCount() public view virtual onlyProxy onlyInitialized returns (uint256 count) {
-        return _groupCount;
+        return routingTable.length;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -267,30 +262,17 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Inserts the `targetAddress` into the routing table for the provided `groupId`.
-    /// @dev Grows the routing table if necessary to accommodate the provided entry.
+    /// @dev Callers must ensure that the group identifier requested is the next in the table before
+    ///      calling.
     ///
-    /// @param groupId The group identifier to add to the routing table.
     /// @param targetAddress The address to be routed to for the provided `groupId`.
-    function insertNewTableEntry(uint256 groupId, IWorldID targetAddress)
+    function insertNewTableEntry(IWorldID targetAddress)
         internal
         virtual
         onlyProxy
         onlyInitialized
     {
-        while (groupId >= routingTable.length) {
-            uint256 existingTableLength = routingTable.length;
-            IWorldID[] memory newRoutingTable =
-                new IWorldID[](existingTableLength + DEFAULT_ROUTING_TABLE_GROWTH);
-
-            for (uint256 i = 0; i < existingTableLength; ++i) {
-                newRoutingTable[i] = routingTable[i];
-            }
-
-            routingTable = newRoutingTable;
-        }
-
-        routingTable[groupId] = targetAddress;
-        _groupCount++;
+        routingTable.push(targetAddress);
     }
 
     /// @notice Gets the group identifier for the group with the highest group identifier known to
@@ -305,7 +287,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         onlyInitialized
         returns (uint256 groupId)
     {
-        return _groupCount;
+        return groupCount();
     }
 
     ///////////////////////////////////////////////////////////////////////////////
