@@ -790,14 +790,14 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         if (root != _latestRoot) {
             uint128 rootTimestamp = rootHistory[root];
 
-            // A root is no longer valid if it has expired.
-            if (block.timestamp - rootTimestamp > rootHistoryExpiry) {
-                revert ExpiredRoot();
-            }
-
             // A root does not exist if it has no associated timestamp.
             if (rootTimestamp == 0) {
                 revert NonExistentRoot();
+            }
+
+            // A root is no longer valid if it has expired.
+            if (block.timestamp - rootTimestamp > rootHistoryExpiry) {
+                revert ExpiredRoot();
             }
         }
 
@@ -967,6 +967,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             semaphoreVerifier.verifyProof(
                 root, nullifierHash, signalHash, externalNullifierHash, proof, treeDepth
             );
+        } else {
+            revert("Unreachable");
         }
     }
 }
