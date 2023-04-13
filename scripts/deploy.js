@@ -37,6 +37,8 @@ const CONFIG_FILENAME = '.deploy-config.json';
 const SOLIDITY_OUTPUT_DIR = 'out';
 const EXTENSION_REGEX = /(\.sol$)|(\.json$)/;
 
+const GAS_PRICE = 280000000000; // 280 gwei - adjust to the current prices before running script
+
 // These are an arbitrary choice just for ease of development.
 const DEFAULT_TREE_DEPTH = 32;
 const DEFAULT_BATCH_SIZE = 3;
@@ -433,7 +435,7 @@ async function deployVerifierContract(plan, config) {
     let bytecode = verifierBytecode.contracts['Verifier.sol'].Verifier.evm.bytecode.object;
     let factory = new ContractFactory([], bytecode, config.wallet);
     checkContractSize(spinner, bytecode);
-    let contract = await factory.deploy();
+    let contract = await factory.deploy({gasPrice: GAS_PRICE});
     spinner.text = `Waiting for MTB Verifier deploy transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
     spinner.succeed(`Deployed MTB Verifier contract to ${contract.address}`);
@@ -468,7 +470,7 @@ async function ensureSemaphoreVerifierDeployment(plan, config) {
       SemaphorePairing.bytecode.object,
       config.wallet
     );
-    const contract = await factory.deploy();
+    const contract = await factory.deploy({gasPrice: GAS_PRICE});
     spinner.text = `Waiting for pairing library deploy transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
     spinner.succeed(`Deployed Pairing Library to ${contract.address}`);
@@ -484,7 +486,7 @@ async function ensureSemaphoreVerifierDeployment(plan, config) {
     );
     checkContractSize(spinner, newBytecode);
     const factory = new ContractFactory(SemaphorePairing.abi, newBytecode, config.wallet);
-    const contract = await factory.deploy();
+    const contract = await factory.deploy({gasPrice: GAS_PRICE});
     spinner.text = `Waiting for Semaphore verifier deploy transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
     spinner.succeed(`Deployed Semaphore Verifier contract to ${contract.address}`);
@@ -550,7 +552,7 @@ async function deployRouter(plan, config) {
           RouterImpl.bytecode.object,
           config.wallet
         );
-        const contract = await factory.deploy();
+        const contract = await factory.deploy({gasPrice: GAS_PRICE});
         spinner.text = `Waiting for the WorldID Router implementation deployment transaction (address: ${contract.address})...`;
         await contract.deployTransaction.wait();
         config.routerImplementationContractAddress = contract.address;
@@ -572,7 +574,7 @@ async function deployRouter(plan, config) {
         let bytecode = Router.bytecode.object;
         checkContractSize(spinner, bytecode);
         const factory = new ContractFactory(Router.abi, bytecode, config.wallet);
-        const contract = await factory.deploy(config.routerImplementationContractAddress, callData);
+        const contract = await factory.deploy(config.routerImplementationContractAddress, callData, {gasPrice: GAS_PRICE});
         spinner.text = `Waiting for the WorldID Router deployment transaction (address: ${contract.address})...`;
         await contract.deployTransaction.wait();
         config.routerContractAddress = contract.address;
@@ -644,14 +646,14 @@ async function deployVerifierLookupTable(
       VerifierLookupTable.bytecode.object,
       config.wallet
     );
-    const contract = await factory.deploy();
+    const contract = await factory.deploy({gasPrice: GAS_PRICE});
     spinner.text = `Waiting for the verifier lookup table deployment transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
     config[targetFieldName] = contract.address;
     const targetAddress = config[targetVerifierAddressField];
     if (targetAddress) {
       spinner.text = `Associating verifier with deployed lookup table at ${contract.address}...`;
-      await contract.addVerifier(config.batchSize, targetAddress);
+      await contract.addVerifier(config.batchSize, targetAddress, {gasPrice: GAS_PRICE});
     } else {
       spinner.text = `Deploying lookup table without verifier...`;
     }
@@ -751,7 +753,7 @@ async function deployIdentityManager(plan, config, insertLUTTargetField, updateL
     let bytecode = IdentityManagerImpl.bytecode.object;
     checkContractSize(spinner, bytecode);
     const factory = new ContractFactory(IdentityManagerImpl.abi, bytecode, config.wallet);
-    const contract = await factory.deploy();
+    const contract = await factory.deploy({gasPrice: GAS_PRICE});
     spinner.text = `Waiting for the WorldID Identity Manager Implementation deployment transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
     config.identityManagerImplementationContractAddress = contract.address;
@@ -781,7 +783,8 @@ async function deployIdentityManager(plan, config, insertLUTTargetField, updateL
     );
     const contract = await factory.deploy(
       config.identityManagerImplementationContractAddress,
-      callData
+      callData,
+      {gasPrice: GAS_PRICE}
     );
     spinner.text = `Waiting for the WorldID Identity Manager deployment transaction (address: ${contract.address})...`;
     await contract.deployTransaction.wait();
@@ -814,7 +817,7 @@ async function transferIdentityManagerOwnership(plan, config) {
     spinner.text = `Transferring ownership of contract at ${config.ownableContractAddress} to wallet at ${config.targetWalletAddress}...`;
 
     try {
-      await contract.transferOwnership(config.targetWalletAddress);
+      await contract.transferOwnership(config.targetWalletAddress, {gasPrice: GAS_PRICE});
       spinner.succeed(
         `Transferred ownership of contract at ${config.ownableContractAddress} to ${config.targetWalletAddress}`
       );
@@ -835,7 +838,7 @@ async function planRouteAdd(plan, config) {
     );
     spinner.text = `Attempting to add group ${config.routerGroupNumber} to router at ${config.routerContractAddress}...`;
     try {
-      await contractWithAbi.addGroup(config.routerGroupNumber, config.routerTargetAddress);
+      await contractWithAbi.addGroup(config.routerGroupNumber, config.routerTargetAddress, {gasPrice: GAS_PRICE});
       spinner.succeed(
         `Added group ${config.routerGroupNumber} to route to ${config.routerTargetAddress}`
       );
@@ -1068,9 +1071,9 @@ async function getLookupTableAddress(config) {
     );
 
     if (config.typeOfVerifierToDeploy === 'insert') {
-      config.lookupTableAddress = await contract.getRegisterIdentitiesVerifierLookupTableAddress();
+      config.lookupTableAddress = await contract.getRegisterIdentitiesVerifierLookupTableAddress({gasPrice: GAS_PRICE});
     } else if (config.typeOfVerifierToDeploy === 'update') {
-      config.lookupTableAddress = await contract.getIdentityUpdateVerifierLookupTableAddress();
+      config.lookupTableAddress = await contract.getIdentityUpdateVerifierLookupTableAddress({gasPrice: GAS_PRICE});
     } else {
       console.error('Invalid type of verifier to deploy');
       process.exit(1);
@@ -1403,7 +1406,7 @@ async function planDeployUpgrade(plan, config, abiFieldName, callInfoFieldName) 
       config[abiFieldName].bytecode.object,
       config.wallet
     );
-    const contract = await factory.deploy();
+    const contract = await factory.deploy({gasPrice: GAS_PRICE});
     spinner.text = `Waiting for the implementation upgrade deployment transaction (address ${contract.address})`;
     await contract.deployTransaction.wait();
     config.upgradedImplementationContractAddress = contract.address;
