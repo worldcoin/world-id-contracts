@@ -105,6 +105,8 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     ///      with upgrades based upon this contract. Be aware that there are only 256 (zero-indexed)
     ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
     ///      replaced by use of setters.
+    /// @dev This function is explicitly not virtual as it does not make sense to override even when
+    ///      upgrading. Create a separate initializer function instead.
     ///
     /// @param initialGroupIdentityManager The address of the identity manager to be used for the
     ///        initial group (group ID 0) when instantiating the router.
@@ -149,6 +151,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     function routeFor(uint256 groupNumber)
         public
         view
+        virtual
         onlyProxy
         onlyInitialized
         returns (address target)
@@ -186,6 +189,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     ///                 on the known groups.
     function addGroup(uint256 groupId, address groupIdentityManager)
         public
+        virtual
         onlyProxy
         onlyInitialized
         onlyOwner
@@ -217,6 +221,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @custom:reverts NoSuchGroup If the target group does not exist to be updated.
     function updateGroup(uint256 groupId, address newTargetAddress)
         public
+        virtual
         onlyProxy
         onlyInitialized
         onlyOwner
@@ -240,6 +245,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @custom:reverts NoSuchGroup If the target group does not exist to be disabled.
     function disableGroup(uint256 groupId)
         public
+        virtual
         onlyProxy
         onlyInitialized
         onlyOwner
@@ -255,7 +261,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @notice Gets the number of groups in the routing table.
     ///
     /// @return count The number of groups in the table.
-    function groupCount() public view onlyProxy onlyInitialized returns (uint256 count) {
+    function groupCount() public view virtual onlyProxy onlyInitialized returns (uint256 count) {
         return _groupCount;
     }
 
@@ -270,6 +276,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @param targetAddress The address to be routed to for the provided `groupId`.
     function insertNewTableEntry(uint256 groupId, address targetAddress)
         internal
+        virtual
         onlyProxy
         onlyInitialized
     {
@@ -293,7 +300,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     ///         the router.
     ///
     /// @return groupId The highest group identifier known.
-    function nextGroupId() internal view onlyProxy onlyInitialized returns (uint256 groupId) {
+    function nextGroupId() internal view virtual onlyProxy onlyInitialized returns (uint256 groupId) {
         return _groupCount;
     }
 
