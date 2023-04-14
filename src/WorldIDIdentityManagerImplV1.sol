@@ -772,36 +772,32 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         return input % SNARK_SCALAR_FIELD;
     }
 
-    /// @notice Checks if a given root value is valid and has been added to the root history.
-    /// @dev Reverts with `ExpiredRoot` if the root has expired, and `NonExistentRoot` if the root
-    ///      is not in the root history.
+    /// @notice Reverts if the provided root value is not valid.
+    /// @dev A root is valid if it is either the latest root, or not the latest root but has not
+    ///      expired.
     ///
-    /// @param root The root of a given identity group.
-    /// @custom:reverts ExpiredRoot If the root is not valid due to being expired.
-    /// @custom:reverts NonExistentRoot If the root does not exist.
-    function checkValidRoot(uint256 root)
-        public
-        view
-        virtual
-        onlyProxy
-        onlyInitialized
-        returns (bool)
-    {
-        if (root != _latestRoot) {
-            uint128 rootTimestamp = rootHistory[root];
-
-            // A root is no longer valid if it has expired.
-            if (block.timestamp - rootTimestamp > rootHistoryExpiry) {
-                revert ExpiredRoot();
-            }
-
-            // A root does not exist if it has no associated timestamp.
-            if (rootTimestamp == 0) {
-                revert NonExistentRoot();
-            }
+    /// @param root The root of the merkle tree to check for validity.
+    ///
+    /// @custom:reverts ExpiredRoot If the provided `root` has expired.
+    /// @custom:reverts NonExistentRoot If the provided `root` does not exist in the history.
+    function requireValidRoot(uint256 root) public view onlyProxy onlyInitialized {
+        // The latest root is always valid.
+        if (root == _latestRoot) {
+            return;
         }
 
-        return true;
+        // Otherwise, we need to check things via the timestamp.
+        uint128 rootTimestamp = rootHistory[root];
+
+        // A root does not exist if it has no associated timestamp.
+        if (rootTimestamp == 0) {
+            revert NonExistentRoot();
+        }
+
+        // A root is no longer valid if it has expired.
+        if (block.timestamp - rootTimestamp > rootHistoryExpiry) {
+            revert ExpiredRoot();
+        }
     }
 
     /// @notice Gets the address for the lookup table of merkle tree verifiers used for identity
@@ -963,10 +959,12 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 externalNullifierHash,
         uint256[8] calldata proof
     ) public view virtual onlyProxy onlyInitialized {
-        if (checkValidRoot(root)) {
-            semaphoreVerifier.verifyProof(
-                root, nullifierHash, signalHash, externalNullifierHash, proof, treeDepth
-            );
-        }
+        // Check the preconditions on the inputs.
+        requireValidRoot(root);
+
+        // With that done we can now verify the proof.
+        semaphoreVerifier.verifyProof(
+            root, nullifierHash, signalHash, externalNullifierHash, proof, treeDepth
+        );
     }
 }

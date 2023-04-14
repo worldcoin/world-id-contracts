@@ -115,12 +115,12 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Checks that it is impossible to call `checkValidRoot` while the contract is not
+    /// @notice Checks that it is impossible to call `requireValidRoot` while the contract is not
     ///         initialised.
-    function testShouldNotCallCheckValidRootWhileUninit() public {
+    function testShouldNotCallRequireValidRootWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.checkValidRoot, (preRoot));
+        bytes memory callData = abi.encodeCall(ManagerImpl.requireValidRoot, (preRoot));
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 

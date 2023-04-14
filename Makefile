@@ -13,7 +13,7 @@ build:; forge build
 test:; FOUNDRY_PROFILE=debug forge test
 
 # Clean the solidity build directory.
-clean:; rm -rf out/
+clean:; forge clean; rm -rf out/
 
 # Get the contract sizes.
 sizes:; forge build --sizes 2>&1 > .size-snapshot
