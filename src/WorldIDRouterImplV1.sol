@@ -52,13 +52,10 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     uint256 internal constant DEFAULT_ROUTING_TABLE_GROWTH = 5;
 
     /// The null address.
-    address internal constant NULL_ADDRESS = address(0x0);
+    IWorldID internal constant NULL_ROUTER = IWorldID(address(0x0));
 
     /// The routing table used to dispatch from groups to addresses.
-    address[] internal routingTable;
-
-    /// The number of groups currently set in the routing table.
-    uint256 internal _groupCount;
+    IWorldID[] internal routingTable;
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  ERRORS                                 ///
@@ -84,9 +81,6 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @notice The requested group has been disabled.
     error GroupDisabled();
 
-    /// @notice The provided proof failed to verify.
-    error FailedToVerifyProof();
-
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -105,19 +99,19 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     ///      with upgrades based upon this contract. Be aware that there are only 256 (zero-indexed)
     ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
     ///      replaced by use of setters.
+    /// @dev This function is explicitly not virtual as it does not make sense to override even when
+    ///      upgrading. Create a separate initializer function instead.
     ///
     /// @param initialGroupIdentityManager The address of the identity manager to be used for the
     ///        initial group (group ID 0) when instantiating the router.
     ///
     /// @custom:reverts string If called more than once at the same initalisation number.
-    function initialize(address initialGroupIdentityManager) public reinitializer(1) {
+    function initialize(IWorldID initialGroupIdentityManager) public reinitializer(1) {
         // Initialize the sub-contracts.
         __delegateInit();
 
         // Now we can perform our own internal initialisation.
-        routingTable = new address[](DEFAULT_ROUTING_TABLE_SIZE);
-        routingTable[0] = initialGroupIdentityManager;
-        _groupCount = 1;
+        routingTable.push(initialGroupIdentityManager);
 
         // Mark the contract as initialized.
         __setInitialized();
@@ -149,9 +143,10 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     function routeFor(uint256 groupNumber)
         public
         view
+        virtual
         onlyProxy
         onlyInitialized
-        returns (address target)
+        returns (IWorldID target)
     {
         // We want to revert if the group does not exist.
         if (groupNumber >= groupCount()) {
@@ -159,7 +154,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         }
 
         // If there is no valid route for a given group we also revert.
-        if (routingTable[groupNumber] == NULL_ADDRESS) {
+        if (routingTable[groupNumber] == NULL_ROUTER) {
             revert GroupDisabled();
         }
 
@@ -184,8 +179,9 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @custom:reverts DuplicateGroup If the `groupId` already exists in the routing table.
     /// @custom:reverts NonSequentialGroup If the `groupId` is not the sequentially next group based
     ///                 on the known groups.
-    function addGroup(uint256 groupId, address groupIdentityManager)
+    function addGroup(uint256 groupId, IWorldID groupIdentityManager)
         public
+        virtual
         onlyProxy
         onlyInitialized
         onlyOwner
@@ -201,7 +197,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         }
 
         // Insert the entry into the routing table.
-        insertNewTableEntry(groupId, groupIdentityManager);
+        insertNewTableEntry(groupIdentityManager);
     }
 
     /// @notice Updates the target address for a group in the router.
@@ -215,12 +211,13 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @return oldTarget The old target address for the group.
     ///
     /// @custom:reverts NoSuchGroup If the target group does not exist to be updated.
-    function updateGroup(uint256 groupId, address newTargetAddress)
+    function updateGroup(uint256 groupId, IWorldID newTargetAddress)
         public
+        virtual
         onlyProxy
         onlyInitialized
         onlyOwner
-        returns (address oldTarget)
+        returns (IWorldID oldTarget)
     {
         // It is not possible to update a non-existent group.
         if (groupId >= groupCount()) {
@@ -240,12 +237,13 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @custom:reverts NoSuchGroup If the target group does not exist to be disabled.
     function disableGroup(uint256 groupId)
         public
+        virtual
         onlyProxy
         onlyInitialized
         onlyOwner
-        returns (address oldTarget)
+        returns (IWorldID oldTarget)
     {
-        return updateGroup(groupId, NULL_ADDRESS);
+        return updateGroup(groupId, NULL_ROUTER);
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -255,8 +253,8 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @notice Gets the number of groups in the routing table.
     ///
     /// @return count The number of groups in the table.
-    function groupCount() public view onlyProxy onlyInitialized returns (uint256 count) {
-        return _groupCount;
+    function groupCount() public view virtual onlyProxy onlyInitialized returns (uint256 count) {
+        return routingTable.length;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -264,37 +262,32 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Inserts the `targetAddress` into the routing table for the provided `groupId`.
-    /// @dev Grows the routing table if necessary to accommodate the provided entry.
+    /// @dev Callers must ensure that the group identifier requested is the next in the table before
+    ///      calling.
     ///
-    /// @param groupId The group identifier to add to the routing table.
     /// @param targetAddress The address to be routed to for the provided `groupId`.
-    function insertNewTableEntry(uint256 groupId, address targetAddress)
+    function insertNewTableEntry(IWorldID targetAddress)
         internal
+        virtual
         onlyProxy
         onlyInitialized
     {
-        while (groupId >= routingTable.length) {
-            uint256 existingTableLength = routingTable.length;
-            address[] memory newRoutingTable =
-                new address[](existingTableLength + DEFAULT_ROUTING_TABLE_GROWTH);
-
-            for (uint256 i = 0; i < existingTableLength; ++i) {
-                newRoutingTable[i] = routingTable[i];
-            }
-
-            routingTable = newRoutingTable;
-        }
-
-        routingTable[groupId] = targetAddress;
-        _groupCount++;
+        routingTable.push(targetAddress);
     }
 
     /// @notice Gets the group identifier for the group with the highest group identifier known to
     ///         the router.
     ///
     /// @return groupId The highest group identifier known.
-    function nextGroupId() internal view onlyProxy onlyInitialized returns (uint256 groupId) {
-        return _groupCount;
+    function nextGroupId()
+        internal
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (uint256 groupId)
+    {
+        return groupCount();
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -312,7 +305,8 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @param externalNullifierHash A keccak256 hash of the external nullifier
     /// @param proof The zero-knowledge proof
     ///
-    /// @custom:reverts string If the `proof` is invalid.
+    /// @custom:reverts Any If the `proof` is invalid. The exact type of the revert depends on the
+    ///                 `IWorldID` implementation being called into.
     /// @custom:reverts NoSuchGroup If the provided `groupId` references a group that does not exist.
     function verifyProof(
         uint256 groupId,
@@ -322,15 +316,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         uint256 externalNullifierHash,
         uint256[8] calldata proof
     ) external virtual onlyProxy onlyInitialized {
-        address identityManager = routeFor(groupId);
-
-        bytes memory callData = abi.encodeCall(
-            IWorldID.verifyProof, (root, signalHash, nullifierHash, externalNullifierHash, proof)
-        );
-
-        (bool success,) = identityManager.call(callData);
-        if (!success) {
-            revert FailedToVerifyProof();
-        }
+        IWorldID identityManager = routeFor(groupId);
+        identityManager.verifyProof(root, signalHash, nullifierHash, externalNullifierHash, proof);
     }
 }

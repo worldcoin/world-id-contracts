@@ -204,6 +204,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///      with upgrades based upon this contract. Be aware that there are only 256 (zero-indexed)
     ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
     ///      replaced by use of setters.
+    /// @dev This function is explicitly not virtual as it does not make sense to override even when
+    ///      upgrading. Create a separate initializer function instead.
     ///
     /// @param _treeDepth The depth of the MerkeTree
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
