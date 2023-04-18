@@ -47,10 +47,14 @@ contract BatchLookupTableOwnershipManagement is VerifierLookupTableTest {
     }
 
     /// @notice Tests that it is possible to renounce ownership.
-    function testRenounceOwnership() public {
+    function testCannotRenounceOwnershipAsOwner() public {
+        // Setup
+        bytes memory errorData =
+            abi.encodeWithSelector(VerifierLookupTable.CannotRenounceOwnership.selector);
+        vm.expectRevert(errorData);
+
         // Test
         lookupTable.renounceOwnership();
-        assertEq(lookupTable.owner(), nullAddress);
     }
 
     /// @notice Ensures that ownership cannot be renounced by anybody other than the owner.
