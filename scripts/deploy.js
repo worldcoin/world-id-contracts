@@ -452,7 +452,7 @@ async function deployVerifierContract(plan, config) {
 //   a 34 character prefix of the hex encoding of the keccak256 hash of the fully qualified library name
 //   between __$ and $__
 //   E.g. __$a0b3f842b95cabff7722bd983061aec5b3$__
-// - Compile and deploy the library. Save the addrsss it was deployed under!
+// - Compile and deploy the library. Save the address it was deployed under!
 // - Compile the code that previously cause problem
 // - In the bytecode manually replace placeholder with the address of library
 // - Deploy the bytecode

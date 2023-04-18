@@ -5,13 +5,14 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 
+import {CheckInitialized} from "../../utils/CheckInitialized.sol";
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
 import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
 import {WorldIDIdentityManagerImplMock} from "../mock/WorldIDIdentityManagerImplMock.sol";
-import {CheckInitialized} from "../../utils/CheckInitialized.sol";
+import {WorldIDImpl} from "../../abstract/WorldIDImpl.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -63,15 +64,15 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
     }
 
-    /// @notice Tests that it is possible to renounce ownership.
-    function testRenounceOwnership() public {
+    /// @notice Tests that it is impossible to renounce ownership, even as the owner.
+    function testCannotRenounceOwnershipAsOwner() public {
         // Setup
         bytes memory renounceData = abi.encodeCall(OwnableUpgradeable.renounceOwnership, ());
-        bytes memory ownerData = abi.encodeCall(OwnableUpgradeable.owner, ());
+        bytes memory errorData =
+            abi.encodeWithSelector(WorldIDImpl.CannotRenounceOwnership.selector);
 
         // Test
-        assertCallSucceedsOn(identityManagerAddress, renounceData);
-        assertCallSucceedsOn(identityManagerAddress, ownerData, abi.encode(nullAddress));
+        assertCallFailsOn(identityManagerAddress, renounceData, errorData);
     }
 
     /// @notice Ensures that ownership cannot be renounced by anybody other than the owner.
