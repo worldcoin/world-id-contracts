@@ -61,7 +61,7 @@ contract VerifierLookupTable is Ownable {
     /// @custom:reverts BatchTooLarge If `batchSize` exceeds the maximum batch size.
     /// @custom:reverts NoSuchVerifier If there is no verifier associated with the `batchSize`.
     function getVerifierFor(uint256 batchSize) public view returns (ITreeVerifier verifier) {
-        // Check the preconditions for queGrying the verifier.
+        // Check the preconditions for querying the verifier.
         validateVerifier(batchSize);
 
         // With the preconditions checked, we can return the verifier.
