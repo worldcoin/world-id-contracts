@@ -37,6 +37,9 @@ contract VerifierLookupTable is Ownable {
     /// @notice Raised if an attempt is made to add a verifier for a batch size that already exists.
     error VerifierExists();
 
+    /// @notice Thrown when an attempt is made to renounce ownership.
+    error CannotRenounceOwnership();
+
     ////////////////////////////////////////////////////////////////////////////////
     ///                               CONSTRUCTION                               ///
     ////////////////////////////////////////////////////////////////////////////////
@@ -131,5 +134,18 @@ contract VerifierLookupTable is Ownable {
         if (verifier_lut[batchSize] == nullVerifier) {
             revert NoSuchVerifier();
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    ///                           OWNERSHIP MANAGEMENT                           ///
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Ensures that ownership of the lookup table cannot be renounced.
+    /// @dev This function is intentionally not `virtual` as we do not want it to be possible to
+    ///      renounce ownership for the lookup table.
+    /// @dev This function is marked as `onlyOwner` to maintain the access restriction from the base
+    ///      contract.
+    function renounceOwnership() public view override onlyOwner {
+        revert CannotRenounceOwnership();
     }
 }

@@ -45,6 +45,13 @@ abstract contract WorldIDImpl is OwnableUpgradeable, UUPSUpgradeable, CheckIniti
     ///                             AUTHENTICATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
 
+    /// @notice Thrown when an attempt is made to renounce ownership.
+    error CannotRenounceOwnership();
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                             AUTHENTICATION                              ///
+    ///////////////////////////////////////////////////////////////////////////////
+
     /// @notice Is called when upgrading the contract to check whether it should be performed.
     ///
     /// @param newImplementation The address of the implementation being upgraded to.
@@ -58,5 +65,14 @@ abstract contract WorldIDImpl is OwnableUpgradeable, UUPSUpgradeable, CheckIniti
         onlyOwner
     {
         // No body needed as `onlyOwner` handles it.
+    }
+
+    /// @notice Ensures that ownership of WorldID implementations cannot be renounced.
+    /// @dev This function is intentionally not `virtual` as we do not want it to be possible to
+    ///      renounce ownership for any WorldID implementation.
+    /// @dev This function is marked as `onlyOwner` to maintain the access restriction from the base
+    ///      contract.
+    function renounceOwnership() public view override onlyOwner {
+        revert CannotRenounceOwnership();
     }
 }

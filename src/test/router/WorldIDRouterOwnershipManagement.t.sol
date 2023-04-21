@@ -3,9 +3,10 @@ pragma solidity ^0.8.19;
 
 import {WorldIDRouterTest} from "./WorldIDRouterTest.sol";
 
+import {CheckInitialized} from "../../utils/CheckInitialized.sol";
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {CheckInitialized} from "../../utils/CheckInitialized.sol";
+import {WorldIDImpl} from "../../abstract/WorldIDImpl.sol";
 
 import {WorldIDRouter as Router} from "../../WorldIDRouter.sol";
 import {WorldIDRouterImplV1 as RouterImpl} from "../../WorldIDRouterImplV1.sol";
@@ -57,15 +58,15 @@ contract WorldIDRouterOwnershipManagement is WorldIDRouterTest {
         assertCallFailsOn(routerAddress, callData, expectedReturn);
     }
 
-    /// @notice Tests that it is possible to renounce ownership.
-    function testRenounceOwnership() public {
+    /// @notice Tests that it is impossible to renounce ownership, even as the owner.
+    function testCannotRenounceOwnershipAsOwner() public {
         // Setup
         bytes memory renounceData = abi.encodeCall(OwnableUpgradeable.renounceOwnership, ());
-        bytes memory ownerData = abi.encodeCall(OwnableUpgradeable.owner, ());
+        bytes memory errorData =
+            abi.encodeWithSelector(WorldIDImpl.CannotRenounceOwnership.selector);
 
         // Test
-        assertCallSucceedsOn(routerAddress, renounceData);
-        assertCallSucceedsOn(routerAddress, ownerData, abi.encode(nullAddress));
+        assertCallFailsOn(routerAddress, renounceData, errorData);
     }
 
     /// @notice Ensures that ownership cannot be renounced by anybody other than the owner.
