@@ -64,12 +64,14 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         uint32 newStartIndex,
         uint128 newPreRoot,
         uint128 newPostRoot,
-        uint128[] memory identities
+        uint128[] memory identities,
+        address identityOperator
     ) public {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(identities.length <= 1000);
+        vm.assume(identityOperator != nullAddress && identityOperator != thisAddress);
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
@@ -88,9 +90,15 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
         );
 
+        bytes memory setupCallData =
+            abi.encodeCall(ManagerImpl.setIdentityOperator, identityOperator);
+        (bool success,) = identityManagerAddress.call(setupCallData);
+        assert(success);
+
         // Expect the root to have been sent to the state bridge.
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(newPostRoot);
+        vm.prank(identityOperator);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData);
