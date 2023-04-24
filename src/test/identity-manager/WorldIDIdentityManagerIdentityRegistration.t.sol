@@ -319,16 +319,18 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         assertCallFailsOn(identityManagerAddress, registerCallData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to register identities as a non-manager.
-    function testCannotRegisterIdentitiesAsNonManager(address nonManager) public {
+    /// @notice Tests that it reverts if an attempt is made to register identities as an address
+    ///         that is not the identity operator address.
+    function testCannotRegisterIdentitiesAsNonIdentityOperator(address nonOperator) public {
         // Setup
-        vm.assume(nonManager != address(this) && nonManager != address(0x0));
+        vm.assume(nonOperator != address(this) && nonOperator != address(0x0));
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
             (proof, preRoot, startIndex, identityCommitments, postRoot)
         );
-        bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
-        vm.prank(nonManager);
+        bytes memory errorData =
+            abi.encodeWithSelector(ManagerImpl.Unauthorized.selector, nonOperator);
+        vm.prank(nonOperator);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, errorData);

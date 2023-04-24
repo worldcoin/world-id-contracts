@@ -247,14 +247,15 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to update identities as a non-manager.
-    function testCannotUpdateIdentitiesAsNonManager(
-        address nonManager,
+    /// @notice Tests that it reverts if an attempt is made to update identities as an address that
+    ///         is not the identity operator address.
+    function testCannotUpdateIdentitiesAsNonIdentityOperator(
+        address nonOperator,
         uint128[] memory identities,
         uint128[8] memory prf
     ) public {
         // Setup
-        vm.assume(nonManager != address(this) && nonManager != address(0x0));
+        vm.assume(nonOperator != address(this) && nonOperator != address(0x0));
         (
             uint32[] memory leafIndices,
             uint256[] memory oldIdents,
@@ -265,8 +266,9 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             ManagerImpl.updateIdentities,
             (actualProof, preRoot, leafIndices, oldIdents, newIdents, postRoot)
         );
-        bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
-        vm.prank(nonManager);
+        bytes memory errorData =
+            abi.encodeWithSelector(ManagerImpl.Unauthorized.selector, nonOperator);
+        vm.prank(nonOperator);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, errorData);

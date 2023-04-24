@@ -306,7 +306,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint32 startIndex,
         uint256[] calldata identityCommitments,
         uint256 postRoot
-    ) public virtual onlyProxy onlyInitialized onlyOwner {
+    ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // We can only operate on the latest root in reduced form.
         if (!isInputInReducedForm(preRoot)) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
@@ -417,7 +417,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256[] calldata oldIdentities,
         uint256[] calldata newIdentities,
         uint256 postRoot
-    ) public virtual onlyProxy onlyInitialized onlyOwner {
+    ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // We can only operate on the latest root in reduced form.
         if (!isInputInReducedForm(preRoot)) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
@@ -487,7 +487,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 inputHash,
         uint256 preRoot,
         uint256 postRoot
-    ) internal virtual onlyProxy onlyInitialized onlyOwner {
+    ) internal virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // Pull out the proof terms and verifier input.
         uint256[2] memory ar = [updateProof[0], updateProof[1]];
         uint256[2][2] memory bs =

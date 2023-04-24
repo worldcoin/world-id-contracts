@@ -97,6 +97,16 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         assertCallSucceedsOn(identityManagerAddress, callData, returnData);
     }
 
+    /// @notice Ensures that the identity operator address cannot be accessed unless it is done via
+    ///         the proxy.
+    function testCannotGetIdentityOperatorWithoutProxy() public {
+        // Setup
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.identityOperator();
+    }
+
     /// @notice Ensures that it is possible for the owner to set the address of the identity
     ///         operator.
     function testCanSetIdentityOperatorAsOwner(address newOperator) public {
@@ -104,9 +114,15 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         vm.assume(newOperator != thisAddress);
         bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityOperator, (newOperator));
         bytes memory returnData = abi.encode(thisAddress);
+        bytes memory checkCallData1 = abi.encodeCall(ManagerImpl.identityOperator, ());
+        bytes memory checkCallReturn1 = abi.encode(newOperator);
+        bytes memory checkCallData2 = abi.encodeCall(OwnableUpgradeable.owner, ());
+        bytes memory checkCallReturn2 = abi.encode(thisAddress);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, returnData);
+        assertCallSucceedsOn(identityManagerAddress, checkCallData1, checkCallReturn1);
+        assertCallSucceedsOn(identityManagerAddress, checkCallData2, checkCallReturn2);
     }
 
     /// @notice Ensures that it is not possible for a non-owner to set the address of the identity
@@ -120,5 +136,15 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, errorData);
+    }
+
+    /// @notice Ensures that it is not possible to set the identity operator address unless it is
+    ///         done via the proxy.
+    function testCannotSetIdentityOperatorWithoutProxy(address newOperator) public {
+        // Setup
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.setIdentityOperator(newOperator);
     }
 }
