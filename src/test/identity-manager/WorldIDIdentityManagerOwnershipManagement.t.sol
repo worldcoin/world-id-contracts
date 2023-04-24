@@ -86,4 +86,39 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         // Test
         assertCallFailsOn(identityManagerAddress, callData, returnData);
     }
+
+    /// @notice Enures that the contract has a notion of identity operator.
+    function testHasIdentityOperator() public {
+        // Setup
+        bytes memory callData = abi.encodeCall(ManagerImpl.identityOperator, ());
+        bytes memory returnData = abi.encode(thisAddress);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, returnData);
+    }
+
+    /// @notice Ensures that it is possible for the owner to set the address of the identity
+    ///         operator.
+    function testCanSetIdentityOperatorAsOwner(address newOperator) public {
+        // Setup
+        vm.assume(newOperator != thisAddress);
+        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityOperator, (newOperator));
+        bytes memory returnData = abi.encode(thisAddress);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, returnData);
+    }
+
+    /// @notice Ensures that it is not possible for a non-owner to set the address of the identity
+    ///         operator
+    function testCannotSetIdentityOperatorAsNonOwner(address newOperator, address naughty) public {
+        // Setup
+        vm.assume(naughty != nullAddress && naughty != thisAddress);
+        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityOperator, (newOperator));
+        bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
+        vm.prank(naughty);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, errorData);
+    }
 }
