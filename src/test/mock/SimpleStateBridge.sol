@@ -10,9 +10,14 @@ import {IWorldID} from "../../interfaces/IWorldID.sol";
 /// @notice A dumb bridge to make it easy to fuzz test successes and failures.
 contract SimpleStateBridge is IBridge, IWorldID {
     event StateRootSentMultichain(uint256 indexed root);
+    event SetRootHistoryExpiry(uint256 expiryTime);
 
     function sendRootMultichain(uint256 root) external virtual override {
         emit StateRootSentMultichain(root);
+    }
+
+    function setRootHistoryExpiry(uint256 expiryTime) external virtual override {
+        emit SetRootHistoryExpiry(expiryTime);
     }
 
     event ProofVerified(uint256 indexed root);

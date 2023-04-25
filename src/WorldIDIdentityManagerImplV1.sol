@@ -923,6 +923,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             revert("Expiry time cannot be zero.");
         }
         rootHistoryExpiry = newExpiryTime;
+
+        _stateBridge.setRootHistoryExpiry(newExpiryTime);
     }
 
     /// @notice Gets the Semaphore tree depth the contract was initialized with.
