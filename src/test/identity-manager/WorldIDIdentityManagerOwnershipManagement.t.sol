@@ -7,6 +7,7 @@ import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 
 import {CheckInitialized} from "../../utils/CheckInitialized.sol";
 import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Ownable2StepUpgradeable} from "contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
@@ -42,21 +43,48 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         // Setup
         vm.assume(newOwner != nullAddress);
         bytes memory transferCallData =
-            abi.encodeCall(OwnableUpgradeable.transferOwnership, (newOwner));
+            abi.encodeCall(Ownable2StepUpgradeable.transferOwnership, (newOwner));
         bytes memory ownerCallData = abi.encodeCall(OwnableUpgradeable.owner, ());
+        bytes memory pendingOwnerCallData = abi.encodeCall(Ownable2StepUpgradeable.pendingOwner, ());
+        bytes memory acceptOwnerCallData =
+            abi.encodeCall(Ownable2StepUpgradeable.acceptOwnership, ());
         vm.expectEmit(true, true, true, true);
         emit OwnershipTransferred(thisAddress, newOwner);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, transferCallData, new bytes(0x0));
+        assertCallSucceedsOn(identityManagerAddress, pendingOwnerCallData, abi.encode(newOwner));
+        assertCallSucceedsOn(identityManagerAddress, ownerCallData, abi.encode(thisAddress));
+
+        vm.prank(newOwner);
+        assertCallSucceedsOn(identityManagerAddress, acceptOwnerCallData, new bytes(0x0));
         assertCallSucceedsOn(identityManagerAddress, ownerCallData, abi.encode(newOwner));
+    }
+
+    /// @notice Tests that only the pending owner can accept the ownership transfer.
+    function testCannotAcceptOwnershipAsNonPendingOwner(address newOwner, address notNewOwner)
+        public
+    {
+        // Setup
+        vm.assume(newOwner != nullAddress);
+        vm.assume(notNewOwner != newOwner);
+        bytes memory callData =
+            abi.encodeCall(Ownable2StepUpgradeable.transferOwnership, (newOwner));
+        bytes memory acceptCallData = abi.encodeCall(Ownable2StepUpgradeable.acceptOwnership, ());
+        bytes memory expectedError = encodeStringRevert("Ownable2Step: caller is not the new owner");
+        assertCallSucceedsOn(identityManagerAddress, callData);
+        vm.prank(notNewOwner);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, acceptCallData, expectedError);
     }
 
     /// @notice Ensures that it is impossible to transfer ownership without being the owner.
     function testCannotTransferOwnerIfNotOwner(address naughty, address newOwner) public {
         // Setup
         vm.assume(naughty != thisAddress && newOwner != nullAddress);
-        bytes memory callData = abi.encodeCall(OwnableUpgradeable.transferOwnership, (newOwner));
+        bytes memory callData =
+            abi.encodeCall(Ownable2StepUpgradeable.transferOwnership, (newOwner));
         bytes memory expectedReturn = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(naughty);
 

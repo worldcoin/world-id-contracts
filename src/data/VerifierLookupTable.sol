@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Ownable} from "openzeppelin-contracts/access/Ownable.sol";
+import {Ownable2Step} from "openzeppelin-contracts/access/Ownable2Step.sol";
 
 import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
 
@@ -10,7 +10,7 @@ import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
 /// @notice A table that provides the correct tree verifier based on the provided batch size.
 /// @dev It should be used to query the correct verifier before using that verifier for verifying a
 ///      tree modification proof.
-contract VerifierLookupTable is Ownable {
+contract VerifierLookupTable is Ownable2Step {
     ////////////////////////////////////////////////////////////////////////////////
     ///                                   DATA                                   ///
     ////////////////////////////////////////////////////////////////////////////////
@@ -46,7 +46,7 @@ contract VerifierLookupTable is Ownable {
 
     /// @notice Constructs a new batch lookup table.
     /// @dev It is initially constructed without any verifiers.
-    constructor() Ownable() {}
+    constructor() Ownable2Step() {}
 
     ////////////////////////////////////////////////////////////////////////////////
     ///                                ACCESSORS                                 ///

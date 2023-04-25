@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {CheckInitialized} from "../utils/CheckInitialized.sol";
 
-import {OwnableUpgradeable} from "contracts-upgradeable/access/OwnableUpgradeable.sol";
+import {Ownable2StepUpgradeable} from "contracts-upgradeable/access/Ownable2StepUpgradeable.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 /// @title WorldID Proxy Contract Implementation
@@ -11,7 +11,7 @@ import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable
 /// @notice A router component that can dispatch group numbers to the correct identity manager
 ///         implementation.
 /// @dev This is base class for implementations delegated to by a proxy.
-abstract contract WorldIDImpl is OwnableUpgradeable, UUPSUpgradeable, CheckInitialized {
+abstract contract WorldIDImpl is Ownable2StepUpgradeable, UUPSUpgradeable, CheckInitialized {
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -42,7 +42,18 @@ abstract contract WorldIDImpl is OwnableUpgradeable, UUPSUpgradeable, CheckIniti
     //   cannot recover from an issue or vulnerability.
 
     ///////////////////////////////////////////////////////////////////////////////
-    ///                             AUTHENTICATION                              ///
+    ///                             INITIALIZATION                              ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Performs the initialisation steps necessary for the base contracts of this contract.
+    /// @dev Must be called during `initialize` before performing any additional steps.
+    function __WorldIDImpl_init() internal virtual onlyInitializing {
+        __Ownable_init();
+        __UUPSUpgradeable_init();
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                 ERRORS                                  ///
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Thrown when an attempt is made to renounce ownership.
