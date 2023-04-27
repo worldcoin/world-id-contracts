@@ -14,6 +14,15 @@ import {WorldIDRouterImplV1 as RouterImpl} from "../../WorldIDRouterImplV1.sol";
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
 contract WorldIDRouterRouting is WorldIDRouterTest {
+    // Taken from WorldIDRouterImplV1.sol
+    event GroupAdded(uint256 indexed groupId, address indexed identityManager);
+    event GroupUpdated(
+        uint256 indexed groupId,
+        address indexed oldIdentityManager,
+        address indexed newIdentityManager
+    );
+    event GroupDisabled(uint256 indexed groupId);
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                          GROUP ROUTING TESTS                            ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -69,7 +78,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory callData = abi.encodeCall(RouterImpl.routeFor, (groupId));
-        bytes memory expectedError = abi.encodeWithSelector(RouterImpl.GroupDisabled.selector);
+        bytes memory expectedError = abi.encodeWithSelector(RouterImpl.GroupIsDisabled.selector);
 
         // Test
         assertCallFailsOn(routerAddress, callData, expectedError);
@@ -95,6 +104,9 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
         bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (1, target));
         bytes memory checkCallData = abi.encodeCall(RouterImpl.routeFor, (1));
         bytes memory expectedCheckReturn = abi.encode(target);
+
+        vm.expectEmit(true, true, true, true);
+        emit GroupAdded(1, address(target));
 
         // Test
         assertCallSucceedsOn(routerAddress, callData);
@@ -167,6 +179,9 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
         bytes memory checkCallData = abi.encodeCall(RouterImpl.routeFor, (uint256(groupId)));
         bytes memory checkExpectedReturn = abi.encode(newTarget);
 
+        vm.expectEmit(true, true, true, true);
+        emit GroupUpdated(uint256(groupId), address(returnAddress), address(newTarget));
+
         // Test
         assertCallSucceedsOn(routerAddress, callData, expectedReturn);
         assertCallSucceedsOn(routerAddress, checkCallData, checkExpectedReturn);
@@ -226,7 +241,11 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
         }
         bytes memory expectedReturn = abi.encode(returnAddress);
         bytes memory checkCallData = abi.encodeCall(RouterImpl.routeFor, (uint256(groupId)));
-        bytes memory checkExpectedError = abi.encodeWithSelector(RouterImpl.GroupDisabled.selector);
+        bytes memory checkExpectedError =
+            abi.encodeWithSelector(RouterImpl.GroupIsDisabled.selector);
+
+        vm.expectEmit(true, true, true, true);
+        emit GroupDisabled(groupId);
 
         // Test
         assertCallSucceedsOn(routerAddress, callData, expectedReturn);

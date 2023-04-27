@@ -79,7 +79,34 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     error NonSequentialGroup(uint256 groupId);
 
     /// @notice The requested group has been disabled.
-    error GroupDisabled();
+    error GroupIsDisabled();
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  EVENTS                                 ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Emitted when a group is added to the router.
+    ///
+    /// @param groupId The identitifier for the group.
+    /// @param identityManager The address of the identity manager associated with the group.
+    event GroupAdded(uint256 indexed groupId, address indexed identityManager);
+
+    /// @notice Emitted when a group is updated in the router.
+    ///
+    /// @param groupId The identitfier for the group.
+    /// @param oldIdentityManager The address of the previous identity manager associated with the
+    ///        group.
+    /// @param newIdentityManager The address of the new identity manager associated with the group.
+    event GroupUpdated(
+        uint256 indexed groupId,
+        address indexed oldIdentityManager,
+        address indexed newIdentityManager
+    );
+
+    /// @notice Emitted when a group is disabled in the router.
+    ///
+    /// @param groupId The identifier of the group that has been disabled.
+    event GroupDisabled(uint256 indexed groupId);
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
@@ -154,7 +181,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
 
         // If there is no valid route for a given group we also revert.
         if (routingTable[groupNumber] == NULL_ROUTER) {
-            revert GroupDisabled();
+            revert GroupIsDisabled();
         }
 
         // With preconditions checked we can return the route.
@@ -197,6 +224,8 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
 
         // Insert the entry into the routing table.
         insertNewTableEntry(groupIdentityManager);
+
+        emit GroupAdded(groupId, address(groupIdentityManager));
     }
 
     /// @notice Updates the target address for a group in the router.
@@ -218,13 +247,8 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         onlyOwner
         returns (IWorldID oldTarget)
     {
-        // It is not possible to update a non-existent group.
-        if (groupId >= groupCount()) {
-            revert NoSuchGroup(groupId);
-        }
-
-        oldTarget = routingTable[groupId];
-        routingTable[groupId] = newTargetAddress;
+        oldTarget = performGroupUpdate(groupId, newTargetAddress);
+        emit GroupUpdated(groupId, address(oldTarget), address(newTargetAddress));
     }
 
     /// @notice Disables the target group in the router.
@@ -242,7 +266,36 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         onlyOwner
         returns (IWorldID oldTarget)
     {
-        return updateGroup(groupId, NULL_ROUTER);
+        oldTarget = performGroupUpdate(groupId, NULL_ROUTER);
+        emit GroupDisabled(groupId);
+    }
+
+    /// @notice Updates the target address for a group in the router.
+    /// @dev It is perfectly valid to update a group with a target address of 0 in order to disable
+    ///      it.
+    ///
+    /// @param groupId The identitifier for the group to have its target address updated.
+    /// @param newTarget The new target address for the group in routing. If this is set to the null
+    ///        address the group will be disabled.
+    ///
+    /// @return oldTarget The old target address for the group.
+    ///
+    /// @custom:reverts NoSuchGroup If the target group does not exist to be updated.
+    function performGroupUpdate(uint256 groupId, IWorldID newTarget)
+        internal
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+        returns (IWorldID oldTarget)
+    {
+        // It is not possible to update a non-existent group.
+        if (groupId >= groupCount()) {
+            revert NoSuchGroup(groupId);
+        }
+
+        oldTarget = routingTable[groupId];
+        routingTable[groupId] = newTarget;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
