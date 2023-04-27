@@ -34,8 +34,11 @@ deploy: install build; node --no-warnings scripts/deploy.js deploy
 # Upgrade contracts
 upgrade: install build; node --no-warnings scripts/deploy.js upgrade
 
-# Deploy contracts
+# Transfer contract ownership
 transfer-ownership: install build; node --no-warnings scripts/deploy.js transfer
+
+# Set the identity manager's identity operator
+set-operator: install build; node --no-warnings scripts/deploy.js set-operator
 
 # ===== Verifier Management Rules =====================================================================================
 

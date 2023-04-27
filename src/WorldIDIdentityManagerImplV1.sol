@@ -55,6 +55,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     // these variables takes place. If reordering happens, a storage clash will occur (effectively a
     // memory safety error).
 
+    /// @notice The address of the contract authorized to perform identity management operations.
+    /// @dev The identity operator defaults to being the same as the owner.
+    address internal _identityOperator;
+
     /// @notice The latest root of the identity merkle tree.
     uint256 internal _latestRoot;
 
@@ -244,6 +248,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         semaphoreVerifier = _semaphoreVerifier;
         _stateBridge = __stateBridge;
         _isStateBridgeEnabled = _enableStateBridge;
+        _identityOperator = owner();
 
         // Say that the contract is initialized.
         __setInitialized();
@@ -301,7 +306,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint32 startIndex,
         uint256[] calldata identityCommitments,
         uint256 postRoot
-    ) public virtual onlyProxy onlyInitialized onlyOwner {
+    ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // We can only operate on the latest root in reduced form.
         if (!isInputInReducedForm(preRoot)) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
@@ -412,7 +417,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256[] calldata oldIdentities,
         uint256[] calldata newIdentities,
         uint256 postRoot
-    ) public virtual onlyProxy onlyInitialized onlyOwner {
+    ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // We can only operate on the latest root in reduced form.
         if (!isInputInReducedForm(preRoot)) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
@@ -482,7 +487,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 inputHash,
         uint256 preRoot,
         uint256 postRoot
-    ) internal virtual onlyProxy onlyInitialized onlyOwner {
+    ) internal virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // Pull out the proof terms and verifier input.
         uint256[2] memory ar = [updateProof[0], updateProof[1]];
         uint256[2][2] memory bs =
@@ -941,6 +946,33 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         return treeDepth;
     }
 
+    /// @notice Gets the address that is authorised to perform identity operations on this identity
+    ///         manager instance.
+    ///
+    /// @return _ The address authorized to perform identity operations.
+    function identityOperator() public view virtual onlyProxy onlyInitialized returns (address) {
+        return _identityOperator;
+    }
+
+    /// @notice Sets the address that is authorised to perform identity operations on this identity
+    ///         manager instance.
+    ///
+    /// @param newIdentityOperator The address of the new identity operator.
+    ///
+    /// @return _ The address of the old identity operator.
+    function setIdentityOperator(address newIdentityOperator)
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+        returns (address)
+    {
+        address oldOperator = _identityOperator;
+        _identityOperator = newIdentityOperator;
+        return oldOperator;
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                    SEMAPHORE PROOF VALIDATION LOGIC                     ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -970,5 +1002,21 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         semaphoreVerifier.verifyProof(
             root, nullifierHash, signalHash, externalNullifierHash, proof, treeDepth
         );
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                    SEMAPHORE PROOF VALIDATION LOGIC                     ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Ensures that the guarded operation can only be performed by the authorized identity
+    ///         operator contract.
+    ///
+    /// @custom:reverts Unauthorized If the caller is not the identity operator.
+    modifier onlyIdentityOperator() {
+        if (msg.sender != _identityOperator) {
+            revert Unauthorized(msg.sender);
+        }
+
+        _;
     }
 }

@@ -825,6 +825,35 @@ async function transferIdentityManagerOwnership(plan, config) {
   });
 }
 
+async function setIdentityManagerIdentityOperator(plan, config) {
+  plan.add('Set Identity Operator', async () => {
+    const spinner = ora('Building set operator call...').start();
+    const contract = new Contract(
+      config.identityManagerContractAddress,
+      IdentityManagerImpl.abi,
+      config.wallet
+    );
+
+    spinner.text = `Transferring identity operator permissions on the contract at ${config.identityManagerContractAddress} to wallet at ${config.identityOperatorAddress}...`;
+
+    try {
+      await contract.setIdentityOperator(config.identityOperatorAddress);
+      spinner.succeed(
+        `Transferred ownership of contract at ${config.identityManagerContractAddress} to ${config.identityOperatorAddress}`
+      );
+    } catch (e) {
+      // const body = JSON.parse(e.error.error.body);
+      // const decodedError = decodeContractError(contract.interface, body.error.data);
+      // if (decodedError.name === 'Unauthorized') {
+      //   spinner.fail('You do not have permission to set the identity operator. Are you the contract owner?');
+      // }
+
+      spinner.fail('Something unknown went wrong during ownership transfer');
+      console.error(e);
+    }
+  });
+}
+
 async function planRouteAdd(plan, config) {
   plan.add('Add route in WorldID Router', async () => {
     const spinner = ora('Building route add call...').start();
@@ -1015,17 +1044,48 @@ async function getEnableStateBridge(config) {
 /** Gets the address of the IdentityManager contract to be modified at.
  *
  * @param {Object} config The configuration for the script.
+ * @param {boolean} isRequired Whether the address is required or not.
  * @returns {Promise<void>} The IdentityManager contract address might be written into the `config` object.
  */
-async function getIdentityManagerContractAddress(config) {
+async function getIdentityManagerContractAddress(config, isRequired) {
   if (!config.identityManagerContractAddress) {
     config.identityManagerContractAddress = process.env.IDENTITY_MANAGER_CONTRACT_ADDRESS;
   }
 
   if (!config.identityManagerContractAddress) {
+    const messageAdd = isRequired ? ': ' : ' (or leave blank if not needed): ';
     config.identityManagerContractAddress = await ask(
-      'Please provide the address of the IdentityManager (or leave blank if not needed): '
+      `Please provide the address of the IdentityManager${messageAdd}`
     );
+  }
+
+  if (!config.identityManagerContractAddress && isRequired) {
+    console.error('The identity manager address is required but none was provided.');
+    process.exit(0);
+  }
+}
+
+/** Gets the address that should be given permission to perform identity operations on the identity
+ * manager. You must be the owner of the identity manager to run this.
+ *
+ * @param {Object} config The configuration for the script.
+ * @returns {Promise<void>} The address of the identity management operator might be written into
+ *          the config object.
+ */
+async function getOperatorAddress(config) {
+  if (!config.identityOperatorAddress) {
+    config.identityOperatorAddress = process.env.IDENTITY_OPERATOR_ADDRESS;
+  }
+
+  if (!config.identityOperatorAddress) {
+    config.identityOperatorAddress = await ask(
+      'Please provide the address of the contract you want to be the identity manager operator: '
+    );
+  }
+
+  if (!config.identityOperatorAddress) {
+    console.error('No address provided for the identity operator but one is required.');
+    process.exit(1);
   }
 }
 
@@ -1696,7 +1756,7 @@ async function buildVerifierActionPlan(plan, config, type) {
     await getTypeOfVerifierToDeploy(config);
   }
 
-  await getIdentityManagerContractAddress(config);
+  await getIdentityManagerContractAddress(config, false);
   await getLookupTableAddress(config);
   await getBatchSize(config);
 
@@ -1737,6 +1797,19 @@ async function buildTransferActionPlan(plan, config) {
   await getTargetWalletAddress(config);
 
   await transferIdentityManagerOwnership(plan, config);
+}
+
+async function buildSetOperatorActionPlan(plan, config) {
+  dotenv.config();
+
+  await getPrivateKey(config);
+  await getRpcUrl(config);
+  await getProvider(config);
+  await getWallet(config);
+  await getIdentityManagerContractAddress(config, true);
+  await getOperatorAddress(config);
+
+  await setIdentityManagerIdentityOperator(plan, config);
 }
 
 /** Builds a plan using the provided function and then executes the plan.
@@ -1877,6 +1950,16 @@ async function main() {
       const options = program.opts();
       let config = await loadConfiguration(options.config);
       await buildAndRunPlan(buildTransferActionPlan, config);
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('set-operator')
+    .description('Set the address of the contract that can perform identity management operations.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildSetOperatorActionPlan, config);
       await saveConfiguration(config);
     });
 
