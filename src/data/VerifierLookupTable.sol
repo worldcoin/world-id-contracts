@@ -41,6 +41,32 @@ contract VerifierLookupTable is Ownable2Step {
     error CannotRenounceOwnership();
 
     ////////////////////////////////////////////////////////////////////////////////
+    ///                                  EVENTS                                  ///
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Emitted when a verifier is added to the lookup table.
+    ///
+    /// @param batchSize The size of the batch that the verifier has been added for.
+    /// @param verifierAddress The address of the verifier that was associated with `batchSize`.
+    event VerifierAdded(uint256 indexed batchSize, address indexed verifierAddress);
+
+    /// @notice Emitted when a verifier is updated in the lookup table.
+    ///
+    /// @param batchSize The size of the batch that the verifier has been updated for.
+    /// @param oldVerifierAddress The address of the old verifier for `batchSize`.
+    /// @param newVerifierAddress The address of the new verifier for `batchSize`.
+    event VerifierUpdated(
+        uint256 indexed batchSize,
+        address indexed oldVerifierAddress,
+        address indexed newVerifierAddress
+    );
+
+    /// @notice Emitted when a verifier is disabled in the lookup table.
+    ///
+    /// @param batchSize The batch size that had its verifier disabled.
+    event VerifierDisabled(uint256 indexed batchSize);
+
+    ////////////////////////////////////////////////////////////////////////////////
     ///                               CONSTRUCTION                               ///
     ////////////////////////////////////////////////////////////////////////////////
 
@@ -58,7 +84,6 @@ contract VerifierLookupTable is Ownable2Step {
     ///
     /// @return verifier The tree verifier for the provided `batchSize`.
     ///
-    /// @custom:reverts BatchTooLarge If `batchSize` exceeds the maximum batch size.
     /// @custom:reverts NoSuchVerifier If there is no verifier associated with the `batchSize`.
     function getVerifierFor(uint256 batchSize) public view returns (ITreeVerifier verifier) {
         // Check the preconditions for querying the verifier.
@@ -74,7 +99,6 @@ contract VerifierLookupTable is Ownable2Step {
     /// @param verifier The verifier for a batch of size `batchSize`.
     ///
     /// @custom:reverts VerifierExists If `batchSize` already has an associated verifier.
-    /// @custom:reverts BatchTooLarge If `batchSize` exceeds the maximum batch size.
     /// @custom:reverts string If the caller is not the owner.
     function addVerifier(uint256 batchSize, ITreeVerifier verifier) public onlyOwner {
         // Check that there is no entry for that batch size.
@@ -84,6 +108,7 @@ contract VerifierLookupTable is Ownable2Step {
 
         // Add the verifier.
         updateVerifier(batchSize, verifier);
+        emit VerifierAdded(batchSize, address(verifier));
     }
 
     /// @notice Updates the verifier for the provided `batchSize`.
@@ -93,7 +118,6 @@ contract VerifierLookupTable is Ownable2Step {
     ///
     /// @return oldVerifier The old verifier instance associated with this batch size.
     ///
-    /// @custom:reverts BatchTooLarge If `batchSize` exceeds the maximum batch size.
     /// @custom:reverts string If the caller is not the owner.
     function updateVerifier(uint256 batchSize, ITreeVerifier verifier)
         public
@@ -102,6 +126,7 @@ contract VerifierLookupTable is Ownable2Step {
     {
         oldVerifier = verifier_lut[batchSize];
         verifier_lut[batchSize] = verifier;
+        emit VerifierUpdated(batchSize, address(oldVerifier), address(verifier));
     }
 
     /// @notice Disables the verifier for the provided batch size.
@@ -110,14 +135,14 @@ contract VerifierLookupTable is Ownable2Step {
     ///
     /// @return oldVerifier The old verifier associated with the batch size.
     ///
-    /// @custom:reverts BatchTooLarge If `batchSize` exceeds the maximum batch size.
     /// @custom:reverts string If the caller is not the owner.
     function disableVerifier(uint256 batchSize)
         public
         onlyOwner
         returns (ITreeVerifier oldVerifier)
     {
-        return updateVerifier(batchSize, ITreeVerifier(nullAddress));
+        oldVerifier = updateVerifier(batchSize, ITreeVerifier(nullAddress));
+        emit VerifierDisabled(batchSize);
     }
 
     ////////////////////////////////////////////////////////////////////////////////

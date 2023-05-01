@@ -27,6 +27,9 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
     /// @notice Taken from OwnableUpgradable.sol
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 
+    /// @notice Taken from WorldIDIdentityManagementImplV1.sol
+    event IdentityOperatorChanged(address indexed oldOperator, address indexed newOperator);
+
     /// @notice Checks that it is possible to get the owner, and that the owner is correctly
     ///         initialised.
     function testHasOwner() public {
@@ -146,6 +149,8 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         bytes memory checkCallReturn1 = abi.encode(newOperator);
         bytes memory checkCallData2 = abi.encodeCall(OwnableUpgradeable.owner, ());
         bytes memory checkCallReturn2 = abi.encode(thisAddress);
+        vm.expectEmit(true, true, true, true);
+        emit IdentityOperatorChanged(thisAddress, newOperator);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, returnData);

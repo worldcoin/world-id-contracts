@@ -17,6 +17,12 @@ import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentity
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
 contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
+    /// @notice Taken from WorldIDIdentityManagerImplV1.sol
+    event DependencyUpdated(
+        ManagerImpl.Dependency indexed kind, address indexed oldAddress, address indexed newAddress
+    );
+    event RootHistoryExpirySet(uint256 indexed oldExpiryTime, uint256 indexed newExpiryTime);
+
     /// @notice Checks that it is possible to get the address of the contract currently being used
     ///         to verify identity registration proofs.
     function testCanGetRegisterIdentitiesVerifierLookupTableAddress() public {
@@ -51,6 +57,10 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         bytes memory checkCallData =
             abi.encodeCall(ManagerImpl.getRegisterIdentitiesVerifierLookupTableAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifiersAddress);
+        vm.expectEmit(true, false, true, true);
+        emit DependencyUpdated(
+            ManagerImpl.Dependency.InsertionVerifierLookupTable, nullAddress, newVerifiersAddress
+        );
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData);
@@ -118,6 +128,10 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         bytes memory checkCallData =
             abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierLookupTableAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifierAddress);
+        vm.expectEmit(true, false, true, true);
+        emit DependencyUpdated(
+            ManagerImpl.Dependency.UpdateVerifierLookupTable, nullAddress, newVerifierAddress
+        );
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData);
@@ -178,6 +192,10 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         bytes memory callData = abi.encodeCall(ManagerImpl.setSemaphoreVerifier, (newVerifier));
         bytes memory checkCallData = abi.encodeCall(ManagerImpl.getSemaphoreVerifierAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifierAddress);
+        vm.expectEmit(true, false, true, true);
+        emit DependencyUpdated(
+            ManagerImpl.Dependency.SemaphoreVerifier, nullAddress, newVerifierAddress
+        );
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData);
@@ -234,6 +252,8 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (newExpiry));
         bytes memory checkCallData = abi.encodeCall(ManagerImpl.getRootHistoryExpiry, ());
         bytes memory expectedReturn = abi.encode(newExpiry);
+        vm.expectEmit(true, true, true, true);
+        emit RootHistoryExpirySet(1 hours, newExpiry);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData);

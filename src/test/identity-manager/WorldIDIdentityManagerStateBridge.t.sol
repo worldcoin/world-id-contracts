@@ -17,13 +17,20 @@ import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentity
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
 contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
+    /// @notice Taken from WorldIDIdentityManagerImplV1.sol
+    event DependencyUpdated(
+        ManagerImpl.Dependency indexed kind, address indexed oldAddress, address indexed newAddress
+    );
+    event StateBridgeStateChange(bool indexed isEnabled);
+
     /// @notice Tests that it is possible to upgrade `stateBridge` to a new implementation.
-    function testCanUpgradestateBridge(IBridge newstateBridge) public {
-        vm.assume(
-            address(newstateBridge) != address(0x0) && address(newstateBridge) != address(this)
-        );
+    function testCanUpgradeStateBridge(IBridge newStateBridge) public {
         // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.setStateBridge, (newstateBridge));
+        address stateBridgeAddress = address(newStateBridge);
+        vm.assume(stateBridgeAddress != nullAddress && stateBridgeAddress != thisAddress);
+        bytes memory callData = abi.encodeCall(ManagerImpl.setStateBridge, (newStateBridge));
+        vm.expectEmit(true, false, true, true);
+        emit DependencyUpdated(ManagerImpl.Dependency.StateBridge, nullAddress, stateBridgeAddress);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));
@@ -55,6 +62,8 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
         // expect event that state root was sent to state bridge
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(postRoot);
+        vm.expectEmit(true, true, true, true);
+        emit StateBridgeStateChange(false);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
@@ -108,6 +117,8 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
             stateBridge
         );
         bytes memory callData = abi.encodeCall(ManagerImpl.enableStateBridge, ());
+        vm.expectEmit(true, true, true, true);
+        emit StateBridgeStateChange(true);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));

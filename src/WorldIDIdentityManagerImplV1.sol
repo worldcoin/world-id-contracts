@@ -122,6 +122,20 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         PostRoot
     }
 
+    /// @notice Represents the kind of change that is made to the root of the tree.
+    enum TreeChange {
+        Insertion,
+        Update
+    }
+
+    /// @notice Represents the kinds of dependencies that can be updated.
+    enum Dependency {
+        StateBridge,
+        InsertionVerifierLookupTable,
+        UpdateVerifierLookupTable,
+        SemaphoreVerifier
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             CONSTANT FUNCTIONS                          ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -189,6 +203,45 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice Thrown when the inputs to `removeIdentities` or `updateIdentities` do not match in
     ///         length.
     error MismatchedInputLengths();
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                                  EVENTS                                 ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Emitted when the current root of the tree is updated.
+    ///
+    /// @param preRoot The value of the tree's root before the update.
+    /// @param kind Either "insertion" or "update", the kind of alteration that was made to the
+    ///        tree.
+    /// @param postRoot The value of the tree's root after the update.
+    event TreeChanged(uint256 indexed preRoot, TreeChange indexed kind, uint256 indexed postRoot);
+
+    /// @notice Emitted when a dependency's address is updated via an admin action.
+    ///
+    /// @param kind The kind of dependency that was updated.
+    /// @param oldAddress The old address of that dependency.
+    /// @param newAddress The new address of that dependency.
+    event DependencyUpdated(
+        Dependency indexed kind, address indexed oldAddress, address indexed newAddress
+    );
+
+    /// @notice Emitted when the state bridge is enabled or disabled.
+    ///
+    /// @param isEnabled Set to `true` if the event comes from the state bridge being enabled,
+    ///        `false` otherwise.
+    event StateBridgeStateChange(bool indexed isEnabled);
+
+    /// @notice Emitted when the root history expiry time is changed.
+    ///
+    /// @param oldExpiryTime The expiry time prior to the change.
+    /// @param newExpiryTime The expiry time after the change.
+    event RootHistoryExpirySet(uint256 indexed oldExpiryTime, uint256 indexed newExpiryTime);
+
+    /// @notice Emitted when the identity operator is changed.
+    ///
+    /// @param oldOperator The address of the old identity operator.
+    /// @param newOperator The address of the new identity operator.
+    event IdentityOperatorChanged(address indexed oldOperator, address indexed newOperator);
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
@@ -363,6 +416,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
             // With the update confirmed, we send the root across multiple chains to ensure sync.
             sendRootToStateBridge();
+
+            emit TreeChanged(preRoot, TreeChange.Insertion, postRoot);
         } catch Error(string memory errString) {
             /// This is not the revert we're looking for.
             revert(errString);
@@ -511,6 +566,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
             // With the update confirmed, we send the root across multiple chains to ensure sync.
             sendRootToStateBridge();
+
+            emit TreeChanged(preRoot, TreeChange.Update, postRoot);
         } catch Error(string memory errString) {
             /// This is not the revert we're looking for.
             revert(errString);
@@ -641,7 +698,12 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             enableStateBridge();
         }
 
+        IBridge oldStateBridge = _stateBridge;
         _stateBridge = newStateBridge;
+
+        emit DependencyUpdated(
+            Dependency.StateBridge, address(oldStateBridge), address(newStateBridge)
+        );
     }
 
     /// @notice Enables the state bridge.
@@ -649,6 +711,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     function enableStateBridge() public virtual onlyProxy onlyInitialized onlyOwner {
         if (!_isStateBridgeEnabled) {
             _isStateBridgeEnabled = true;
+            emit StateBridgeStateChange(true);
         } else {
             revert StateBridgeAlreadyEnabled();
         }
@@ -659,6 +722,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     function disableStateBridge() public virtual onlyProxy onlyInitialized onlyOwner {
         if (_isStateBridgeEnabled) {
             _isStateBridgeEnabled = false;
+            emit StateBridgeStateChange(false);
         } else {
             revert StateBridgeAlreadyDisabled();
         }
@@ -834,7 +898,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         onlyInitialized
         onlyOwner
     {
+        VerifierLookupTable oldTable = batchInsertionVerifiers;
         batchInsertionVerifiers = newTable;
+        emit DependencyUpdated(
+            Dependency.InsertionVerifierLookupTable, address(oldTable), address(newTable)
+        );
     }
 
     /// @notice Gets the address for the lookup table of merkle tree verifiers used for identity
@@ -866,7 +934,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         onlyInitialized
         onlyOwner
     {
+        VerifierLookupTable oldTable = identityUpdateVerifiers;
         identityUpdateVerifiers = newTable;
+        emit DependencyUpdated(
+            Dependency.UpdateVerifierLookupTable, address(oldTable), address(newTable)
+        );
     }
 
     /// @notice Gets the address of the verifier used for verification of semaphore proofs.
@@ -895,7 +967,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         onlyInitialized
         onlyOwner
     {
+        ISemaphoreVerifier oldVerifier = semaphoreVerifier;
         semaphoreVerifier = newVerifier;
+        emit DependencyUpdated(
+            Dependency.SemaphoreVerifier, address(oldVerifier), address(newVerifier)
+        );
     }
 
     /// @notice Gets the current amount of time used to expire roots in the history.
@@ -926,9 +1002,12 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         if (newExpiryTime == 0) {
             revert("Expiry time cannot be zero.");
         }
+        uint256 oldExpiry = rootHistoryExpiry;
         rootHistoryExpiry = newExpiryTime;
 
         _stateBridge.setRootHistoryExpiry(newExpiryTime);
+
+        emit RootHistoryExpirySet(oldExpiry, newExpiryTime);
     }
 
     /// @notice Gets the Semaphore tree depth the contract was initialized with.
@@ -969,6 +1048,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     {
         address oldOperator = _identityOperator;
         _identityOperator = newIdentityOperator;
+        emit IdentityOperatorChanged(oldOperator, newIdentityOperator);
         return oldOperator;
     }
 

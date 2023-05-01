@@ -21,6 +21,11 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
     /// Taken from SimpleVerifier.sol
     event VerifiedProof(uint256 batchSize);
 
+    /// Taken from WorldIDIdentityManagerImplV1.sol
+    event TreeChanged(
+        uint256 indexed preRoot, ManagerImpl.TreeChange indexed kind, uint256 indexed postRoot
+    );
+
     /// @notice Checks that the proof validates properly with correct inputs.
     function testUpdateIdentitiesWithCorrectInputs(
         uint128[8] memory prf,
@@ -64,6 +69,8 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         // Expect that the state root was sent to the state bridge
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(newPostRoot);
+        vm.expectEmit(true, true, true, true);
+        emit TreeChanged(newPreRoot, ManagerImpl.TreeChange.Update, newPostRoot);
         vm.prank(identityOperator);
 
         // Test
