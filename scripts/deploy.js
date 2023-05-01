@@ -13,7 +13,7 @@ import { ErrorFragment, Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
 import IdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
-import Ownable from '../out/Ownable.sol/Ownable.json' assert { type: 'json' };
+import Ownable2Step from '../out/Ownable2Step.sol/Ownable2Step.json' assert { type: 'json' };
 import { default as SemaphoreVerifier } from '../out/SemaphoreVerifier.sol/SemaphoreVerifier.json' assert { type: 'json' };
 import { default as SemaphorePairing } from '../out/Pairing.sol/Pairing.json' assert { type: 'json' };
 import VerifierLookupTable from '../out/VerifierLookupTable.sol/VerifierLookupTable.json' assert { type: 'json' };
@@ -271,12 +271,27 @@ async function getTargetWalletAddress(config) {
 
   if (!config.targetWalletAddress) {
     config.targetWalletAddress = await ask(
-      `Enter target wallet address to which transfer ownership: `
+      `Enter target wallet address to which ownership should be transferred: `
     );
   }
 
   if (!config.targetWalletAddress) {
     console.error('Provide target owner address to continue.');
+    process.exit(1);
+  }
+
+  if (!config.targetWalletKey) {
+    config.targetWalletKey = process.env.TARGET_WALLET_PRIVATE_KEY;
+  }
+
+  if (!config.targetWalletKey) {
+    config.targetWalletKey = await ask(
+      `Enter private key for the target wallet of the ownership transfer: `
+    );
+  }
+
+  if (!config.targetWalletKey) {
+    console.error('Provide the private get of the target wallet to continue.');
     process.exit(1);
   }
 }
@@ -806,20 +821,55 @@ async function deployIdentityManager(plan, config, insertLUTTargetField, updateL
   });
 }
 
-async function transferIdentityManagerOwnership(plan, config) {
+async function transferContractOwnership(plan, config) {
   plan.add('Transfer Ownership', async () => {
     const spinner = ora('Building transfer ownership call...').start();
-    const contract = new Contract(config.ownableContractAddress, Ownable.abi, config.wallet);
+    const currentOwnerContract = new Contract(
+      config.ownableContractAddress,
+      Ownable2Step.abi,
+      config.wallet
+    );
+    const newOwnerWallet = new Wallet(config.targetWalletKey, config.provider);
+    const newOwnerContract = new Contract(
+      config.ownableContractAddress,
+      Ownable2Step.abi,
+      newOwnerWallet
+    );
 
     spinner.text = `Transferring ownership of contract at ${config.ownableContractAddress} to wallet at ${config.targetWalletAddress}...`;
 
     try {
-      await contract.transferOwnership(config.targetWalletAddress);
+      await currentOwnerContract.transferOwnership(config.targetWalletAddress);
+      const pendingOwner = await currentOwnerContract.pendingOwner();
+
+      if (!pendingOwner) {
+        spinner.fail('Ownership transfer was not initiated successfully.');
+        process.exit(1);
+      }
+
+      spinner.text = `Accepting ownership of contract at ${config.ownableContractAddress} with wallet at ${config.targetWalletAddress}...`;
+
+      try {
+        await newOwnerContract.acceptOwnership();
+      } catch (e) {
+        spinner.fail('Could not accept ownership');
+        console.error(e);
+        process.exit(1);
+      }
+      const owner = await newOwnerContract.owner();
+
+      if (owner !== config.targetWalletAddress) {
+        spinner.fail('Ownership transfer was unsuccessful, please check contract state');
+        process.exit(1);
+      }
+
       spinner.succeed(
         `Transferred ownership of contract at ${config.ownableContractAddress} to ${config.targetWalletAddress}`
       );
     } catch (e) {
-      spinner.fail('Something went wrong during ownership transfer');
+      spinner.fail(
+        'Something went wrong when initiating the ownership transfer, please check contract state'
+      );
       console.error(e);
     }
   });
@@ -842,11 +892,13 @@ async function setIdentityManagerIdentityOperator(plan, config) {
         `Transferred ownership of contract at ${config.identityManagerContractAddress} to ${config.identityOperatorAddress}`
       );
     } catch (e) {
-      // const body = JSON.parse(e.error.error.body);
-      // const decodedError = decodeContractError(contract.interface, body.error.data);
-      // if (decodedError.name === 'Unauthorized') {
-      //   spinner.fail('You do not have permission to set the identity operator. Are you the contract owner?');
-      // }
+      const body = JSON.parse(e.error.error.body);
+      const decodedError = decodeContractError(contract.interface, body.error.data);
+      if (decodedError.name === 'Unauthorized') {
+        spinner.fail(
+          'You do not have permission to set the identity operator. Are you the contract owner?'
+        );
+      }
 
       spinner.fail('Something unknown went wrong during ownership transfer');
       console.error(e);
@@ -1796,7 +1848,7 @@ async function buildTransferActionPlan(plan, config) {
   await getOwnableContractAddress(config);
   await getTargetWalletAddress(config);
 
-  await transferIdentityManagerOwnership(plan, config);
+  await transferContractOwnership(plan, config);
 }
 
 async function buildSetOperatorActionPlan(plan, config) {
@@ -1945,7 +1997,7 @@ async function main() {
 
   program
     .command('transfer')
-    .description('Move WorldID identity manager contract ownership.')
+    .description('Move Ownable contract ownership.')
     .action(async () => {
       const options = program.opts();
       let config = await loadConfiguration(options.config);

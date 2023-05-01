@@ -1,4 +1,8 @@
-<center><img src="https://github.com/worldcoin/world-id-docs/raw/main/public/images/shared-readme/readme-world-id.png" alt="World ID Logo"/></center>
+<p align="center">
+  <a href="https://worldcoin.org/world-id">
+<img src="https://github.com/worldcoin/world-id-docs/raw/main/public/images/shared-readme/readme-world-id.png" alt="World ID Logo"/>
+  </a>
+</p>
 
 # WorldID Semaphore Contracts
 
@@ -29,7 +33,7 @@ verifications. Go to the [World ID app](https://worldcoin.org/download-app) to g
 
 ## Privileged Actions and Trust
 
-The WorldID Identity Manager uses a bifircated notion of privelege in production. This operates as
+The WorldID Identity Manager uses a bifurcated notion of privilege in production. This operates as
 follows:
 
 - **Owner:** The owner is responsible for administrating the contract. In production, the contract's
@@ -59,8 +63,14 @@ which of the _owner_ and _identity operator_ has the permission to perform these
 | `setStateBridge`                           | Owner             | Sets the address of the state bridge. The state bridge is the contract responsible for sending identity tree updates to other chains. |
 | `transferOwnership`                        | Owner             | Transfers ownership from the current owner to a new owner using a two-step process.                                                   |
 | `updateIdentities`                         | Identity Operator | Updates existing identity commitments in the World ID system. Updates are able to remove identities as well.                          |
-| `upgradeTo`                                | Owner             | Upgrades the implementation of the identiy manager to a new version.                                                                  |
+| `upgradeTo`                                | Owner             | Upgrades the implementation of the identity manager to a new version.                                                                 |
 | `upgradeToAndCall`                         | Owner             | Upgrades the implementation of the identity manager to a new version and executes a function call while doing so.                     |
+
+While there have been some discussions pertaining to the implementation of _timelocks_ for sensitive
+actions, many of these actions are required for administrating the contracts in conjunction with
+external services (such as the [signup sequencer](https://github.com/worldcoin/signup-sequencer)).
+To this end, timelocks would cause problems due to delays that could risk desynchronisation between
+the contract and external services.
 
 ## Development
 

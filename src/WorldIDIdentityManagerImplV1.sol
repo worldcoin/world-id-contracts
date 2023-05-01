@@ -261,8 +261,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @custom:reverts string If called more than once.
     function __delegateInit() internal virtual onlyInitializing {
-        __Ownable_init();
-        __UUPSUpgradeable_init();
+        __WorldIDImpl_init();
     }
 
     ///////////////////////////////////////////////////////////////////////////////

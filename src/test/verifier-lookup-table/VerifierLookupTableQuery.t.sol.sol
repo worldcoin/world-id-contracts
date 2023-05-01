@@ -9,7 +9,7 @@ import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier} from "../mock/SimpleVerifier.sol";
 
 /// @title Verifier Lookup Table Query Tests
-/// @notice Contains tests for the batch lookup table.
+/// @notice Contains tests for the verifier lookup table.
 /// @author Worldcoin
 contract VerifierLookupTableQuery is VerifierLookupTableTest {
     ////////////////////////////////////////////////////////////////////////////////
