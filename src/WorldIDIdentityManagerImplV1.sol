@@ -850,7 +850,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @custom:reverts ExpiredRoot If the provided `root` has expired.
     /// @custom:reverts NonExistentRoot If the provided `root` does not exist in the history.
-    function requireValidRoot(uint256 root) public view onlyProxy onlyInitialized {
+    function requireValidRoot(uint256 root) public view virtual onlyProxy onlyInitialized {
         // The latest root is always valid.
         if (root == _latestRoot) {
             return;
