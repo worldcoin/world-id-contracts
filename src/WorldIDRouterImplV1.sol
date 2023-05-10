@@ -90,6 +90,11 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @param groupId The identifier of the group that has been disabled.
     event GroupDisabled(uint256 indexed groupId);
 
+    /// @notice Emitted when a group is enabled in the router.
+    ///
+    /// @param initialGroupIdentityManager The address of the identity manager to be used for the first group
+    event GroupIdentityManagerRouterImplInitialized(IWorldID initialGroupIdentityManager);
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -124,6 +129,8 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
 
         // Mark the contract as initialized.
         __setInitialized();
+
+        emit GroupIdentityManagerRouterImplInitialized(initialGroupIdentityManager);
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.

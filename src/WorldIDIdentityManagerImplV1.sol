@@ -243,6 +243,18 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param newOperator The address of the new identity operator.
     event IdentityOperatorChanged(address indexed oldOperator, address indexed newOperator);
 
+    /// @notice Emitter when the WorldIDIdentityManagerImpl is initialized.
+
+    /// @param _treeDepth The depth of the MerkeTree
+    /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
+    ///        this should be set to the root of the empty tree.
+    /// @param _enableStateBridge Whether or not the state bridge should be enabled when
+    ///        initialising the identity manager.
+    /// @param __stateBridge The initial state bridge contract to use.
+    event WorldIDIdentityManagerImplInitialized(
+        uint8 _treeDepth, uint256 initialRoot, bool _enableStateBridge, IBridge __stateBridge
+    );
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -305,6 +317,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
         // Say that the contract is initialized.
         __setInitialized();
+
+        emit WorldIDIdentityManagerImplInitialized(
+            _treeDepth, initialRoot, _enableStateBridge, __stateBridge
+        );
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.

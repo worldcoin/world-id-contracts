@@ -16,7 +16,7 @@ import {WorldIDRouterImplV1 as RouterImpl} from "../../WorldIDRouterImplV1.sol";
 ///      so as to test everything in the context of how it will be deployed.
 contract WorldIDRouterUninit is WorldIDRouterTest {
     /// @notice Ensures that a group cannot be added while the contract is not initialised.
-    function testCannotAddGroupWhileUninit(uint256 groupId, IWorldID target) public {
+    function testCannotAddGroupWhileUninit(IWorldID target) public {
         // Setup
         makeUninitRouter();
         bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (target));
