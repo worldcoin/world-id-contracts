@@ -19,7 +19,7 @@ contract WorldIDRouterUninit is WorldIDRouterTest {
     function testCannotAddGroupWhileUninit(uint256 groupId, IWorldID target) public {
         // Setup
         makeUninitRouter();
-        bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (groupId, target));
+        bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (target));
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
