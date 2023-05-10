@@ -154,7 +154,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         virtual
         onlyProxy
         onlyInitialized
-        returns (IWorldID target)
+        returns (IWorldID)
     {
         // We want to revert if the group does not exist.
         if (groupNumber >= groupCount()) {
