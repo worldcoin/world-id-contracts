@@ -41,7 +41,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
             if (i == groupId) {
                 target = IWorldID(targetAddress);
             }
-            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, target));
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (target));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory callData = abi.encodeCall(RouterImpl.routeFor, (groupId));
@@ -74,7 +74,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
         // Setup
         vm.assume(groupId != 0);
         for (uint256 i = 1; i <= groupId; ++i) {
-            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, nullManager));
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (nullManager));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory callData = abi.encodeCall(RouterImpl.routeFor, (groupId));
@@ -101,7 +101,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
     function testCanAddGroup(IWorldID target) public {
         // Setup
         vm.assume(target != nullManager);
-        bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (1, target));
+        bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (target));
         bytes memory checkCallData = abi.encodeCall(RouterImpl.routeFor, (1));
         bytes memory expectedCheckReturn = abi.encode(target);
 
@@ -113,33 +113,11 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
         assertCallSucceedsOn(routerAddress, checkCallData, expectedCheckReturn);
     }
 
-    /// @notice Ensures that duplicate groups cannot be added.
-    function testCannotAddDuplicateGroup(IWorldID addr) public {
-        // Setup
-        bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (0, addr));
-        bytes memory expectedError = abi.encodeWithSelector(RouterImpl.DuplicateGroup.selector, 0);
-
-        // Test
-        assertCallFailsOn(routerAddress, callData, expectedError);
-    }
-
-    /// @notice Ensures that groups can't be added unless they are done in sequence.
-    function testCannotAddGroupUnlessNumbersSequential(uint256 groupNumber, IWorldID addr) public {
-        // Setup
-        vm.assume(groupNumber > 1);
-        bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (groupNumber, addr));
-        bytes memory expectedError =
-            abi.encodeWithSelector(RouterImpl.NonSequentialGroup.selector, groupNumber);
-
-        // Test
-        assertCallFailsOn(routerAddress, callData, expectedError);
-    }
-
     /// @notice Ensures that groups can't be added except by the owner.
     function testCannotAddGroupUnlessOwner(address naughty, IWorldID worldID) public {
         // Setup
         vm.assume(naughty != thisAddress && naughty != nullAddress);
-        bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (0, worldID));
+        bytes memory callData = abi.encodeCall(RouterImpl.addGroup, (worldID));
         bytes memory expectedError = encodeStringRevert("Ownable: caller is not the owner");
 
         vm.prank(naughty);
@@ -154,7 +132,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        routerImpl.addGroup(0, group);
+        routerImpl.addGroup(group);
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -166,7 +144,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
         // Setup
         vm.assume(newTarget != nullManager);
         for (uint256 i = 1; i <= groupId; ++i) {
-            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, nullManager));
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (nullManager));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory callData =
@@ -231,7 +209,7 @@ contract WorldIDRouterRouting is WorldIDRouterTest {
         // Setup
         vm.assume(newTarget != nullManager);
         for (uint256 i = 1; i <= groupId; ++i) {
-            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, newTarget));
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (newTarget));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory callData = abi.encodeCall(RouterImpl.disableGroup, (uint256(groupId)));

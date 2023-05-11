@@ -243,6 +243,18 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param newOperator The address of the new identity operator.
     event IdentityOperatorChanged(address indexed oldOperator, address indexed newOperator);
 
+    /// @notice Emitter when the WorldIDIdentityManagerImpl is initialized.
+
+    /// @param _treeDepth The depth of the MerkeTree
+    /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
+    ///        this should be set to the root of the empty tree.
+    /// @param _enableStateBridge Whether or not the state bridge should be enabled when
+    ///        initialising the identity manager.
+    /// @param __stateBridge The initial state bridge contract to use.
+    event WorldIDIdentityManagerImplInitialized(
+        uint8 _treeDepth, uint256 initialRoot, bool _enableStateBridge, IBridge __stateBridge
+    );
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -305,6 +317,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
         // Say that the contract is initialized.
         __setInitialized();
+
+        emit WorldIDIdentityManagerImplInitialized(
+            _treeDepth, initialRoot, _enableStateBridge, __stateBridge
+        );
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -652,7 +668,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice Allows a caller to query the latest root.
     ///
     /// @return root The value of the latest tree root.
-    function latestRoot() public view virtual onlyProxy onlyInitialized returns (uint256 root) {
+    function latestRoot() public view virtual onlyProxy onlyInitialized returns (uint256) {
         return _latestRoot;
     }
 
@@ -741,7 +757,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         virtual
         onlyProxy
         onlyInitialized
-        returns (RootInfo memory rootInfo)
+        returns (RootInfo memory)
     {
         if (root == _latestRoot) {
             return RootInfo(_latestRoot, 0, true);
@@ -823,7 +839,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         virtual
         onlyProxy
         onlyInitialized
-        returns (bool isInReducedForm)
+        returns (bool)
     {
         return input < SNARK_SCALAR_FIELD;
     }
@@ -837,7 +853,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         internal
         pure
         virtual
-        returns (uint256 elem)
+        returns (uint256)
     {
         return input % SNARK_SCALAR_FIELD;
     }
@@ -850,7 +866,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @custom:reverts ExpiredRoot If the provided `root` has expired.
     /// @custom:reverts NonExistentRoot If the provided `root` does not exist in the history.
-    function requireValidRoot(uint256 root) public view onlyProxy onlyInitialized {
+    function requireValidRoot(uint256 root) public view virtual onlyProxy onlyInitialized {
         // The latest root is always valid.
         if (root == _latestRoot) {
             return;
@@ -880,7 +896,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         virtual
         onlyProxy
         onlyInitialized
-        returns (address addr)
+        returns (address)
     {
         return address(batchInsertionVerifiers);
     }
@@ -916,7 +932,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         virtual
         onlyProxy
         onlyInitialized
-        returns (address addr)
+        returns (address)
     {
         return address(identityUpdateVerifiers);
     }
@@ -950,7 +966,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         virtual
         onlyProxy
         onlyInitialized
-        returns (address addr)
+        returns (address)
     {
         return address(semaphoreVerifier);
     }
@@ -983,7 +999,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         virtual
         onlyProxy
         onlyInitialized
-        returns (uint256 expiryTime)
+        returns (uint256)
     {
         return rootHistoryExpiry;
     }
@@ -1013,14 +1029,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice Gets the Semaphore tree depth the contract was initialized with.
     ///
     /// @return initializedTreeDepth Tree depth.
-    function getTreeDepth()
-        public
-        view
-        virtual
-        onlyProxy
-        onlyInitialized
-        returns (uint8 initializedTreeDepth)
-    {
+    function getTreeDepth() public view virtual onlyProxy onlyInitialized returns (uint8) {
         return treeDepth;
     }
 

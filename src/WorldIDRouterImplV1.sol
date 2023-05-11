@@ -45,12 +45,6 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     ///                    !!!!! DATA: DO NOT REORDER !!!!!                     ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    /// The default size of the internal routing table.
-    uint256 internal constant DEFAULT_ROUTING_TABLE_SIZE = 10;
-
-    /// How much the routing table grows when it runs out of space.
-    uint256 internal constant DEFAULT_ROUTING_TABLE_GROWTH = 5;
-
     /// The null address.
     IWorldID internal constant NULL_ROUTER = IWorldID(address(0x0));
 
@@ -66,18 +60,6 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @param groupId The group identifier that was requested but does not exist.
     error NoSuchGroup(uint256 groupId);
 
-    /// @notice An error raised when an attempt is made to add a group that already exists in the
-    ///         router.
-    ///
-    /// @param groupId The group identifier that is duplicated.
-    error DuplicateGroup(uint256 groupId);
-
-    /// @notice An error raised when an attempt is made to add a group that is not sequentially next
-    ///         in the group order.
-    ///
-    /// @param groupId The group identifier that is duplicated.
-    error NonSequentialGroup(uint256 groupId);
-
     /// @notice The requested group has been disabled.
     error GroupIsDisabled();
 
@@ -87,7 +69,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
 
     /// @notice Emitted when a group is added to the router.
     ///
-    /// @param groupId The identitifier for the group.
+    /// @param groupId The identifier for the group.
     /// @param identityManager The address of the identity manager associated with the group.
     event GroupAdded(uint256 indexed groupId, address indexed identityManager);
 
@@ -107,6 +89,11 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     ///
     /// @param groupId The identifier of the group that has been disabled.
     event GroupDisabled(uint256 indexed groupId);
+
+    /// @notice Emitted when a group is enabled in the router.
+    ///
+    /// @param initialGroupIdentityManager The address of the identity manager to be used for the first group
+    event GroupIdentityManagerRouterImplInitialized(IWorldID initialGroupIdentityManager);
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
@@ -142,6 +129,8 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
 
         // Mark the contract as initialized.
         __setInitialized();
+
+        emit GroupIdentityManagerRouterImplInitialized(initialGroupIdentityManager);
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -172,7 +161,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         virtual
         onlyProxy
         onlyInitialized
-        returns (IWorldID target)
+        returns (IWorldID)
     {
         // We want to revert if the group does not exist.
         if (groupNumber >= groupCount()) {
@@ -198,30 +187,20 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     ///      that group identifiers are allocated externally. As a result, they cannot just be
     ///      allocated by the router.
     ///
-    /// @param groupId The identifier for the new group.
     /// @param groupIdentityManager The address of the identity manager instance to be used for the
     ///        group. If this is set to the null address the group is disabled.
     ///
     /// @custom:reverts DuplicateGroup If the `groupId` already exists in the routing table.
     /// @custom:reverts NonSequentialGroup If the `groupId` is not the sequentially next group based
     ///                 on the known groups.
-    function addGroup(uint256 groupId, IWorldID groupIdentityManager)
+    function addGroup(IWorldID groupIdentityManager)
         public
         virtual
         onlyProxy
         onlyInitialized
         onlyOwner
     {
-        // Duplicate groups cannot be added.
-        if (groupId < groupCount()) {
-            revert DuplicateGroup(groupId);
-        }
-
-        // Groups should be added sequentially.
-        if (groupId != nextGroupId()) {
-            revert NonSequentialGroup(groupId);
-        }
-
+        uint256 groupId = groupCount();
         // Insert the entry into the routing table.
         insertNewTableEntry(groupIdentityManager);
 

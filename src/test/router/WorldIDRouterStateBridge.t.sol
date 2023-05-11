@@ -26,7 +26,7 @@ contract WorldIDRouterStateBridge is WorldIDRouterTest {
             if (i == groupId) {
                 target = stateBridge;
             }
-            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, target));
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (target));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory callData = abi.encodeCall(RouterImpl.routeFor, (groupId));
@@ -42,7 +42,7 @@ contract WorldIDRouterStateBridge is WorldIDRouterTest {
         // Setup
         SimpleStateBridge stateBridge = new SimpleStateBridge();
         for (uint256 i = 1; i <= groupId; ++i) {
-            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, nullManager));
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (nullManager));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         IWorldID returnAddress = nullManager;
@@ -75,7 +75,7 @@ contract WorldIDRouterStateBridge is WorldIDRouterTest {
         // Setup
         SimpleStateBridge stateBridge = new SimpleStateBridge();
         for (uint256 i = 1; i <= groupId; ++i) {
-            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, nullManager));
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (nullManager));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory finalSetupCallData =
