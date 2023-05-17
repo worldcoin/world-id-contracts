@@ -329,8 +329,8 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.
     ///
-    /// @param groupId The group identifier for the group to verify a proof for.
     /// @param root The of the Merkle tree
+    /// @param groupId The group identifier for the group to verify a proof for.
     /// @param signalHash A keccak256 hash of the Semaphore signal
     /// @param nullifierHash The nullifier hash
     /// @param externalNullifierHash A keccak256 hash of the external nullifier
@@ -340,8 +340,8 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     ///                 `IWorldID` implementation being called into.
     /// @custom:reverts NoSuchGroup If the provided `groupId` references a group that does not exist.
     function verifyProof(
-        uint256 groupId,
         uint256 root,
+        uint256 groupId,
         uint256 signalHash,
         uint256 nullifierHash,
         uint256 externalNullifierHash,
