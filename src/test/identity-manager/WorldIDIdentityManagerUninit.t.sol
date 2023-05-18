@@ -26,7 +26,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (proof, preRoot, startIndex, identityCommitments, postRoot)
+            (proof, preRoot, startIndex, identityCommitments, postRoot, opGasLimit)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
@@ -51,7 +51,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, initialRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, initialRoot, leafIndices, oldIdents, newIdents, postRoot, opGasLimit)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
@@ -231,7 +231,8 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallSetRootHistoryExpiryWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (2 hours));
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (2 hours, opGasLimit));
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 

@@ -62,7 +62,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             prepareInsertIdentitiesTestCase(identities, prf);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot, opGasLimit)
         );
 
         // expect event that state root was sent to state bridge
@@ -106,7 +106,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         uint256 originalTimestamp = block.timestamp;
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot, opGasLimit)
         );
 
         // expect event that state root was sent to state bridge

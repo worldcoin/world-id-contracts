@@ -54,7 +54,7 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (proof, preRoot, startIndex, identityCommitments, postRoot)
+            (proof, preRoot, startIndex, identityCommitments, postRoot, opGasLimit)
         );
         bytes memory latestRootCallData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory queryRootCallData = abi.encodeCall(ManagerImpl.queryRoot, (postRoot));

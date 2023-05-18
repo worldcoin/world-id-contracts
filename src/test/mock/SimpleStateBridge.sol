@@ -12,11 +12,15 @@ contract SimpleStateBridge is IBridge, IWorldID {
     event StateRootSentMultichain(uint256 indexed root);
     event SetRootHistoryExpiry(uint256 expiryTime);
 
-    function sendRootMultichain(uint256 root) external virtual override {
+    function sendRootMultichain(uint256 root, uint32 opGasLimit) external virtual override {
         emit StateRootSentMultichain(root);
     }
 
-    function setRootHistoryExpiry(uint256 expiryTime) external virtual override {
+    function setRootHistoryExpiry(uint256 expiryTime, uint32 opGasLimit)
+        external
+        virtual
+        override
+    {
         emit SetRootHistoryExpiry(expiryTime);
     }
 

@@ -355,6 +355,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///        elements of the field `Kr`.
     /// @param postRoot The root obtained after inserting all of `identityCommitments` into the tree
     ///        described by `preRoot`. Must be an element of the field `Kr`.
+    /// @param opGasLimit The gas limit for the Optimism transaction (how much gas to buy on Optimism with the message)
     ///
     /// @custom:reverts Unauthorized If the message sender is not authorised to add identities.
     /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid.
@@ -373,7 +374,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 preRoot,
         uint32 startIndex,
         uint256[] calldata identityCommitments,
-        uint256 postRoot
+        uint256 postRoot,
+        uint32 opGasLimit
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // We can only operate on the latest root in reduced form.
         if (!isInputInReducedForm(preRoot)) {
@@ -431,7 +433,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             rootHistory[preRoot] = uint128(block.timestamp);
 
             // With the update confirmed, we send the root across multiple chains to ensure sync.
-            sendRootToStateBridge();
+            sendRootToStateBridge(opGasLimit);
 
             emit TreeChanged(preRoot, TreeChange.Insertion, postRoot);
         } catch Error(string memory errString) {
@@ -466,6 +468,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///        `leafIndices`.
     /// @param postRoot The root obtained after removing all of `removedIdentities` from the tree
     ///        described by `preRoot`. Must be an element of the field `Kr`.
+    /// @param opGasLimit The gas limit for the Optimism transaction (how much gas to buy on Optimism with the message)
     ///
     /// The arrays `leafIndices`, `oldIdentities` and `newIdentities` are arranged such that the
     /// triple at an element `i` in those arrays corresponds to one update operation.
@@ -486,7 +489,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint32[] calldata leafIndices,
         uint256[] calldata oldIdentities,
         uint256[] calldata newIdentities,
-        uint256 postRoot
+        uint256 postRoot,
+        uint32 opGasLimit
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // We can only operate on the latest root in reduced form.
         if (!isInputInReducedForm(preRoot)) {
@@ -524,7 +528,9 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         ITreeVerifier updateVerifier = identityUpdateVerifiers.getVerifierFor(leafIndices.length);
 
         // Now we delegate to another function in order to avoid the limit on stack variables.
-        performIdentityUpdate(updateVerifier, updateProof, reducedInputHash, preRoot, postRoot);
+        performIdentityUpdate(
+            updateVerifier, updateProof, reducedInputHash, preRoot, postRoot, opGasLimit
+        );
     }
 
     /// @notice Performs the verification of the identity update proof.
@@ -548,6 +554,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ////       altered. Must be an element of the field `Kr`.
     /// @param postRoot The root obtained after removing all of `removedIdentities` from the tree
     ///        described by `preRoot`. Must be an element of the field `Kr`.
+    /// @param opGasLimit The gas limit for the Optimism transaction (how much gas to buy on Optimism with the message)
     ///
     /// @custom:reverts ProofValidationFailure If `removalProof` cannot be verified using the
     ///                 provided inputs.
@@ -556,7 +563,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256[8] calldata updateProof,
         uint256 inputHash,
         uint256 preRoot,
-        uint256 postRoot
+        uint256 postRoot,
+        uint32 opGasLimit
     ) internal virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // Pull out the proof terms and verifier input.
         uint256[2] memory ar = [updateProof[0], updateProof[1]];
@@ -581,7 +589,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             rootHistory[preRoot] = uint128(block.timestamp);
 
             // With the update confirmed, we send the root across multiple chains to ensure sync.
-            sendRootToStateBridge();
+            sendRootToStateBridge(opGasLimit);
 
             emit TreeChanged(preRoot, TreeChange.Update, postRoot);
         } catch Error(string memory errString) {
@@ -674,10 +682,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
     /// @notice Sends the latest root to the state bridge.
     /// @dev Only sends if the state bridge address is not the zero address.
-    ///
-    function sendRootToStateBridge() internal virtual onlyProxy onlyInitialized {
+    /// @param opGasLimit The gas limit for the Optimism transaction (how much gas to buy on Optimism with the message)
+    function sendRootToStateBridge(uint32 opGasLimit) internal virtual onlyProxy onlyInitialized {
         if (_isStateBridgeEnabled && address(_stateBridge) != address(0)) {
-            _stateBridge.sendRootMultichain(_latestRoot);
+            _stateBridge.sendRootMultichain(_latestRoot, opGasLimit);
         }
     }
 
@@ -1006,9 +1014,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
     /// @notice Sets the time to wait before expiring a root from the root history.
     /// @dev Only the owner of the contract can call this function.
+    /// @param opGasLimit The gas limit for the Optimism transaction (how much gas to buy on Optimism with the message)
     ///
     /// @param newExpiryTime The new time to use to expire roots.
-    function setRootHistoryExpiry(uint256 newExpiryTime)
+    function setRootHistoryExpiry(uint256 newExpiryTime, uint32 opGasLimit)
         public
         virtual
         onlyProxy
@@ -1021,7 +1030,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 oldExpiry = rootHistoryExpiry;
         rootHistoryExpiry = newExpiryTime;
 
-        _stateBridge.setRootHistoryExpiry(newExpiryTime);
+        _stateBridge.setRootHistoryExpiry(newExpiryTime, opGasLimit);
 
         emit RootHistoryExpirySet(oldExpiry, newExpiryTime);
     }

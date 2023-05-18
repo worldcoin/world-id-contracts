@@ -70,6 +70,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     VerifierLookupTable internal defaultInsertVerifiers;
     VerifierLookupTable internal defaultUpdateVerifiers;
 
+    // Optimism
+    uint32 opGasLimit = 100000;
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
     ///////////////////////////////////////////////////////////////////////////////

@@ -58,7 +58,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot)
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot, opGasLimit)
         );
 
         bytes memory setupCallData =
@@ -157,7 +157,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
     ) public {
         bytes memory firstCallData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot)
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot, opGasLimit)
         );
         uint256 secondPostRoot = uint256(newPostRoot) + 1;
         bytes memory secondCallData = abi.encodeCall(
@@ -168,7 +168,8 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
                 secondLeafIndices,
                 secondOldIdents,
                 secondNewIdents,
-                secondPostRoot
+                secondPostRoot,
+                opGasLimit
             )
         );
 
@@ -215,7 +216,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot)
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot, opGasLimit)
         );
         bytes memory errorData = abi.encodeWithSelector(VerifierLookupTable.NoSuchVerifier.selector);
 
@@ -253,7 +254,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot)
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot, opGasLimit)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
@@ -279,7 +280,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, preRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, preRoot, leafIndices, oldIdents, newIdents, postRoot, opGasLimit)
         );
         bytes memory errorData =
             abi.encodeWithSelector(ManagerImpl.Unauthorized.selector, nonOperator);
@@ -322,7 +323,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         );
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, actualRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, actualRoot, leafIndices, oldIdents, newIdents, postRoot, opGasLimit)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.NotLatestRoot.selector, actualRoot, uint256(currentPreRoot)
@@ -369,7 +370,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         }
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, postRoot, opGasLimit)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -398,7 +399,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, postRoot, opGasLimit)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -427,7 +428,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, initialRoot, leafIndices, oldIdents, newIdents, newPostRoot)
+            (actualProof, initialRoot, leafIndices, oldIdents, newIdents, newPostRoot, opGasLimit)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -457,7 +458,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
 
         // Test
         managerImpl.updateIdentities(
-            actualProof, initialRoot, leafIndices, oldIdents, newIdents, postRoot
+            actualProof, initialRoot, leafIndices, oldIdents, newIdents, postRoot, opGasLimit
         );
     }
 }

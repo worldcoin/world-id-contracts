@@ -249,7 +249,8 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     function testCanSetRootHistoryExpiry(uint256 newExpiry) public {
         // Setup
         vm.assume(newExpiry != 0 && newExpiry != 1 hours);
-        bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (newExpiry));
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (newExpiry, opGasLimit));
         bytes memory checkCallData = abi.encodeCall(ManagerImpl.getRootHistoryExpiry, ());
         bytes memory expectedReturn = abi.encode(newExpiry);
         vm.expectEmit(true, true, true, true);
@@ -263,7 +264,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     /// @notice Ensures that the root history expiry time can't be set to zero.
     function testCannotSetRootHistoryExpiryToZero() public {
         // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (0));
+        bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (0, opGasLimit));
         bytes memory expectedError = encodeStringRevert("Expiry time cannot be zero.");
 
         // Test
@@ -289,6 +290,6 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.setRootHistoryExpiry(newExpiry);
+        managerImpl.setRootHistoryExpiry(newExpiry, opGasLimit);
     }
 }

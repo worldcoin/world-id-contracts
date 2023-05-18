@@ -44,7 +44,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (proof, preRoot, startIndex, identityCommitments, postRoot)
+            (proof, preRoot, startIndex, identityCommitments, postRoot, opGasLimit)
         );
         bytes memory latestRootCallData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory queryRootCallData = abi.encodeCall(ManagerImpl.queryRoot, (postRoot));
@@ -92,7 +92,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             prepareInsertIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot, opGasLimit)
         );
 
         bytes memory setupCallData =
@@ -143,12 +143,12 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         }
         bytes memory firstCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot, opGasLimit)
         );
         uint256 secondPostRoot = uint256(newPostRoot) + 1;
         bytes memory secondCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (actualProof, newPostRoot, newStartIndex, secondIdents, secondPostRoot)
+            (actualProof, newPostRoot, newStartIndex, secondIdents, secondPostRoot, opGasLimit)
         );
 
         vm.expectEmit(true, true, true, true);
@@ -192,7 +192,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot, opGasLimit)
         );
         bytes memory errorData = abi.encodeWithSelector(VerifierLookupTable.NoSuchVerifier.selector);
 
@@ -227,7 +227,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             prepareInsertIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot, opGasLimit)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
@@ -255,7 +255,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (proof, preRoot, newStartIndex, identityCommitments, postRoot)
+            (proof, preRoot, newStartIndex, identityCommitments, postRoot, opGasLimit)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
@@ -288,7 +288,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             stateBridge
         );
         bytes memory registerCallData = abi.encodeCall(
-            ManagerImpl.registerIdentities, (proof, preRoot, startIndex, identities, postRoot)
+            ManagerImpl.registerIdentities,
+            (proof, preRoot, startIndex, identities, postRoot, opGasLimit)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
@@ -325,7 +326,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         identityManagerAddress = address(identityManager);
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (proof, preRoot, startIndex, identityCommitments, newPostRoot)
+            (proof, preRoot, startIndex, identityCommitments, newPostRoot, opGasLimit)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImpl.ProofValidationFailure.selector);
@@ -341,7 +342,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(nonOperator != address(this) && nonOperator != address(0x0));
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (proof, preRoot, startIndex, identityCommitments, postRoot)
+            (proof, preRoot, startIndex, identityCommitments, postRoot, opGasLimit)
         );
         bytes memory errorData =
             abi.encodeWithSelector(ManagerImpl.Unauthorized.selector, nonOperator);
@@ -373,7 +374,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         );
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (proof, actualRoot, startIndex, identityCommitments, postRoot)
+            (proof, actualRoot, startIndex, identityCommitments, postRoot, opGasLimit)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.NotLatestRoot.selector, actualRoot, uint256(currentPreRoot)
@@ -401,7 +402,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (proof, initialRoot, startIndex, invalidCommitments, postRoot)
+            (proof, initialRoot, startIndex, invalidCommitments, postRoot, opGasLimit)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.InvalidCommitment.selector, uint256(invalidPosition + 1)
@@ -441,7 +442,14 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            ([uint256(2), 1, 3, 4, 5, 6, 7, 9], initialRoot, startIndex, identities, postRoot)
+            (
+                [uint256(2), 1, 3, 4, 5, 6, 7, 9],
+                initialRoot,
+                startIndex,
+                identities,
+                postRoot,
+                opGasLimit
+            )
         );
 
         // Test
@@ -457,7 +465,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         unreducedCommitments[position] = SNARK_SCALAR_FIELD + i;
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (proof, initialRoot, startIndex, unreducedCommitments, postRoot)
+            (proof, initialRoot, startIndex, unreducedCommitments, postRoot, opGasLimit)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -476,7 +484,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (proof, newPreRoot, startIndex, identityCommitments, postRoot)
+            (proof, newPreRoot, startIndex, identityCommitments, postRoot, opGasLimit)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -495,7 +503,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
-            (proof, initialRoot, startIndex, identityCommitments, newPostRoot)
+            (proof, initialRoot, startIndex, identityCommitments, newPostRoot, opGasLimit)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -532,7 +540,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         // Test
         managerImpl.registerIdentities(
-            proof, initialRoot, startIndex, identityCommitments, postRoot
+            proof, initialRoot, startIndex, identityCommitments, postRoot, opGasLimit
         );
     }
 }
