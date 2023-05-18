@@ -20,8 +20,8 @@ interface IWorldIDGroups {
     /// @custom:reverts string If the `proof` is invalid.
     /// @custom:reverts NoSuchGroup If the provided `groupId` references a group that does not exist.
     function verifyProof(
-        uint256 groupId,
         uint256 root,
+        uint256 groupId,
         uint256 signalHash,
         uint256 nullifierHash,
         uint256 externalNullifierHash,
