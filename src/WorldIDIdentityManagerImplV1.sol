@@ -398,16 +398,20 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         // We can only operate on identities that are valid and in reduced form.
         validateIdentityCommitmentsForRegistration(identityCommitments);
 
-        // Having validated the preconditions we can now check the proof itself.
-        bytes32 inputHash = calculateIdentityRegistrationInputHash(
-            startIndex, preRoot, postRoot, identityCommitments
-        );
+        // separated into a different block to avoid stack too deep
+        uint256 reducedElement;
 
-        // No matter what, the inputs can result in a hash that is not an element of the scalar
-        // field in which we're operating. We reduce it into the field before handing it to the
-        // verifier.
-        uint256 reducedElement = reduceInputElementInSnarkScalarField(uint256(inputHash));
+        {
+            // Having validated the preconditions we can now check the proof itself.
+            bytes32 inputHash = calculateIdentityRegistrationInputHash(
+                startIndex, preRoot, postRoot, identityCommitments
+            );
 
+            // No matter what, the inputs can result in a hash that is not an element of the scalar
+            // field in which we're operating. We reduce it into the field before handing it to the
+            // verifier.
+            reducedElement = reduceInputElementInSnarkScalarField(uint256(inputHash));
+        }
         // We need to look up the correct verifier before we can verify.
         ITreeVerifier insertionVerifier =
             batchInsertionVerifiers.getVerifierFor(identityCommitments.length);

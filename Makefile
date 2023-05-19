@@ -7,7 +7,7 @@ all: install build
 install:; forge install && npm install
 
 # Build contracts.
-build:; forge build
+build:; forge build 
 
 # Run tests, with debug information and gas reports.
 test:; FOUNDRY_PROFILE=debug forge test
