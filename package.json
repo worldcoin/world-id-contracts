@@ -34,7 +34,7 @@
     "ethers": "^5.7.2",
     "ora": "^6.3.0",
     "solc": "0.8.19",
-    "yargs": "^17.7.1"
+    "yargs": "^17.7.2"
   },
   "type": "module",
   "devDependencies": {
