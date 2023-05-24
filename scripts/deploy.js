@@ -685,7 +685,7 @@ async function addVerifierToLUT(plan, config) {
       config.wallet
     );
     try {
-      contractWithAbi.addVerifier(config.batchSize, config.targetVerifierAddress);
+      await contractWithAbi.addVerifier(config.batchSize, config.targetVerifierAddress);
       spinner.succeed(
         `Added verifier at ${config.targetVerifierAddress} to LUT at ${config.lookupTableAddress} for batch size ${config.batchSize}`
       );
@@ -715,7 +715,7 @@ async function updateVerifierInLUT(plan, config) {
       config.wallet
     );
     try {
-      contractWithAbi.updateVerifier(config.batchSize, config.targetVerifierAddress);
+      await contractWithAbi.updateVerifier(config.batchSize, config.targetVerifierAddress);
       spinner.succeed(
         `Updated batch size of ${config.batchSize} in LUT at ${config.lookupTableAddress} to use verifier at ${config.targetVerifierAddress}`
       );
@@ -743,7 +743,7 @@ async function disableVerifierInLUT(plan, config) {
       config.wallet
     );
     try {
-      contractWithAbi.disableVerifier(config.batchSize);
+      await contractWithAbi.disableVerifier(config.batchSize);
       spinner.succeed(
         `Disabled verifier for batch size of ${config.batchSize} in LUT at ${config.lookupTableAddress}`
       );
@@ -1200,6 +1200,10 @@ async function getLookupTableAddress(config) {
 async function getTargetVerifierAddress(config) {
   if (!config.targetVerifierAddress) {
     config.targetVerifierAddress = process.env.TARGET_VERIFIER_ADDRESS;
+  }
+
+  if (!config.targetVerifierAddress) {
+    config.targetVerifierAddress = config.verifierContractAddress;
   }
 
   if (!config.targetVerifierAddress) {
