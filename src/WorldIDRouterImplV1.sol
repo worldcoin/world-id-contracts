@@ -346,7 +346,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
         uint256 nullifierHash,
         uint256 externalNullifierHash,
         uint256[8] calldata proof
-    ) external virtual onlyProxy onlyInitialized {
+    ) external view virtual onlyProxy onlyInitialized {
         IWorldID identityManager = routeFor(groupId);
         identityManager.verifyProof(root, signalHash, nullifierHash, externalNullifierHash, proof);
     }

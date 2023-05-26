@@ -20,16 +20,13 @@ contract SimpleStateBridge is IBridge, IWorldID {
         emit SetRootHistoryExpiry(expiryTime);
     }
 
-    event ProofVerified(uint256 indexed root);
-
     error ProofNotVerified();
 
-    function verifyProof(uint256 root, uint256, uint256, uint256, uint256[8] calldata proof)
+    function verifyProof(uint256, uint256, uint256, uint256, uint256[8] calldata proof)
         external
+        pure
     {
-        if (proof[0] % 2 == 0) {
-            emit ProofVerified(root);
-        } else {
+        if (proof[0] % 2 != 0) {
             revert ProofNotVerified();
         }
     }
