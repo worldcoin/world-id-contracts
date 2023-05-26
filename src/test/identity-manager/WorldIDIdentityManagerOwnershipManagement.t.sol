@@ -51,13 +51,14 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         bytes memory pendingOwnerCallData = abi.encodeCall(Ownable2StepUpgradeable.pendingOwner, ());
         bytes memory acceptOwnerCallData =
             abi.encodeCall(Ownable2StepUpgradeable.acceptOwnership, ());
-        vm.expectEmit(true, true, true, true);
-        emit OwnershipTransferred(thisAddress, newOwner);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, transferCallData, new bytes(0x0));
         assertCallSucceedsOn(identityManagerAddress, pendingOwnerCallData, abi.encode(newOwner));
         assertCallSucceedsOn(identityManagerAddress, ownerCallData, abi.encode(thisAddress));
+
+        vm.expectEmit(true, true, true, true);
+        emit OwnershipTransferred(thisAddress, newOwner);
 
         vm.prank(newOwner);
         assertCallSucceedsOn(identityManagerAddress, acceptOwnerCallData, new bytes(0x0));

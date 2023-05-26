@@ -62,8 +62,6 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
         // expect event that state root was sent to state bridge
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(postRoot);
-        vm.expectEmit(true, true, true, true);
-        emit StateBridgeStateChange(false);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
@@ -73,6 +71,10 @@ contract WorldIDIdentityManagerStateBridge is WorldIDIdentityManagerTest {
             queryRootCallData,
             abi.encode(ManagerImpl.RootInfo(postRoot, 0, true))
         );
+
+        vm.expectEmit(true, true, true, true);
+        emit StateBridgeStateChange(false);
+
         assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0x0));
     }
 

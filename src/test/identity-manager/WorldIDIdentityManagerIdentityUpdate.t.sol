@@ -176,13 +176,15 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         emit VerifiedProof(oldIdents.length);
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(newPostRoot);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, firstCallData);
+
         vm.expectEmit(true, true, true, true);
         emit VerifiedProof(secondOldIdents.length);
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(secondPostRoot);
 
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, firstCallData);
         assertCallSucceedsOn(identityManagerAddress, secondCallData);
     }
 

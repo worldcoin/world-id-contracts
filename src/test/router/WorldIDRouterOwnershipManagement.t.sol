@@ -42,13 +42,14 @@ contract WorldIDRouterOwnershipManagement is WorldIDRouterTest {
         bytes memory pendingOwnerCallData = abi.encodeCall(Ownable2StepUpgradeable.pendingOwner, ());
         bytes memory acceptOwnerCallData =
             abi.encodeCall(Ownable2StepUpgradeable.acceptOwnership, ());
-        vm.expectEmit(true, true, true, true);
-        emit OwnershipTransferred(thisAddress, newOwner);
 
         // Test
         assertCallSucceedsOn(routerAddress, transferCallData, new bytes(0x0));
         assertCallSucceedsOn(routerAddress, pendingOwnerCallData, abi.encode(newOwner));
         assertCallSucceedsOn(routerAddress, ownerCallData, abi.encode(thisAddress));
+
+        vm.expectEmit(true, true, true, true);
+        emit OwnershipTransferred(thisAddress, newOwner);
 
         vm.prank(newOwner);
         assertCallSucceedsOn(routerAddress, acceptOwnerCallData, new bytes(0x0));
