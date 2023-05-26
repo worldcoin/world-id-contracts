@@ -1,10 +1,12 @@
 //SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import {IBaseWorldID} from "./IBaseWorldID.sol";
+
 /// @title WorldID Interface with Groups
 /// @author Worldcoin
 /// @notice The interface to the proof verification for WorldID.
-interface IWorldIDGroups {
+interface IWorldIDGroups is IBaseWorldID {
     /// @notice Verifies a WorldID zero knowledge proof.
     /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.

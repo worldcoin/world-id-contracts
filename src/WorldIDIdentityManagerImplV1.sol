@@ -179,13 +179,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param latestRoot The actual latest root at the time of the transaction.
     error NotLatestRoot(uint256 providedRoot, uint256 latestRoot);
 
-    /// @notice Thrown when attempting to validate a root that has expired.
-    error ExpiredRoot();
-
-    /// @notice Thrown when attempting to validate a root that has yet to be added to the root
-    ///         history.
-    error NonExistentRoot();
-
     /// @notice Thrown when attempting to enable the bridge when it is already enabled.
     error StateBridgeAlreadyEnabled();
 
