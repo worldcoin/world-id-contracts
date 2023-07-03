@@ -23,6 +23,11 @@ const argv = yargs(process.argv.slice(2))
     alias: 'input-file',
     desc: 'If set, will read the events from a file',
   })
+  .option('w', {
+    alias: 'window',
+    desc: 'Only used if input-file is set, will read the events from a file in windows of this size',
+    default: 100
+  })
   .option('a', {
     alias: 'address',
     default: '0xD81dE4BCEf43840a2883e5730d014630eA6b7c4A',
@@ -45,6 +50,10 @@ const argv = yargs(process.argv.slice(2))
   .option('o', {
     alias: 'output-file',
     desc: 'If set, will write the events to a file',
+  })
+  .option('u', {
+    alias: 'unprocessed-output-file',
+    desc: 'If set, will write the events that were not processed to a file',
   })
   .option('e', {
     alias: 'error-output-file',
@@ -74,10 +83,14 @@ async function handleCommitments(commitments) {
           await fs.appendFile(argv.outputFile, `${commitment}\n`);
         }
       } catch (err) {
+        if (argv.unprocessedOutputFile !== undefined) {
+          await fs.appendFile(argv.unprocessedOutputFile, `${commitment}\n`);
+        }
+
         if (argv.errorOutputFile !== undefined) {
           await fs.appendFile(
             argv.errorOutputFile,
-            `${commitment}\n${JSON.stringify(err.toJSON())}\n`
+            `${commitment}\n${err.message}\n`
           );
         } else {
           console.error(`Error while submitting commitment ${commitment}: ${err}`);
@@ -178,7 +191,16 @@ async function fetchCommitmentsFromFile() {
     .readFile(argv.inputFile, 'utf-8')
     .then(data => data.split('\n').filter(x => x !== ''));
 
-  await handleCommitments(commitments);
+  const total = commitments.length;
+  for (let i = 0; i < total; i += argv.window) {
+    let end = i + argv.window;
+    if (end > total) {
+      end = total;
+    }
+
+    const commitmentsWindow = commitments.slice(i, end);
+    await handleCommitments(commitmentsWindow);
+  }
 
   spinner.succeed(`Found ${commitments.length} events`);
 }
