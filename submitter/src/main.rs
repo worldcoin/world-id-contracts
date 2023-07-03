@@ -24,9 +24,15 @@ struct Opt {
 #[derive(Debug, Subcommand)]
 #[clap(rename_all = "kebab-case")]
 enum Cmd {
+    /// LEGACY: Fetches identities from all events from the (legacy) smart contract
     Fetch(Fetch),
+    /// Submit identities to the sequencer
     Submit(Submit),
+    /// Consolidates multiple identity files into one
+    ///
+    /// Also serves as a validation tool (when used on a single file)
     Process(Process),
+    /// Creates a diff between two identity files, useful for validating that the migration completed
     Diff(Diff),
 }
 
@@ -83,9 +89,11 @@ struct Submit {
 #[derive(Debug, Parser)]
 #[clap(rename_all = "kebab-case")]
 struct Process {
+    /// Files to consolidate
     #[clap(short, long)]
     files: Vec<PathBuf>,
 
+    /// Output file
     #[clap(short, long)]
     output: PathBuf,
 }
@@ -93,9 +101,13 @@ struct Process {
 #[derive(Debug, Parser)]
 #[clap(rename_all = "kebab-case")]
 struct Diff {
+    /// First file
     a: PathBuf,
+
+    /// Second file
     b: PathBuf,
 
+    /// Output file - where the diff will be written
     #[clap(short, long)]
     output: PathBuf,
 }
