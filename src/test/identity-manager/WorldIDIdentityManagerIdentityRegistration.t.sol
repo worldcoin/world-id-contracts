@@ -155,13 +155,15 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         emit VerifiedProof(identities.length);
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(newPostRoot);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, firstCallData);
+
         vm.expectEmit(true, true, true, true);
         emit VerifiedProof(identities.length / 2);
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(secondPostRoot);
 
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, firstCallData);
         assertCallSucceedsOn(identityManagerAddress, secondCallData);
     }
 

@@ -84,7 +84,7 @@ contract WorldIDRouterStateBridge is WorldIDRouterTest {
 
         bytes memory callData = abi.encodeCall(
             RouterImpl.verifyProof,
-            (uint256(groupId), root, signalHash, nullifierHash, externalNullifierHash, proof)
+            (root, uint256(groupId), signalHash, nullifierHash, externalNullifierHash, proof)
         );
 
         bool shouldSucceed = proof[0] % 2 == 0;

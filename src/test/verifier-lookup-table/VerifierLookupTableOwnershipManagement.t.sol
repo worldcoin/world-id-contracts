@@ -27,12 +27,13 @@ contract VerifierLookupTableOwnershipManagement is VerifierLookupTableTest {
     function testTransferOwner(address newOwner) public {
         // Setup
         vm.assume(newOwner != nullAddress);
-        vm.expectEmit(true, true, true, true);
-        emit OwnershipTransferred(thisAddress, newOwner);
 
         // Test 1
         lookupTable.transferOwnership(newOwner);
         assertEq(lookupTable.pendingOwner(), newOwner);
+
+        vm.expectEmit(true, true, true, true);
+        emit OwnershipTransferred(thisAddress, newOwner);
 
         // Test 2
         vm.prank(newOwner);
