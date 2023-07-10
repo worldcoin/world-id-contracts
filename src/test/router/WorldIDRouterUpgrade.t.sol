@@ -3,6 +3,8 @@ pragma solidity ^0.8.19;
 
 import {WorldIDRouterTest} from "./WorldIDRouterTest.sol";
 
+import {IWorldID} from "../../interfaces/IWorldID.sol";
+
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {WorldIDRouterImplMock} from "../mock/WorldIDRouterImplMock.sol";
 
@@ -54,7 +56,7 @@ contract WorldIDRouterUpgrade is WorldIDRouterTest {
     }
 
     /// @notice Tests that an upgrade cannot be performed unless done through the proxy.
-    function testCannotUpgradeWithoutProxy(address dummy) public {
+    function testCannotUpgradeWithoutProxy(IWorldID dummy) public {
         // Setup
         WorldIDRouterImplMock mockUpgrade = new WorldIDRouterImplMock();
         address mockUpgradeAddress = address(mockUpgrade);

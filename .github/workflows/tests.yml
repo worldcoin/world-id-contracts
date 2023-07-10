@@ -18,7 +18,7 @@ jobs:
       - name: Install Foundry
         uses: onbjerg/foundry-toolchain@v1
         with:
-          version: nightly
+          version: nightly-e15e33a07c0920189fc336391f538c3dad53da73
 
       - uses: actions/setup-node@v2
         with:

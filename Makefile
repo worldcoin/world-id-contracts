@@ -13,7 +13,7 @@ build:; forge build
 test:; FOUNDRY_PROFILE=debug forge test
 
 # Clean the solidity build directory.
-clean:; rm -rf out/
+clean:; forge clean; rm -rf out/
 
 # Get the contract sizes.
 sizes:; forge build --sizes 2>&1 > .size-snapshot
@@ -34,8 +34,11 @@ deploy: install build; node --no-warnings scripts/deploy.js deploy
 # Upgrade contracts
 upgrade: install build; node --no-warnings scripts/deploy.js upgrade
 
-# Deploy contracts
+# Transfer contract ownership
 transfer-ownership: install build; node --no-warnings scripts/deploy.js transfer
+
+# Set the identity manager's identity operator
+set-operator: install build; node --no-warnings scripts/deploy.js set-operator
 
 # ===== Verifier Management Rules =====================================================================================
 

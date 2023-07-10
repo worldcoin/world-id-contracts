@@ -9,9 +9,18 @@ import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier} from "../mock/SimpleVerifier.sol";
 
 /// @title Verifier Lookup Table Query Tests
-/// @notice Contains tests for the batch lookup table.
+/// @notice Contains tests for the verifier lookup table.
 /// @author Worldcoin
 contract VerifierLookupTableQuery is VerifierLookupTableTest {
+    // Taken from VerifierLookupTable.sol
+    event VerifierAdded(uint256 indexed batchSize, address indexed verifierAddress);
+    event VerifierUpdated(
+        uint256 indexed batchSize,
+        address indexed oldVerifierAddress,
+        address indexed newVerifierAddress
+    );
+    event VerifierDisabled(uint256 indexed batchSize);
+
     ////////////////////////////////////////////////////////////////////////////////
     ///                            VERIFIER QUERYING                             ///
     ////////////////////////////////////////////////////////////////////////////////
@@ -44,6 +53,8 @@ contract VerifierLookupTableQuery is VerifierLookupTableTest {
         // Setup
         vm.assume(batchSize != defaultBatchSize);
         vm.assume(newVerifier != nullVerifier);
+        vm.expectEmit(true, true, true, true);
+        emit VerifierAdded(batchSize, address(newVerifier));
 
         // Test
         lookupTable.addVerifier(batchSize, newVerifier);
@@ -82,6 +93,8 @@ contract VerifierLookupTableQuery is VerifierLookupTableTest {
     function testCanUpdateVerifierWithValidBatchSize(ITreeVerifier newVerifier) public {
         // Setup
         vm.assume(newVerifier != defaultVerifier && newVerifier != nullVerifier);
+        vm.expectEmit(true, true, true, true);
+        emit VerifierUpdated(defaultBatchSize, defaultVerifierAddress, address(newVerifier));
 
         // Test
         lookupTable.updateVerifier(defaultBatchSize, newVerifier);
@@ -110,6 +123,8 @@ contract VerifierLookupTableQuery is VerifierLookupTableTest {
         if (batchSize != defaultBatchSize) {
             lookupTable.addVerifier(batchSize, defaultVerifier);
         }
+        vm.expectEmit(true, true, true, true);
+        emit VerifierDisabled(batchSize);
 
         // Test
         lookupTable.disableVerifier(batchSize);

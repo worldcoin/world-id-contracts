@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Ownable} from "openzeppelin-contracts/access/Ownable.sol";
+import {Ownable2Step} from "openzeppelin-contracts/access/Ownable2Step.sol";
 
 import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
 
@@ -10,7 +10,7 @@ import {ITreeVerifier} from "../interfaces/ITreeVerifier.sol";
 /// @notice A table that provides the correct tree verifier based on the provided batch size.
 /// @dev It should be used to query the correct verifier before using that verifier for verifying a
 ///      tree modification proof.
-contract VerifierLookupTable is Ownable {
+contract VerifierLookupTable is Ownable2Step {
     ////////////////////////////////////////////////////////////////////////////////
     ///                                   DATA                                   ///
     ////////////////////////////////////////////////////////////////////////////////
@@ -37,13 +37,42 @@ contract VerifierLookupTable is Ownable {
     /// @notice Raised if an attempt is made to add a verifier for a batch size that already exists.
     error VerifierExists();
 
+    /// @notice Thrown when an attempt is made to renounce ownership.
+    error CannotRenounceOwnership();
+
+    ////////////////////////////////////////////////////////////////////////////////
+    ///                                  EVENTS                                  ///
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Emitted when a verifier is added to the lookup table.
+    ///
+    /// @param batchSize The size of the batch that the verifier has been added for.
+    /// @param verifierAddress The address of the verifier that was associated with `batchSize`.
+    event VerifierAdded(uint256 indexed batchSize, address indexed verifierAddress);
+
+    /// @notice Emitted when a verifier is updated in the lookup table.
+    ///
+    /// @param batchSize The size of the batch that the verifier has been updated for.
+    /// @param oldVerifierAddress The address of the old verifier for `batchSize`.
+    /// @param newVerifierAddress The address of the new verifier for `batchSize`.
+    event VerifierUpdated(
+        uint256 indexed batchSize,
+        address indexed oldVerifierAddress,
+        address indexed newVerifierAddress
+    );
+
+    /// @notice Emitted when a verifier is disabled in the lookup table.
+    ///
+    /// @param batchSize The batch size that had its verifier disabled.
+    event VerifierDisabled(uint256 indexed batchSize);
+
     ////////////////////////////////////////////////////////////////////////////////
     ///                               CONSTRUCTION                               ///
     ////////////////////////////////////////////////////////////////////////////////
 
     /// @notice Constructs a new batch lookup table.
     /// @dev It is initially constructed without any verifiers.
-    constructor() Ownable() {}
+    constructor() Ownable2Step() {}
 
     ////////////////////////////////////////////////////////////////////////////////
     ///                                ACCESSORS                                 ///
@@ -55,7 +84,6 @@ contract VerifierLookupTable is Ownable {
     ///
     /// @return verifier The tree verifier for the provided `batchSize`.
     ///
-    /// @custom:reverts BatchTooLarge If `batchSize` exceeds the maximum batch size.
     /// @custom:reverts NoSuchVerifier If there is no verifier associated with the `batchSize`.
     function getVerifierFor(uint256 batchSize) public view returns (ITreeVerifier verifier) {
         // Check the preconditions for querying the verifier.
@@ -71,7 +99,6 @@ contract VerifierLookupTable is Ownable {
     /// @param verifier The verifier for a batch of size `batchSize`.
     ///
     /// @custom:reverts VerifierExists If `batchSize` already has an associated verifier.
-    /// @custom:reverts BatchTooLarge If `batchSize` exceeds the maximum batch size.
     /// @custom:reverts string If the caller is not the owner.
     function addVerifier(uint256 batchSize, ITreeVerifier verifier) public onlyOwner {
         // Check that there is no entry for that batch size.
@@ -81,6 +108,7 @@ contract VerifierLookupTable is Ownable {
 
         // Add the verifier.
         updateVerifier(batchSize, verifier);
+        emit VerifierAdded(batchSize, address(verifier));
     }
 
     /// @notice Updates the verifier for the provided `batchSize`.
@@ -90,7 +118,6 @@ contract VerifierLookupTable is Ownable {
     ///
     /// @return oldVerifier The old verifier instance associated with this batch size.
     ///
-    /// @custom:reverts BatchTooLarge If `batchSize` exceeds the maximum batch size.
     /// @custom:reverts string If the caller is not the owner.
     function updateVerifier(uint256 batchSize, ITreeVerifier verifier)
         public
@@ -99,6 +126,7 @@ contract VerifierLookupTable is Ownable {
     {
         oldVerifier = verifier_lut[batchSize];
         verifier_lut[batchSize] = verifier;
+        emit VerifierUpdated(batchSize, address(oldVerifier), address(verifier));
     }
 
     /// @notice Disables the verifier for the provided batch size.
@@ -107,14 +135,14 @@ contract VerifierLookupTable is Ownable {
     ///
     /// @return oldVerifier The old verifier associated with the batch size.
     ///
-    /// @custom:reverts BatchTooLarge If `batchSize` exceeds the maximum batch size.
     /// @custom:reverts string If the caller is not the owner.
     function disableVerifier(uint256 batchSize)
         public
         onlyOwner
         returns (ITreeVerifier oldVerifier)
     {
-        return updateVerifier(batchSize, ITreeVerifier(nullAddress));
+        oldVerifier = updateVerifier(batchSize, ITreeVerifier(nullAddress));
+        emit VerifierDisabled(batchSize);
     }
 
     ////////////////////////////////////////////////////////////////////////////////
@@ -131,5 +159,18 @@ contract VerifierLookupTable is Ownable {
         if (verifier_lut[batchSize] == nullVerifier) {
             revert NoSuchVerifier();
         }
+    }
+
+    ////////////////////////////////////////////////////////////////////////////////
+    ///                           OWNERSHIP MANAGEMENT                           ///
+    ////////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Ensures that ownership of the lookup table cannot be renounced.
+    /// @dev This function is intentionally not `virtual` as we do not want it to be possible to
+    ///      renounce ownership for the lookup table.
+    /// @dev This function is marked as `onlyOwner` to maintain the access restriction from the base
+    ///      contract.
+    function renounceOwnership() public view override onlyOwner {
+        revert CannotRenounceOwnership();
     }
 }

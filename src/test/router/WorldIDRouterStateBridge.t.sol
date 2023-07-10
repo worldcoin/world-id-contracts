@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import {WorldIDRouterTest} from "./WorldIDRouterTest.sol";
 
 import {SimpleStateBridge} from "../mock/SimpleStateBridge.sol";
+import {IWorldID} from "../../interfaces/IWorldID.sol";
 
 import {WorldIDRouter as Router} from "../../WorldIDRouter.sol";
 import {WorldIDRouterImplV1 as RouterImpl} from "../../WorldIDRouterImplV1.sol";
@@ -20,17 +21,16 @@ contract WorldIDRouterStateBridge is WorldIDRouterTest {
         vm.assume(caller != nullAddress);
         vm.assume(groupId > 0);
         SimpleStateBridge stateBridge = new SimpleStateBridge();
-        address stateBridgeAddress = address(stateBridge);
         for (uint256 i = 1; i <= groupId; ++i) {
-            address target = nullAddress;
+            IWorldID target = nullManager;
             if (i == groupId) {
-                target = stateBridgeAddress;
+                target = stateBridge;
             }
-            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, target));
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (target));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory callData = abi.encodeCall(RouterImpl.routeFor, (groupId));
-        bytes memory expectedReturn = abi.encode(stateBridgeAddress);
+        bytes memory expectedReturn = abi.encode(stateBridge);
         vm.prank(caller);
 
         // Test
@@ -41,20 +41,19 @@ contract WorldIDRouterStateBridge is WorldIDRouterTest {
     function testCanUpdateStateBridgeAsGroup(uint8 groupId) public {
         // Setup
         SimpleStateBridge stateBridge = new SimpleStateBridge();
-        address stateBridgeAddress = address(stateBridge);
         for (uint256 i = 1; i <= groupId; ++i) {
-            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, nullAddress));
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (nullManager));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
-        address returnAddress = nullAddress;
+        IWorldID returnAddress = nullManager;
         if (groupId == 0) {
-            returnAddress = thisAddress;
+            returnAddress = thisWorldID;
         }
         bytes memory callData =
-            abi.encodeCall(RouterImpl.updateGroup, (uint256(groupId), stateBridgeAddress));
+            abi.encodeCall(RouterImpl.updateGroup, (uint256(groupId), stateBridge));
         bytes memory expectedReturn = abi.encode(returnAddress);
         bytes memory checkCallData = abi.encodeCall(RouterImpl.routeFor, (uint256(groupId)));
-        bytes memory checkExpectedReturn = abi.encode(stateBridgeAddress);
+        bytes memory checkExpectedReturn = abi.encode(stateBridge);
 
         // Test
         assertCallSucceedsOn(routerAddress, callData, expectedReturn);
@@ -75,18 +74,17 @@ contract WorldIDRouterStateBridge is WorldIDRouterTest {
     ) public {
         // Setup
         SimpleStateBridge stateBridge = new SimpleStateBridge();
-        address stateBridgeAddress = address(stateBridge);
         for (uint256 i = 1; i <= groupId; ++i) {
-            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (i, nullAddress));
+            bytes memory setupCallData = abi.encodeCall(RouterImpl.addGroup, (nullManager));
             assertCallSucceedsOn(routerAddress, setupCallData);
         }
         bytes memory finalSetupCallData =
-            abi.encodeCall(RouterImpl.updateGroup, (groupId, stateBridgeAddress));
+            abi.encodeCall(RouterImpl.updateGroup, (groupId, stateBridge));
         assertCallSucceedsOn(routerAddress, finalSetupCallData);
 
         bytes memory callData = abi.encodeCall(
             RouterImpl.verifyProof,
-            (uint256(groupId), root, signalHash, nullifierHash, externalNullifierHash, proof)
+            (root, uint256(groupId), signalHash, nullifierHash, externalNullifierHash, proof)
         );
 
         bool shouldSucceed = proof[0] % 2 == 0;
@@ -96,7 +94,7 @@ contract WorldIDRouterStateBridge is WorldIDRouterTest {
             vm.expectEmit(true, true, true, true);
             emit ProofVerified(root);
         } else {
-            errorData = abi.encodeWithSelector(RouterImpl.FailedToVerifyProof.selector);
+            errorData = abi.encodeWithSelector(SimpleStateBridge.ProofNotVerified.selector);
         }
 
         // Test

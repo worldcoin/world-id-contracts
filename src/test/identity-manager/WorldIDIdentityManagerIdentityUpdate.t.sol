@@ -21,17 +21,24 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
     /// Taken from SimpleVerifier.sol
     event VerifiedProof(uint256 batchSize);
 
+    /// Taken from WorldIDIdentityManagerImplV1.sol
+    event TreeChanged(
+        uint256 indexed preRoot, ManagerImpl.TreeChange indexed kind, uint256 indexed postRoot
+    );
+
     /// @notice Checks that the proof validates properly with correct inputs.
     function testUpdateIdentitiesWithCorrectInputs(
         uint128[8] memory prf,
         uint128 newPreRoot,
         uint128 newPostRoot,
-        uint128[] memory identities
+        uint128[] memory identities,
+        address identityOperator
     ) public {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(identities.length <= 1000); // Keeps the test time sane-ish.
+        vm.assume(identityOperator != nullAddress && identityOperator != thisAddress);
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
@@ -54,9 +61,17 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, newPostRoot)
         );
 
+        bytes memory setupCallData =
+            abi.encodeCall(ManagerImpl.setIdentityOperator, identityOperator);
+        (bool success,) = identityManagerAddress.call(setupCallData);
+        assert(success);
+
         // Expect that the state root was sent to the state bridge
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(newPostRoot);
+        vm.expectEmit(true, true, true, true);
+        emit TreeChanged(newPreRoot, ManagerImpl.TreeChange.Update, newPostRoot);
+        vm.prank(identityOperator);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData);
@@ -161,13 +176,15 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         emit VerifiedProof(oldIdents.length);
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(newPostRoot);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, firstCallData);
+
         vm.expectEmit(true, true, true, true);
         emit VerifiedProof(secondOldIdents.length);
         vm.expectEmit(true, true, true, true);
         emit StateRootSentMultichain(secondPostRoot);
 
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, firstCallData);
         assertCallSucceedsOn(identityManagerAddress, secondCallData);
     }
 
@@ -247,14 +264,15 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to update identities as a non-manager.
-    function testCannotUpdateIdentitiesAsNonManager(
-        address nonManager,
+    /// @notice Tests that it reverts if an attempt is made to update identities as an address that
+    ///         is not the identity operator address.
+    function testCannotUpdateIdentitiesAsNonIdentityOperator(
+        address nonOperator,
         uint128[] memory identities,
         uint128[8] memory prf
     ) public {
         // Setup
-        vm.assume(nonManager != address(this) && nonManager != address(0x0));
+        vm.assume(nonOperator != address(this) && nonOperator != address(0x0));
         (
             uint32[] memory leafIndices,
             uint256[] memory oldIdents,
@@ -265,8 +283,9 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             ManagerImpl.updateIdentities,
             (actualProof, preRoot, leafIndices, oldIdents, newIdents, postRoot)
         );
-        bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
-        vm.prank(nonManager);
+        bytes memory errorData =
+            abi.encodeWithSelector(ManagerImpl.Unauthorized.selector, nonOperator);
+        vm.prank(nonOperator);
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, errorData);

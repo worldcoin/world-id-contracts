@@ -3,6 +3,8 @@ pragma solidity ^0.8.19;
 
 import {WorldIDRouterTest} from "./WorldIDRouterTest.sol";
 
+import {IWorldID} from "../../interfaces/IWorldID.sol";
+
 import {WorldIDRouter as Router} from "../../WorldIDRouter.sol";
 import {WorldIDRouterImplV1 as RouterImpl} from "../../WorldIDRouterImplV1.sol";
 
@@ -26,7 +28,7 @@ contract WorldIDRouterConstruction is WorldIDRouterTest {
     }
 
     /// @notice Tests that it is possible to properly construct and initialise a router.
-    function testCanConstructRouterWithDelegate(address dummy) public {
+    function testCanConstructRouterWithDelegate(IWorldID dummy) public {
         // Setup
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);

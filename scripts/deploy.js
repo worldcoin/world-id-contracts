@@ -13,7 +13,7 @@ import { ErrorFragment, Interface } from 'ethers/lib/utils.js';
 import { poseidon } from 'circomlibjs';
 import IdentityManager from '../out/WorldIDIdentityManager.sol/WorldIDIdentityManager.json' assert { type: 'json' };
 import IdentityManagerImpl from '../out/WorldIDIdentityManagerImplV1.sol/WorldIDIdentityManagerImplV1.json' assert { type: 'json' };
-import Ownable from '../out/Ownable.sol/Ownable.json' assert { type: 'json' };
+import Ownable2Step from '../out/Ownable2Step.sol/Ownable2Step.json' assert { type: 'json' };
 import { default as SemaphoreVerifier } from '../out/SemaphoreVerifier.sol/SemaphoreVerifier.json' assert { type: 'json' };
 import { default as SemaphorePairing } from '../out/Pairing.sol/Pairing.json' assert { type: 'json' };
 import VerifierLookupTable from '../out/VerifierLookupTable.sol/VerifierLookupTable.json' assert { type: 'json' };
@@ -271,12 +271,27 @@ async function getTargetWalletAddress(config) {
 
   if (!config.targetWalletAddress) {
     config.targetWalletAddress = await ask(
-      `Enter target wallet address to which transfer ownership: `
+      `Enter target wallet address to which ownership should be transferred: `
     );
   }
 
   if (!config.targetWalletAddress) {
     console.error('Provide target owner address to continue.');
+    process.exit(1);
+  }
+
+  if (!config.targetWalletKey) {
+    config.targetWalletKey = process.env.TARGET_WALLET_PRIVATE_KEY;
+  }
+
+  if (!config.targetWalletKey) {
+    config.targetWalletKey = await ask(
+      `Enter private key for the target wallet of the ownership transfer: `
+    );
+  }
+
+  if (!config.targetWalletKey) {
+    console.error('Provide the private get of the target wallet to continue.');
     process.exit(1);
   }
 }
@@ -452,7 +467,7 @@ async function deployVerifierContract(plan, config) {
 //   a 34 character prefix of the hex encoding of the keccak256 hash of the fully qualified library name
 //   between __$ and $__
 //   E.g. __$a0b3f842b95cabff7722bd983061aec5b3$__
-// - Compile and deploy the library. Save the addrsss it was deployed under!
+// - Compile and deploy the library. Save the address it was deployed under!
 // - Compile the code that previously cause problem
 // - In the bytecode manually replace placeholder with the address of library
 // - Deploy the bytecode
@@ -670,7 +685,7 @@ async function addVerifierToLUT(plan, config) {
       config.wallet
     );
     try {
-      contractWithAbi.addVerifier(config.batchSize, config.targetVerifierAddress);
+      await contractWithAbi.addVerifier(config.batchSize, config.targetVerifierAddress);
       spinner.succeed(
         `Added verifier at ${config.targetVerifierAddress} to LUT at ${config.lookupTableAddress} for batch size ${config.batchSize}`
       );
@@ -700,7 +715,7 @@ async function updateVerifierInLUT(plan, config) {
       config.wallet
     );
     try {
-      contractWithAbi.updateVerifier(config.batchSize, config.targetVerifierAddress);
+      await contractWithAbi.updateVerifier(config.batchSize, config.targetVerifierAddress);
       spinner.succeed(
         `Updated batch size of ${config.batchSize} in LUT at ${config.lookupTableAddress} to use verifier at ${config.targetVerifierAddress}`
       );
@@ -728,7 +743,7 @@ async function disableVerifierInLUT(plan, config) {
       config.wallet
     );
     try {
-      contractWithAbi.disableVerifier(config.batchSize);
+      await contractWithAbi.disableVerifier(config.batchSize);
       spinner.succeed(
         `Disabled verifier for batch size of ${config.batchSize} in LUT at ${config.lookupTableAddress}`
       );
@@ -806,20 +821,86 @@ async function deployIdentityManager(plan, config, insertLUTTargetField, updateL
   });
 }
 
-async function transferIdentityManagerOwnership(plan, config) {
+async function transferContractOwnership(plan, config) {
   plan.add('Transfer Ownership', async () => {
     const spinner = ora('Building transfer ownership call...').start();
-    const contract = new Contract(config.ownableContractAddress, Ownable.abi, config.wallet);
+    const currentOwnerContract = new Contract(
+      config.ownableContractAddress,
+      Ownable2Step.abi,
+      config.wallet
+    );
+    const newOwnerWallet = new Wallet(config.targetWalletKey, config.provider);
+    const newOwnerContract = new Contract(
+      config.ownableContractAddress,
+      Ownable2Step.abi,
+      newOwnerWallet
+    );
 
     spinner.text = `Transferring ownership of contract at ${config.ownableContractAddress} to wallet at ${config.targetWalletAddress}...`;
 
     try {
-      await contract.transferOwnership(config.targetWalletAddress);
+      await currentOwnerContract.transferOwnership(config.targetWalletAddress);
+      const pendingOwner = await currentOwnerContract.pendingOwner();
+
+      if (!pendingOwner) {
+        spinner.fail('Ownership transfer was not initiated successfully.');
+        process.exit(1);
+      }
+
+      spinner.text = `Accepting ownership of contract at ${config.ownableContractAddress} with wallet at ${config.targetWalletAddress}...`;
+
+      try {
+        await newOwnerContract.acceptOwnership();
+      } catch (e) {
+        spinner.fail('Could not accept ownership');
+        console.error(e);
+        process.exit(1);
+      }
+      const owner = await newOwnerContract.owner();
+
+      if (owner !== config.targetWalletAddress) {
+        spinner.fail('Ownership transfer was unsuccessful, please check contract state');
+        process.exit(1);
+      }
+
       spinner.succeed(
         `Transferred ownership of contract at ${config.ownableContractAddress} to ${config.targetWalletAddress}`
       );
     } catch (e) {
-      spinner.fail('Something went wrong during ownership transfer');
+      spinner.fail(
+        'Something went wrong when initiating the ownership transfer, please check contract state'
+      );
+      console.error(e);
+    }
+  });
+}
+
+async function setIdentityManagerIdentityOperator(plan, config) {
+  plan.add('Set Identity Operator', async () => {
+    const spinner = ora('Building set operator call...').start();
+    const contract = new Contract(
+      config.identityManagerContractAddress,
+      IdentityManagerImpl.abi,
+      config.wallet
+    );
+
+    spinner.text = `Transferring identity operator permissions on the contract at ${config.identityManagerContractAddress} to wallet at ${config.identityOperatorAddress}...`;
+
+    try {
+      await contract.setIdentityOperator(config.identityOperatorAddress);
+      spinner.succeed(
+        `Transferred ownership of contract at ${config.identityManagerContractAddress} to ${config.identityOperatorAddress}`
+      );
+    } catch (e) {
+      const body = JSON.parse(e.error.error.body);
+      const decodedError = decodeContractError(contract.interface, body.error.data);
+      if (decodedError.name === 'Unauthorized') {
+        spinner.fail(
+          'You do not have permission to set the identity operator. Are you the contract owner?'
+        );
+      }
+
+      spinner.fail('Something unknown went wrong during ownership transfer');
       console.error(e);
     }
   });
@@ -1015,17 +1096,48 @@ async function getEnableStateBridge(config) {
 /** Gets the address of the IdentityManager contract to be modified at.
  *
  * @param {Object} config The configuration for the script.
+ * @param {boolean} isRequired Whether the address is required or not.
  * @returns {Promise<void>} The IdentityManager contract address might be written into the `config` object.
  */
-async function getIdentityManagerContractAddress(config) {
+async function getIdentityManagerContractAddress(config, isRequired) {
   if (!config.identityManagerContractAddress) {
     config.identityManagerContractAddress = process.env.IDENTITY_MANAGER_CONTRACT_ADDRESS;
   }
 
   if (!config.identityManagerContractAddress) {
+    const messageAdd = isRequired ? ': ' : ' (or leave blank if not needed): ';
     config.identityManagerContractAddress = await ask(
-      'Please provide the address of the IdentityManager (or leave blank if not needed): '
+      `Please provide the address of the IdentityManager${messageAdd}`
     );
+  }
+
+  if (!config.identityManagerContractAddress && isRequired) {
+    console.error('The identity manager address is required but none was provided.');
+    process.exit(0);
+  }
+}
+
+/** Gets the address that should be given permission to perform identity operations on the identity
+ * manager. You must be the owner of the identity manager to run this.
+ *
+ * @param {Object} config The configuration for the script.
+ * @returns {Promise<void>} The address of the identity management operator might be written into
+ *          the config object.
+ */
+async function getOperatorAddress(config) {
+  if (!config.identityOperatorAddress) {
+    config.identityOperatorAddress = process.env.IDENTITY_OPERATOR_ADDRESS;
+  }
+
+  if (!config.identityOperatorAddress) {
+    config.identityOperatorAddress = await ask(
+      'Please provide the address of the contract you want to be the identity manager operator: '
+    );
+  }
+
+  if (!config.identityOperatorAddress) {
+    console.error('No address provided for the identity operator but one is required.');
+    process.exit(1);
   }
 }
 
@@ -1088,6 +1200,10 @@ async function getLookupTableAddress(config) {
 async function getTargetVerifierAddress(config) {
   if (!config.targetVerifierAddress) {
     config.targetVerifierAddress = process.env.TARGET_VERIFIER_ADDRESS;
+  }
+
+  if (!config.targetVerifierAddress) {
+    config.targetVerifierAddress = config.verifierContractAddress;
   }
 
   if (!config.targetVerifierAddress) {
@@ -1696,7 +1812,7 @@ async function buildVerifierActionPlan(plan, config, type) {
     await getTypeOfVerifierToDeploy(config);
   }
 
-  await getIdentityManagerContractAddress(config);
+  await getIdentityManagerContractAddress(config, false);
   await getLookupTableAddress(config);
   await getBatchSize(config);
 
@@ -1736,7 +1852,20 @@ async function buildTransferActionPlan(plan, config) {
   await getOwnableContractAddress(config);
   await getTargetWalletAddress(config);
 
-  await transferIdentityManagerOwnership(plan, config);
+  await transferContractOwnership(plan, config);
+}
+
+async function buildSetOperatorActionPlan(plan, config) {
+  dotenv.config();
+
+  await getPrivateKey(config);
+  await getRpcUrl(config);
+  await getProvider(config);
+  await getWallet(config);
+  await getIdentityManagerContractAddress(config, true);
+  await getOperatorAddress(config);
+
+  await setIdentityManagerIdentityOperator(plan, config);
 }
 
 /** Builds a plan using the provided function and then executes the plan.
@@ -1872,11 +2001,21 @@ async function main() {
 
   program
     .command('transfer')
-    .description('Move WorldID identity manager contract ownership.')
+    .description('Move Ownable contract ownership.')
     .action(async () => {
       const options = program.opts();
       let config = await loadConfiguration(options.config);
       await buildAndRunPlan(buildTransferActionPlan, config);
+      await saveConfiguration(config);
+    });
+
+  program
+    .command('set-operator')
+    .description('Set the address of the contract that can perform identity management operations.')
+    .action(async () => {
+      const options = program.opts();
+      let config = await loadConfiguration(options.config);
+      await buildAndRunPlan(buildSetOperatorActionPlan, config);
       await saveConfiguration(config);
     });
 

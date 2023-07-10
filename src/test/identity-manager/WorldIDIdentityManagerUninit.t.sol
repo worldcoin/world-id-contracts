@@ -104,10 +104,10 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
 
     /// @notice Checks that it is impossible to call `checkValidRoot` while the contract is not
     ///         initialised.
-    function testShouldNotCallCheckValidRootWhileUninit() public {
+    function testShouldNotCallRequireValidRootWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.checkValidRoot, (preRoot));
+        bytes memory callData = abi.encodeCall(ManagerImpl.requireValidRoot, (preRoot));
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -219,6 +219,32 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         // Setup
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (2 hours));
+        bytes memory expectedError =
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `identityOperator` while the contract is not
+    ///         initialized.
+    function testShouldNotCallIdentityOperatorWhileUninit() public {
+        // Setup
+        makeUninitIdentityManager();
+        bytes memory callData = abi.encodeCall(ManagerImpl.identityOperator, ());
+        bytes memory expectedError =
+            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedError);
+    }
+
+    /// @notice Checks that it is impossible to call `setIdentityOperator` while the contract is not
+    ///         initialized.
+    function testShouldNotCallSetIdentityOperatorWhileUninit(address newOperator) public {
+        // Setup
+        makeUninitIdentityManager();
+        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityOperator, (newOperator));
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 

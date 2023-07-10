@@ -55,6 +55,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     // these variables takes place. If reordering happens, a storage clash will occur (effectively a
     // memory safety error).
 
+    /// @notice The address of the contract authorized to perform identity management operations.
+    /// @dev The identity operator defaults to being the same as the owner.
+    address internal _identityOperator;
+
     /// @notice The latest root of the identity merkle tree.
     uint256 internal _latestRoot;
 
@@ -118,6 +122,20 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         PostRoot
     }
 
+    /// @notice Represents the kind of change that is made to the root of the tree.
+    enum TreeChange {
+        Insertion,
+        Update
+    }
+
+    /// @notice Represents the kinds of dependencies that can be updated.
+    enum Dependency {
+        StateBridge,
+        InsertionVerifierLookupTable,
+        UpdateVerifierLookupTable,
+        SemaphoreVerifier
+    }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             CONSTANT FUNCTIONS                          ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -161,13 +179,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param latestRoot The actual latest root at the time of the transaction.
     error NotLatestRoot(uint256 providedRoot, uint256 latestRoot);
 
-    /// @notice Thrown when attempting to validate a root that has expired.
-    error ExpiredRoot();
-
-    /// @notice Thrown when attempting to validate a root that has yet to be added to the root
-    ///         history.
-    error NonExistentRoot();
-
     /// @notice Thrown when attempting to enable the bridge when it is already enabled.
     error StateBridgeAlreadyEnabled();
 
@@ -187,6 +198,57 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     error MismatchedInputLengths();
 
     ///////////////////////////////////////////////////////////////////////////////
+    ///                                  EVENTS                                 ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Emitted when the current root of the tree is updated.
+    ///
+    /// @param preRoot The value of the tree's root before the update.
+    /// @param kind Either "insertion" or "update", the kind of alteration that was made to the
+    ///        tree.
+    /// @param postRoot The value of the tree's root after the update.
+    event TreeChanged(uint256 indexed preRoot, TreeChange indexed kind, uint256 indexed postRoot);
+
+    /// @notice Emitted when a dependency's address is updated via an admin action.
+    ///
+    /// @param kind The kind of dependency that was updated.
+    /// @param oldAddress The old address of that dependency.
+    /// @param newAddress The new address of that dependency.
+    event DependencyUpdated(
+        Dependency indexed kind, address indexed oldAddress, address indexed newAddress
+    );
+
+    /// @notice Emitted when the state bridge is enabled or disabled.
+    ///
+    /// @param isEnabled Set to `true` if the event comes from the state bridge being enabled,
+    ///        `false` otherwise.
+    event StateBridgeStateChange(bool indexed isEnabled);
+
+    /// @notice Emitted when the root history expiry time is changed.
+    ///
+    /// @param oldExpiryTime The expiry time prior to the change.
+    /// @param newExpiryTime The expiry time after the change.
+    event RootHistoryExpirySet(uint256 indexed oldExpiryTime, uint256 indexed newExpiryTime);
+
+    /// @notice Emitted when the identity operator is changed.
+    ///
+    /// @param oldOperator The address of the old identity operator.
+    /// @param newOperator The address of the new identity operator.
+    event IdentityOperatorChanged(address indexed oldOperator, address indexed newOperator);
+
+    /// @notice Emitter when the WorldIDIdentityManagerImpl is initialized.
+
+    /// @param _treeDepth The depth of the MerkeTree
+    /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
+    ///        this should be set to the root of the empty tree.
+    /// @param _enableStateBridge Whether or not the state bridge should be enabled when
+    ///        initialising the identity manager.
+    /// @param __stateBridge The initial state bridge contract to use.
+    event WorldIDIdentityManagerImplInitialized(
+        uint8 _treeDepth, uint256 initialRoot, bool _enableStateBridge, IBridge __stateBridge
+    );
+
+    ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
     ///////////////////////////////////////////////////////////////////////////////
 
@@ -204,6 +266,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///      with upgrades based upon this contract. Be aware that there are only 256 (zero-indexed)
     ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
     ///      replaced by use of setters.
+    /// @dev This function is explicitly not virtual as it does not make sense to override even when
+    ///      upgrading. Create a separate initializer function instead.
     ///
     /// @param _treeDepth The depth of the MerkeTree
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
@@ -242,9 +306,14 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         semaphoreVerifier = _semaphoreVerifier;
         _stateBridge = __stateBridge;
         _isStateBridgeEnabled = _enableStateBridge;
+        _identityOperator = owner();
 
         // Say that the contract is initialized.
         __setInitialized();
+
+        emit WorldIDIdentityManagerImplInitialized(
+            _treeDepth, initialRoot, _enableStateBridge, __stateBridge
+        );
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -254,8 +323,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @custom:reverts string If called more than once.
     function __delegateInit() internal virtual onlyInitializing {
-        __Ownable_init();
-        __UUPSUpgradeable_init();
+        __WorldIDImpl_init();
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -299,7 +367,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint32 startIndex,
         uint256[] calldata identityCommitments,
         uint256 postRoot
-    ) public virtual onlyProxy onlyInitialized onlyOwner {
+    ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // We can only operate on the latest root in reduced form.
         if (preRoot >= SNARK_SCALAR_FIELD) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
@@ -357,6 +425,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
             // With the update confirmed, we send the root across multiple chains to ensure sync.
             sendRootToStateBridge();
+
+            emit TreeChanged(preRoot, TreeChange.Insertion, postRoot);
         } catch Error(string memory errString) {
             /// This is not the revert we're looking for.
             revert(errString);
@@ -410,7 +480,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256[] calldata oldIdentities,
         uint256[] calldata newIdentities,
         uint256 postRoot
-    ) public virtual onlyProxy onlyInitialized onlyOwner {
+    ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // We can only operate on the latest root in reduced form.
         if (preRoot >= SNARK_SCALAR_FIELD) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
@@ -480,7 +550,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 inputHash,
         uint256 preRoot,
         uint256 postRoot
-    ) internal virtual onlyProxy onlyInitialized onlyOwner {
+    ) internal virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // Pull out the proof terms and verifier input.
         uint256[2] memory ar = [updateProof[0], updateProof[1]];
         uint256[2][2] memory bs =
@@ -505,6 +575,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
             // With the update confirmed, we send the root across multiple chains to ensure sync.
             sendRootToStateBridge();
+
+            emit TreeChanged(preRoot, TreeChange.Update, postRoot);
         } catch Error(string memory errString) {
             /// This is not the revert we're looking for.
             revert(errString);
@@ -589,7 +661,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice Allows a caller to query the latest root.
     ///
     /// @return root The value of the latest tree root.
-    function latestRoot() public view virtual onlyProxy onlyInitialized returns (uint256 root) {
+    function latestRoot() public view virtual onlyProxy onlyInitialized returns (uint256) {
         return _latestRoot;
     }
 
@@ -635,7 +707,12 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             enableStateBridge();
         }
 
+        IBridge oldStateBridge = _stateBridge;
         _stateBridge = newStateBridge;
+
+        emit DependencyUpdated(
+            Dependency.StateBridge, address(oldStateBridge), address(newStateBridge)
+        );
     }
 
     /// @notice Enables the state bridge.
@@ -643,6 +720,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     function enableStateBridge() public virtual onlyProxy onlyInitialized onlyOwner {
         if (!_isStateBridgeEnabled) {
             _isStateBridgeEnabled = true;
+            emit StateBridgeStateChange(true);
         } else {
             revert StateBridgeAlreadyEnabled();
         }
@@ -653,6 +731,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     function disableStateBridge() public virtual onlyProxy onlyInitialized onlyOwner {
         if (_isStateBridgeEnabled) {
             _isStateBridgeEnabled = false;
+            emit StateBridgeStateChange(false);
         } else {
             revert StateBridgeAlreadyDisabled();
         }
@@ -671,7 +750,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         virtual
         onlyProxy
         onlyInitialized
-        returns (RootInfo memory rootInfo)
+        returns (RootInfo memory)
     {
         if (root == _latestRoot) {
             return RootInfo(_latestRoot, 0, true);
@@ -819,37 +898,32 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         validateArrayIsInReducedForm(newIdentities);
     }
 
-
-    /// @notice Checks if a given root value is valid and has been added to the root history.
-    /// @dev Reverts with `ExpiredRoot` if the root has expired, and `NonExistentRoot` if the root
-    ///      is not in the root history.
+    /// @notice Reverts if the provided root value is not valid.
+    /// @dev A root is valid if it is either the latest root, or not the latest root but has not
+    ///      expired.
     ///
-    /// @param root The root of a given identity group.
-    /// @custom:reverts ExpiredRoot If the root is not valid due to being expired.
-    /// @custom:reverts NonExistentRoot If the root does not exist.
-    function checkValidRoot(uint256 root)
-        public
-        view
-        virtual
-        onlyProxy
-        onlyInitialized
-        returns (bool)
-    {
-        if (root != _latestRoot) {
-            uint128 rootTimestamp = rootHistory[root];
-
-            // A root is no longer valid if it has expired.
-            if (block.timestamp - rootTimestamp > rootHistoryExpiry) {
-                revert ExpiredRoot();
-            }
-
-            // A root does not exist if it has no associated timestamp.
-            if (rootTimestamp == 0) {
-                revert NonExistentRoot();
-            }
+    /// @param root The root of the merkle tree to check for validity.
+    ///
+    /// @custom:reverts ExpiredRoot If the provided `root` has expired.
+    /// @custom:reverts NonExistentRoot If the provided `root` does not exist in the history.
+    function requireValidRoot(uint256 root) public view virtual onlyProxy onlyInitialized {
+        // The latest root is always valid.
+        if (root == _latestRoot) {
+            return;
         }
 
-        return true;
+        // Otherwise, we need to check things via the timestamp.
+        uint128 rootTimestamp = rootHistory[root];
+
+        // A root does not exist if it has no associated timestamp.
+        if (rootTimestamp == 0) {
+            revert NonExistentRoot();
+        }
+
+        // A root is no longer valid if it has expired.
+        if (block.timestamp - rootTimestamp > rootHistoryExpiry) {
+            revert ExpiredRoot();
+        }
     }
 
     /// @notice Gets the address for the lookup table of merkle tree verifiers used for identity
@@ -862,7 +936,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         virtual
         onlyProxy
         onlyInitialized
-        returns (address addr)
+        returns (address)
     {
         return address(batchInsertionVerifiers);
     }
@@ -880,7 +954,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         onlyInitialized
         onlyOwner
     {
+        VerifierLookupTable oldTable = batchInsertionVerifiers;
         batchInsertionVerifiers = newTable;
+        emit DependencyUpdated(
+            Dependency.InsertionVerifierLookupTable, address(oldTable), address(newTable)
+        );
     }
 
     /// @notice Gets the address for the lookup table of merkle tree verifiers used for identity
@@ -894,7 +972,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         virtual
         onlyProxy
         onlyInitialized
-        returns (address addr)
+        returns (address)
     {
         return address(identityUpdateVerifiers);
     }
@@ -912,7 +990,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         onlyInitialized
         onlyOwner
     {
+        VerifierLookupTable oldTable = identityUpdateVerifiers;
         identityUpdateVerifiers = newTable;
+        emit DependencyUpdated(
+            Dependency.UpdateVerifierLookupTable, address(oldTable), address(newTable)
+        );
     }
 
     /// @notice Gets the address of the verifier used for verification of semaphore proofs.
@@ -924,7 +1006,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         virtual
         onlyProxy
         onlyInitialized
-        returns (address addr)
+        returns (address)
     {
         return address(semaphoreVerifier);
     }
@@ -941,7 +1023,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         onlyInitialized
         onlyOwner
     {
+        ISemaphoreVerifier oldVerifier = semaphoreVerifier;
         semaphoreVerifier = newVerifier;
+        emit DependencyUpdated(
+            Dependency.SemaphoreVerifier, address(oldVerifier), address(newVerifier)
+        );
     }
 
     /// @notice Gets the current amount of time used to expire roots in the history.
@@ -953,7 +1039,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         virtual
         onlyProxy
         onlyInitialized
-        returns (uint256 expiryTime)
+        returns (uint256)
     {
         return rootHistoryExpiry;
     }
@@ -972,21 +1058,47 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         if (newExpiryTime == 0) {
             revert("Expiry time cannot be zero.");
         }
+        uint256 oldExpiry = rootHistoryExpiry;
         rootHistoryExpiry = newExpiryTime;
+
+        _stateBridge.setRootHistoryExpiry(newExpiryTime);
+
+        emit RootHistoryExpirySet(oldExpiry, newExpiryTime);
     }
 
     /// @notice Gets the Semaphore tree depth the contract was initialized with.
     ///
     /// @return initializedTreeDepth Tree depth.
-    function getTreeDepth()
+    function getTreeDepth() public view virtual onlyProxy onlyInitialized returns (uint8) {
+        return treeDepth;
+    }
+
+    /// @notice Gets the address that is authorised to perform identity operations on this identity
+    ///         manager instance.
+    ///
+    /// @return _ The address authorized to perform identity operations.
+    function identityOperator() public view virtual onlyProxy onlyInitialized returns (address) {
+        return _identityOperator;
+    }
+
+    /// @notice Sets the address that is authorised to perform identity operations on this identity
+    ///         manager instance.
+    ///
+    /// @param newIdentityOperator The address of the new identity operator.
+    ///
+    /// @return _ The address of the old identity operator.
+    function setIdentityOperator(address newIdentityOperator)
         public
-        view
         virtual
         onlyProxy
         onlyInitialized
-        returns (uint8 initializedTreeDepth)
+        onlyOwner
+        returns (address)
     {
-        return treeDepth;
+        address oldOperator = _identityOperator;
+        _identityOperator = newIdentityOperator;
+        emit IdentityOperatorChanged(oldOperator, newIdentityOperator);
+        return oldOperator;
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -1011,10 +1123,28 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 externalNullifierHash,
         uint256[8] calldata proof
     ) public view virtual onlyProxy onlyInitialized {
-        if (checkValidRoot(root)) {
-            semaphoreVerifier.verifyProof(
-                root, nullifierHash, signalHash, externalNullifierHash, proof, treeDepth
-            );
+        // Check the preconditions on the inputs.
+        requireValidRoot(root);
+
+        // With that done we can now verify the proof.
+        semaphoreVerifier.verifyProof(
+            root, nullifierHash, signalHash, externalNullifierHash, proof, treeDepth
+        );
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////
+    ///                    SEMAPHORE PROOF VALIDATION LOGIC                     ///
+    ///////////////////////////////////////////////////////////////////////////////
+
+    /// @notice Ensures that the guarded operation can only be performed by the authorized identity
+    ///         operator contract.
+    ///
+    /// @custom:reverts Unauthorized If the caller is not the identity operator.
+    modifier onlyIdentityOperator() {
+        if (msg.sender != _identityOperator) {
+            revert Unauthorized(msg.sender);
         }
+
+        _;
     }
 }
