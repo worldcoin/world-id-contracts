@@ -102,19 +102,6 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Checks that it is impossible to call `isInputInReducedForm` while the contract is
-    ///         not initialised.
-    function testShouldNotCallIsInputInReducedFormWhileUninit() public {
-        // Setup
-        makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImpl.isInputInReducedForm, (preRoot));
-        bytes memory expectedError =
-            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
     /// @notice Checks that it is impossible to call `checkValidRoot` while the contract is not
     ///         initialised.
     function testShouldNotCallCheckValidRootWhileUninit() public {

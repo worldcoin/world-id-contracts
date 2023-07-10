@@ -301,7 +301,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyOwner {
         // We can only operate on the latest root in reduced form.
-        if (!isInputInReducedForm(preRoot)) {
+        if (preRoot >= SNARK_SCALAR_FIELD) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
         }
         if (preRoot != _latestRoot) {
@@ -314,7 +314,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         // calling outside the type-checker's protection.
 
         // We need the post root to be in reduced form.
-        if (!isInputInReducedForm(postRoot)) {
+        if (postRoot >= SNARK_SCALAR_FIELD) {
             revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
         }
 
@@ -329,7 +329,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
         // verifier.
-        uint256 reducedElement = reduceInputElementInSnarkScalarField(uint256(inputHash));
+        uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
         // We need to look up the correct verifier before we can verify.
         ITreeVerifier insertionVerifier =
@@ -412,7 +412,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyOwner {
         // We can only operate on the latest root in reduced form.
-        if (!isInputInReducedForm(preRoot)) {
+        if (preRoot >= SNARK_SCALAR_FIELD) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
         }
         if (preRoot != _latestRoot) {
@@ -420,7 +420,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         }
 
         // We also need the post root to be in reduced form.
-        if (!isInputInReducedForm(postRoot)) {
+        if (postRoot >= SNARK_SCALAR_FIELD) {
             revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
         }
 
@@ -441,7 +441,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
         // No matter what, the input hashing process can result in a hash that is not an element of
         // the field Fr. We reduce it into the field to give it safely to the verifier.
-        uint256 reducedInputHash = reduceInputElementInSnarkScalarField(uint256(inputHash));
+        uint256 reducedInputHash = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
         // We have to look up the correct verifier before we can verify.
         ITreeVerifier updateVerifier = identityUpdateVerifiers.getVerifierFor(leafIndices.length);
@@ -703,17 +703,102 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         view
         virtual
     {
-        bool previousIsZero = false;
+        // this will be assigned an unreduced element if one is found
+        // note that zero is never unreduced, so it's a safe no-revert state
+        uint256 revertOnUnreduced = 0;
+        // this will be assigned a non-zero element index that occurs after a zero element
+        // note that this definition means an actual revert always happens at index at least 1,
+        // so zero is a safe no-revert state
+        uint256 revertOnInvalid = 0;
+        assembly {
+            // offset one byte after the end of argument section
+            let max := add(mul(identityCommitments.length, 32), identityCommitments.offset)
+            // offset of the first element in the array
+            let offset := identityCommitments.offset
 
-        for (uint256 i = 0; i < identityCommitments.length; ++i) {
-            uint256 commitment = identityCommitments[i];
-            if (previousIsZero && commitment != EMPTY_LEAF) {
-                revert InvalidCommitment(i);
+            // increment offset until either of the following happens:
+            // - offset is equal to max, meaning we've reached the end of the array
+            // - the element at offset is zero
+            // - the element at offset is greater than or equal to SNARK_SCALAR_FIELD
+            for
+                { }
+                and(lt(offset, max), and(lt(calldataload(offset), SNARK_SCALAR_FIELD), sub(iszero(calldataload(offset)), 1)))
+                { offset := add(offset, 32) }
+                { }
+
+            // check if the loop terminated by reaching the end of the array
+            // in that case, validation succeeds and there's nothing else to do
+            if lt(offset, max) {
+                // check if the loop terminated because it found an unreduced element
+                // if so, assign the return value
+                if gt(calldataload(offset), sub(SNARK_SCALAR_FIELD, 1)) {
+                    revertOnUnreduced := calldataload(offset)
+                }
+                // Check if the loop terminated because it found a zero
+                // this means we need to finish looping and make sure all remaining elements are zero.
+                // note that this behaves like an `else` block with the previous if, because the
+                // Conditions are mutually exclusive.
+                if iszero(calldataload(offset)) {
+                    // increment offset until either of the following happens:
+                    // - offset is equal to max, meaning we've reached the end of the array
+                    // - the element at offset is non-zero
+                    for
+                        { }
+                        and(lt(offset, max), iszero(calldataload(offset)))
+                        { offset := add(offset, 32) }
+                        { }
+                    // check if the loop terminated because it found a non-zero element
+                    // if yes, assign the return value
+                    if lt(offset, max) {
+                        revertOnInvalid := div(sub(offset, identityCommitments.offset), 32)
+                    }
+                }
             }
-            if (!isInputInReducedForm(commitment)) {
-                revert UnreducedElement(UnreducedElementType.IdentityCommitment, commitment);
+        }
+        if (revertOnUnreduced != 0) {
+            revert UnreducedElement(UnreducedElementType.IdentityCommitment, revertOnUnreduced);
+        }
+        if (revertOnInvalid != 0) {
+            revert InvalidCommitment(revertOnInvalid);
+        }
+    }
+
+    function validateArrayIsInReducedForm(uint256[] calldata identityCommitments)
+        internal
+        view
+        virtual
+        returns (bool)
+    {
+        // this will be assigned an unreduced element if one is found
+        // note that zero is never unreduced, so it's a safe no-revert state
+        uint256 revertOn = 0;
+        assembly {
+            // offset one byte after the end of argument section
+            let max := add(mul(identityCommitments.length, 32), identityCommitments.offset)
+            // offset of the first element in the array
+            let offset := identityCommitments.offset
+
+            // increment offset until either of the following happens:
+            // - offset is equal to max, meaning we've reached the end of the array
+            // - the element at offset is greater than or equal to SNARK_SCALAR_FIELD
+            for
+                { }
+                and(lt(offset, max), lt(calldataload(offset), SNARK_SCALAR_FIELD))
+                { offset := add(offset, 32) }
+                { }
+
+            // check if the loop terminated by reaching the end of the array
+            // in that case, validation succeeds and there's nothing else to do
+            if lt(offset, max) {
+                // check if the loop terminated because it found an unreduced element
+                // if so, assign the return value
+                if gt(calldataload(offset), sub(SNARK_SCALAR_FIELD, 1)) {
+                    revertOn := calldataload(offset)
+                }
             }
-            previousIsZero = commitment == EMPTY_LEAF;
+        }
+        if (revertOn != 0) {
+            revert UnreducedElement(UnreducedElementType.IdentityCommitment, revertOn);
         }
     }
 
@@ -730,47 +815,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256[] calldata oldIdentities,
         uint256[] calldata newIdentities
     ) internal view virtual {
-        for (uint256 i = 0; i < oldIdentities.length; ++i) {
-            uint256 oldIdentity = oldIdentities[i];
-            uint256 newIdentity = newIdentities[i];
-            if (!isInputInReducedForm(oldIdentity)) {
-                revert UnreducedElement(UnreducedElementType.IdentityCommitment, oldIdentity);
-            }
-            if (!isInputInReducedForm(newIdentity)) {
-                revert UnreducedElement(UnreducedElementType.IdentityCommitment, newIdentity);
-            }
-        }
+        validateArrayIsInReducedForm(oldIdentities);
+        validateArrayIsInReducedForm(newIdentities);
     }
 
-    /// @notice Checks if the provided `input` is in reduced form within the field `Fr`.
-    /// @dev `r` in this case is given by `SNARK_SCALAR_FIELD`.
-    ///
-    /// @param input The input to check for being in reduced form.
-    /// @return isInReducedForm Returns `true` if `input` is in reduced form, `false` otherwise.
-    function isInputInReducedForm(uint256 input)
-        public
-        view
-        virtual
-        onlyProxy
-        onlyInitialized
-        returns (bool isInReducedForm)
-    {
-        return input < SNARK_SCALAR_FIELD;
-    }
-
-    /// @notice Reduces the `input` element into the finite field `Fr` using the modulo operation.
-    /// @dev `r` in this case is given by `SNARK_SCALAR_FIELD`.
-    ///
-    /// @param input The number to reduce into `Fr`.
-    /// @return elem The value of `input` reduced to be an element of `Fr`.
-    function reduceInputElementInSnarkScalarField(uint256 input)
-        internal
-        pure
-        virtual
-        returns (uint256 elem)
-    {
-        return input % SNARK_SCALAR_FIELD;
-    }
 
     /// @notice Checks if a given root value is valid and has been added to the root history.
     /// @dev Reverts with `ExpiredRoot` if the root has expired, and `NonExistentRoot` if the root

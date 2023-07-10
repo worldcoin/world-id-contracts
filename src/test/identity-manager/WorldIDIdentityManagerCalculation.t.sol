@@ -36,37 +36,6 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
         );
     }
 
-    /// @notice Tests whether it is possible to check whether values are in reduced form.
-    function testCanCheckValueIsInReducedForm(uint256 value) public {
-        // Setup
-        vm.assume(value < SNARK_SCALAR_FIELD);
-        bytes memory callData = abi.encodeCall(ManagerImpl.isInputInReducedForm, (value));
-        bytes memory returnData = abi.encode(true);
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData, returnData);
-    }
-
-    /// @notice Tests whether it is possible to detect un-reduced values.
-    function testCanCheckValueIsNotInReducedForm(uint256 value) public {
-        // Setup
-        vm.assume(value >= SNARK_SCALAR_FIELD);
-        bytes memory callData = abi.encodeCall(ManagerImpl.isInputInReducedForm, (value));
-        bytes memory returnData = abi.encode(false);
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData, returnData);
-    }
-
-    /// @notice Checks that reduced form checking can only be done from behind a proxy.
-    function testCannotCheckValidIsInReducedFormIfNotViaProxy() public {
-        // Setup
-        vm.expectRevert("Function must be called through delegatecall");
-
-        // Test
-        managerImpl.isInputInReducedForm(preRoot);
-    }
-
     /// @notice Check whether it's possible to caculate the identity update input hash.
     function testCanCalculateIdentityUpdateInputHash(
         uint256 preRoot,
