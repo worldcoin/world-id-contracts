@@ -79,6 +79,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @dev Used internally to ensure that the proof input is scaled to within the field `Fr`.
     uint256 internal constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
+    uint256 internal constant SNARK_SCALAR_FIELD_MIN_ONE =
+        21888242871839275222246405745257275088548364400416034343698204186575808495616;
 
     /// @notice The table of verifiers for verifying batch identity insertions.
     VerifierLookupTable internal batchInsertionVerifiers;
@@ -782,18 +784,13 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         view
         virtual
     {
-        // this will be assigned an unreduced element if one is found
-        // note that zero is never unreduced, so it's a safe no-revert state
-        uint256 revertOnUnreduced = 0;
-        // this will be assigned a non-zero element index that occurs after a zero element
-        // note that this definition means an actual revert always happens at index at least 1,
-        // so zero is a safe no-revert state
-        uint256 revertOnInvalid = 0;
-        assembly {
-            // offset one byte after the end of argument section
-            let max := add(mul(identityCommitments.length, 32), identityCommitments.offset)
+        uint256 offset;
+        uint256 max;
+        assembly ("memory-safe") {
             // offset of the first element in the array
-            let offset := identityCommitments.offset
+            offset := identityCommitments.offset
+            // offset one byte after the end of argument section
+            max := add(offset, shl(5, identityCommitments.length))
 
             // increment offset until either of the following happens:
             // - offset is equal to max, meaning we've reached the end of the array
@@ -801,44 +798,49 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             // - the element at offset is greater than or equal to SNARK_SCALAR_FIELD
             for
                 { }
-                and(lt(offset, max), and(lt(calldataload(offset), SNARK_SCALAR_FIELD), sub(iszero(calldataload(offset)), 1)))
+                and(lt(offset, max), lt(sub(calldataload(offset), 1), SNARK_SCALAR_FIELD_MIN_ONE))
                 { offset := add(offset, 32) }
                 { }
+        }
 
-            // check if the loop terminated by reaching the end of the array
-            // in that case, validation succeeds and there's nothing else to do
-            if lt(offset, max) {
-                // check if the loop terminated because it found an unreduced element
-                // if so, assign the return value
-                if gt(calldataload(offset), sub(SNARK_SCALAR_FIELD, 1)) {
-                    revertOnUnreduced := calldataload(offset)
+        // check if the loop terminated by reaching the end of the array
+        // in that case, validation succeeds and there's nothing else to do
+        if (offset < max) {
+            uint256 index = identityCommitments.length - ((max - offset) >> 5);
+            uint256 element = identityCommitments[index];
+
+            // Check if the loop terminated because it found a zero
+            // this means we need to finish looping and make sure all remaining elements are zero.
+            // note that this behaves like an `else` block with the previous if, because the
+            // Conditions are mutually exclusive.
+            if (element == 0) {
+                assembly ("memory-safe") {
+                  // we just confirmed this element is zero
+                  offset := add(offset, 32)
+
+                  // increment offset until either of the following happens:
+                  // - offset is equal to max, meaning we've reached the end of the array
+                  // - the element at offset is non-zero
+                  for
+                      { }
+                      and(lt(offset, max), iszero(calldataload(offset)))
+                      { offset := add(offset, 32) }
+                      { }
                 }
-                // Check if the loop terminated because it found a zero
-                // this means we need to finish looping and make sure all remaining elements are zero.
-                // note that this behaves like an `else` block with the previous if, because the
-                // Conditions are mutually exclusive.
-                if iszero(calldataload(offset)) {
-                    // increment offset until either of the following happens:
-                    // - offset is equal to max, meaning we've reached the end of the array
-                    // - the element at offset is non-zero
-                    for
-                        { }
-                        and(lt(offset, max), iszero(calldataload(offset)))
-                        { offset := add(offset, 32) }
-                        { }
-                    // check if the loop terminated because it found a non-zero element
-                    // if yes, assign the return value
-                    if lt(offset, max) {
-                        revertOnInvalid := div(sub(offset, identityCommitments.offset), 32)
-                    }
+
+                // check if the loop terminated because it found a non-zero element
+                // if yes, assign the return value
+                if (offset < max) {
+                    index = identityCommitments.length - ((max - offset) >> 5);
+                    revert InvalidCommitment(index);
                 }
             }
-        }
-        if (revertOnUnreduced != 0) {
-            revert UnreducedElement(UnreducedElementType.IdentityCommitment, revertOnUnreduced);
-        }
-        if (revertOnInvalid != 0) {
-            revert InvalidCommitment(revertOnInvalid);
+
+            // check if the loop terminated because it found an unreduced element
+            // if so, assign the return value
+            else if (element >= SNARK_SCALAR_FIELD) {
+              revert UnreducedElement(UnreducedElementType.IdentityCommitment, element);
+            }
         }
     }
 
@@ -846,7 +848,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         internal
         view
         virtual
-        returns (bool)
     {
         // this will be assigned an unreduced element if one is found
         // note that zero is never unreduced, so it's a safe no-revert state
