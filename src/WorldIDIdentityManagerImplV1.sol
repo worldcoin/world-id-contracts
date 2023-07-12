@@ -79,6 +79,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @dev Used internally to ensure that the proof input is scaled to within the field `Fr`.
     uint256 internal constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
+    uint256 internal constant SNARK_SCALAR_FIELD_MIN_ONE =
+        21888242871839275222246405745257275088548364400416034343698204186575808495616;
 
     /// @notice The table of verifiers for verifying batch identity insertions.
     VerifierLookupTable internal batchInsertionVerifiers;
@@ -369,7 +371,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // We can only operate on the latest root in reduced form.
-        if (!isInputInReducedForm(preRoot)) {
+        if (preRoot >= SNARK_SCALAR_FIELD) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
         }
         if (preRoot != _latestRoot) {
@@ -382,7 +384,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         // calling outside the type-checker's protection.
 
         // We need the post root to be in reduced form.
-        if (!isInputInReducedForm(postRoot)) {
+        if (postRoot >= SNARK_SCALAR_FIELD) {
             revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
         }
 
@@ -397,7 +399,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
         // verifier.
-        uint256 reducedElement = reduceInputElementInSnarkScalarField(uint256(inputHash));
+        uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
         // We need to look up the correct verifier before we can verify.
         ITreeVerifier insertionVerifier =
@@ -482,7 +484,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // We can only operate on the latest root in reduced form.
-        if (!isInputInReducedForm(preRoot)) {
+        if (preRoot >= SNARK_SCALAR_FIELD) {
             revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
         }
         if (preRoot != _latestRoot) {
@@ -490,7 +492,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         }
 
         // We also need the post root to be in reduced form.
-        if (!isInputInReducedForm(postRoot)) {
+        if (postRoot >= SNARK_SCALAR_FIELD) {
             revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
         }
 
@@ -511,7 +513,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
         // No matter what, the input hashing process can result in a hash that is not an element of
         // the field Fr. We reduce it into the field to give it safely to the verifier.
-        uint256 reducedInputHash = reduceInputElementInSnarkScalarField(uint256(inputHash));
+        uint256 reducedInputHash = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
         // We have to look up the correct verifier before we can verify.
         ITreeVerifier updateVerifier = identityUpdateVerifiers.getVerifierFor(leafIndices.length);
@@ -782,17 +784,94 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         view
         virtual
     {
-        bool previousIsZero = false;
+        uint256 offset;
+        uint256 max;
+        assembly ("memory-safe") {
+            // offset of the first element in the array
+            offset := identityCommitments.offset
+            // offset one byte after the end of argument section
+            max := add(offset, shl(5, identityCommitments.length))
 
-        for (uint256 i = 0; i < identityCommitments.length; ++i) {
-            uint256 commitment = identityCommitments[i];
-            if (previousIsZero && commitment != EMPTY_LEAF) {
-                revert InvalidCommitment(i);
+            // increment offset until either of the following happens:
+            // - offset is equal to max, meaning we've reached the end of the array
+            // - the element at offset is zero
+            // - the element at offset is greater than or equal to SNARK_SCALAR_FIELD
+            // The latter two conditions are combined into a single check of the form
+            // `element - 1 < SNARK_SCALAR_FIELD - 1`. This abuses unsigned comparisons:
+            // if `element` is zero, it will underflow and be greater than SNARK_SCALAR_FIELD - 1.
+            // If `element` is non-zero, we can cancel the -1 terms and the comparison becomes what
+            // we want: `element < SNARK_SCALAR_FIELD`.
+            for
+                { }
+                and(lt(offset, max), lt(sub(calldataload(offset), 1), SNARK_SCALAR_FIELD_MIN_ONE))
+                { offset := add(offset, 32) }
+                { }
+        }
+
+        // check if the loop terminated before end of array and handle the remaining elements
+        if (offset < max) {
+            uint256 index = identityCommitments.length - ((max - offset) >> 5);
+            uint256 element = identityCommitments[index];
+
+            // Check if the loop terminated because it found a zero
+            // this means we need to finish looping and make sure all remaining elements are zero.
+            if (element == 0) {
+                assembly ("memory-safe") {
+                  // we just confirmed this element is zero
+                  offset := add(offset, 32)
+
+                  // increment offset until either of the following happens:
+                  // - offset is equal to max, meaning we've reached the end of the array
+                  // - the element at offset is non-zero
+                  for
+                      { }
+                      and(lt(offset, max), iszero(calldataload(offset)))
+                      { offset := add(offset, 32) }
+                      { }
+                }
+
+                // check if the loop terminated because it found a non-zero element
+                // if yes, revert.
+                if (offset < max) {
+                    index = identityCommitments.length - ((max - offset) >> 5);
+                    revert InvalidCommitment(index);
+                }
             }
-            if (!isInputInReducedForm(commitment)) {
-                revert UnreducedElement(UnreducedElementType.IdentityCommitment, commitment);
+            // otherwise check if the loop terminated because it found an unreduced element
+            // if so, revert
+            else if (element >= SNARK_SCALAR_FIELD) {
+              revert UnreducedElement(UnreducedElementType.IdentityCommitment, element);
             }
-            previousIsZero = commitment == EMPTY_LEAF;
+        }
+    }
+
+    function validateArrayIsInReducedForm(uint256[] calldata identityCommitments)
+        internal
+        view
+        virtual
+    {
+        uint256 offset;
+        uint256 max;
+        assembly ("memory-safe") {
+            // offset of the first element in the array
+            offset := identityCommitments.offset
+            // offset one byte after the end of argument section
+            max := add(offset, shl(5, identityCommitments.length))
+
+            // increment offset until either of the following happens:
+            // - offset is equal to max, meaning we've reached the end of the array
+            // - the element at offset is greater than or equal to SNARK_SCALAR_FIELD
+            for
+                { }
+                and(lt(offset, max), lt(calldataload(offset), SNARK_SCALAR_FIELD))
+                { offset := add(offset, 32) }
+                { }
+        }
+          // check if the loop terminated before end of array and revert if so
+        if (offset < max) {
+            uint256 index = identityCommitments.length - ((max - offset) >> 5);
+            uint256 element = identityCommitments[index];
+            revert UnreducedElement(UnreducedElementType.IdentityCommitment, element);
         }
     }
 
@@ -809,46 +888,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256[] calldata oldIdentities,
         uint256[] calldata newIdentities
     ) internal view virtual {
-        for (uint256 i = 0; i < oldIdentities.length; ++i) {
-            uint256 oldIdentity = oldIdentities[i];
-            uint256 newIdentity = newIdentities[i];
-            if (!isInputInReducedForm(oldIdentity)) {
-                revert UnreducedElement(UnreducedElementType.IdentityCommitment, oldIdentity);
-            }
-            if (!isInputInReducedForm(newIdentity)) {
-                revert UnreducedElement(UnreducedElementType.IdentityCommitment, newIdentity);
-            }
-        }
-    }
-
-    /// @notice Checks if the provided `input` is in reduced form within the field `Fr`.
-    /// @dev `r` in this case is given by `SNARK_SCALAR_FIELD`.
-    ///
-    /// @param input The input to check for being in reduced form.
-    /// @return isInReducedForm Returns `true` if `input` is in reduced form, `false` otherwise.
-    function isInputInReducedForm(uint256 input)
-        public
-        view
-        virtual
-        onlyProxy
-        onlyInitialized
-        returns (bool)
-    {
-        return input < SNARK_SCALAR_FIELD;
-    }
-
-    /// @notice Reduces the `input` element into the finite field `Fr` using the modulo operation.
-    /// @dev `r` in this case is given by `SNARK_SCALAR_FIELD`.
-    ///
-    /// @param input The number to reduce into `Fr`.
-    /// @return elem The value of `input` reduced to be an element of `Fr`.
-    function reduceInputElementInSnarkScalarField(uint256 input)
-        internal
-        pure
-        virtual
-        returns (uint256)
-    {
-        return input % SNARK_SCALAR_FIELD;
+        validateArrayIsInReducedForm(oldIdentities);
+        validateArrayIsInReducedForm(newIdentities);
     }
 
     /// @notice Reverts if the provided root value is not valid.
