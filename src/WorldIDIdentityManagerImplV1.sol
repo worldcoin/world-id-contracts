@@ -71,10 +71,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///      group.
     uint256 internal rootHistoryExpiry;
 
-    /// @notice Represents the initial leaf in an empty merkle tree.
-    /// @dev Prevents the empty leaf from being inserted into the root history.
-    uint256 internal constant EMPTY_LEAF = uint256(0);
-
     /// @notice The `r` for the finite field `Fr` under which arithmetic is done on the proof input.
     /// @dev Used internally to ensure that the proof input is scaled to within the field `Fr`.
     uint256 internal constant SNARK_SCALAR_FIELD =
