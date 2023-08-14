@@ -329,7 +329,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Registers identities into the WorldID system.
-    /// @dev Can only be called by the owner.
+    /// @dev Can only be called by the identity operator.
     /// @dev Registration is performed off-chain and verified on-chain via the `insertionProof`.
     ///      This saves gas and time over inserting identities one at a time.
     ///
@@ -436,7 +436,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     }
 
     /// @notice Updates identities in the WorldID system.
-    /// @dev Can only be called by the owner.
+    /// @dev Can only be called by the identity operator.
     /// @dev The update is performed off-chain and verified on-chain via the `updateProof`. This
     ///      saves gas and time over removing identities one at a time.
     /// @dev This function can perform arbitrary identity alterations and does not require any
