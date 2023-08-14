@@ -841,6 +841,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         }
     }
 
+    /// @notice Validates that an array of identity commitments is within bounds of the SNARK_SCALAR_FIELD
+    /// @param identityCommitments The array of identity commitments to be validated.
     function validateArrayIsInReducedForm(uint256[] calldata identityCommitments)
         internal
         view
