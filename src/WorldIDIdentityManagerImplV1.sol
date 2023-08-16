@@ -195,9 +195,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///         length.
     error MismatchedInputLengths();
 
-    /// @notice Thrown when the inputs to `newIdentities` or `oldIdentities` do not match in
-    ///         length.
-    error MismatchedIdentityLengths();
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  EVENTS                                 ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -891,11 +888,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ) internal view virtual {
         validateArrayIsInReducedForm(oldIdentities);
         validateArrayIsInReducedForm(newIdentities);
-
-        // Check that the arrays are the same length.
-        if (oldIdentities.length != newIdentities.length) {
-            revert MismatchedIdentityLengths();
-        }
     }
 
     /// @notice Reverts if the provided root value is not valid.
