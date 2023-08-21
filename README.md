@@ -23,7 +23,7 @@ any personal data**. Stop bots, stop abuse.
 World ID uses a device called the [Orb](https://worldcoin.org/how-the-launch-works) which takes a
 picture of a person's iris to verify they are a unique and alive human. The protocol only requires a
 hash-equivalent (i.e. irreversible) of the iris to be stored (which happens on a blockchain). The
-protocol uses [Zero-knowledge proofs](https://id.worldcoin.org/zkp) so no traceable information is
+protocol uses [Zero-knowledge proofs](https://docs.worldcoin.org/further-reading/zero-knowledge-proofs) so no traceable information is
 ever public.
 
 World ID is meant for on-chain web3 apps, traditional Cloud applications, and even IRL
