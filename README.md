@@ -86,7 +86,7 @@ dependencies and build the smart contracts.
 ### Testing
 
 The prover service comes with a way to generate test parameters—a mock insertion of a batch of
-consecutive commitments into the tree. Assuming you've already run `make deploy`, the prover serivce
+consecutive commitments into the tree. Assuming you've already run `make deploy`, the prover service
 binary should have been downloaded. To generate a test batch, run
 
 ```
