@@ -29,7 +29,7 @@
     "@zk-kit/protocols": "^1.11.0",
     "axios": "^1.3.5",
     "circomlibjs": "0.0.8",
-    "commander": "^10.0.0",
+    "commander": "^10.0.1",
     "dotenv": "^16.0.3",
     "ethers": "^5.7.2",
     "ora": "^6.3.1",
