@@ -27,7 +27,7 @@
   "dependencies": {
     "@zk-kit/identity": "^1.4.1",
     "@zk-kit/protocols": "^1.11.0",
-    "axios": "^1.3.6",
+    "axios": "^1.4.0",
     "circomlibjs": "0.0.8",
     "commander": "^10.0.1",
     "dotenv": "^16.0.3",
