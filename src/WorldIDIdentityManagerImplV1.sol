@@ -955,6 +955,44 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         );
     }
 
+    
+
+    /// @notice Gets the address for the lookup table of merkle tree verifiers used for batch identity
+    ///         deletions.
+    /// @dev The deletion verifier supports batch deletions of size 10, 100 and 1000 members per batch.
+    ///
+    /// @return addr The address of the contract being used as the verifier lookup table.
+    function getDeleteIdentitiesVerifierLookupTableAddress()
+        public
+        view
+        virtual
+        onlyProxy
+        onlyInitialized
+        returns (address)
+    {
+        return address(batchDeletionVerifiers);
+    }
+
+    /// @notice Sets the address for the lookup table of merkle tree verifiers used for identity
+    ///         deletions.
+    /// @dev Only the owner of the contract can call this function.
+    ///
+    /// @param newTable The new verifier lookup table to be used for verifying identity
+    ///        deletions.
+    function setDeleteIdentitiesVerifierLookupTable(VerifierLookupTable newTable)
+        public
+        virtual
+        onlyProxy
+        onlyInitialized
+        onlyOwner
+    {
+        VerifierLookupTable oldTable = batchDeletionVerifiers;
+        batchDeletionVerifiers = newTable;
+        emit DependencyUpdated(
+            Dependency.DeletionVerifierLookupTable, address(oldTable), address(newTable)
+        );
+    }
+
     /// @notice Gets the address for the lookup table of merkle tree verifiers used for identity
     ///         updates.
     /// @dev The update verifier is also used for member removals.
