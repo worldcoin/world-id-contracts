@@ -7,9 +7,10 @@ Semaphore public key (identity commitment) to the
 [`signup-sequencer`](https://github.com/worldcoin/signup-sequencer) queue. The signup sequencer will
 create a batch of size 10, 100 or 1000 (based on current parameters), create a zk proof of insertion
 using [`semaphore-mtb`](https://github.com/worldcoin/semaphore-mtb), calls `registerIdentities()`
-and the contract verifies the proof, updates the merkle tree root, inserts the new identities and
-propagates it to other chains using the
-[`StateBridge`](https://github.com/worldcoin/world-id-state-bridge).
+and the contract verifies the proof and updates the merkle tree root. Each chain that World ID
+supports (currently Base, Optimism and Polygon PoS) has a state bridge contract which fetches the
+state from the `WorldIDIdentityManager`contract and propagates it further to the other chains. The
+state bridge contracts can be found [here](https://github.com/worldcoin/world-id-state-bridge).
 
 ![creation flow](./world-id-creation-flow.svg)
 
