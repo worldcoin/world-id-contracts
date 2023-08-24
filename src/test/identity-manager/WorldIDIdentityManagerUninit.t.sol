@@ -11,7 +11,7 @@ import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 
 /// @title World ID Identity Manager Uninit Tests
 /// @notice Contains tests for the WorldID identity manager.

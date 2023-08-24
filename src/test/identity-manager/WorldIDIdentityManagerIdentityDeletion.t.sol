@@ -10,7 +10,7 @@ import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 
 /// @title World ID Identity Manager Identity Deletion Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -27,7 +27,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
     );
 
     /// @notice Checks that the proof validates properly with the correct inputs.
-    function testRegisterIdentitiesWithCorrectInputsFromKnown() public {
+    function testDeleteIdentitiesWithCorrectInputsFromKnown() public {
         // Setup
         ITreeVerifier actualVerifier = new TreeVerifier();
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
+import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
 import {WorldIDTest} from "../WorldIDTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
@@ -14,7 +16,8 @@ import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 
 /// @title World ID Identity Manager Test.
 /// @notice Contains tests for the WorldID identity manager.
@@ -27,14 +30,20 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///////////////////////////////////////////////////////////////////////////////
 
     IdentityManager internal identityManager;
+    // V2
     ManagerImpl internal managerImpl;
+    // V1
+    ManagerImplV1 internal managerImplV1;
 
     ITreeVerifier internal treeVerifier;
     uint256 internal initialRoot = 0x0;
     uint8 internal treeDepth = 16;
 
     address internal identityManagerAddress;
+    // V2
     address internal managerImplAddress;
+    // V1
+    address internal managerImplV1Address;
 
     uint256 internal slotCounter = 0;
 
@@ -55,10 +64,6 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     uint256 internal constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
-    // State bridge mock
-    IBridge internal stateBridge;
-    bool internal isStateBridgeEnabled = true;
-
     // Mock Verifiers
     ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
     SemaphoreVerifier semaphoreVerifier = new SemaphoreVerifier();
@@ -66,6 +71,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     // Verifiers
     uint256 initialBatchSize = 30;
     VerifierLookupTable internal defaultInsertVerifiers;
+    VerifierLookupTable internal defaultDeletionVerifiers;
     VerifierLookupTable internal defaultUpdateVerifiers;
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -98,14 +104,15 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         treeVerifier = new SimpleVerifier(initialBatchSize);
         defaultInsertVerifiers = new VerifierLookupTable();
         defaultInsertVerifiers.addVerifier(initialBatchSize, treeVerifier);
+        defaultDeletionVerifiers = new VerifierLookupTable();
+        defaultDeletionVerifiers.addVerifier(initialBatchSize, treeVerifier);
         defaultUpdateVerifiers = new VerifierLookupTable();
         defaultUpdateVerifiers.addVerifier(initialBatchSize, treeVerifier);
-        stateBridge = new SimpleStateBridge();
-        stateBridge = IBridge(stateBridge);
         makeNewIdentityManager(
             treeDepth,
             initialRoot,
             defaultInsertVerifiers,
+            defaultDeletionVerifiers,
             defaultUpdateVerifiers,
             semaphoreVerifier
         );
@@ -113,7 +120,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
         hevm.label(managerImplAddress, "ManagerImplementation");
-        hevm.label(address(stateBridge), "StateBridge");
+        hevm.label(managerImplV1Address, "ManagerImplementationV1");
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -131,14 +138,15 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         uint8 actualTreeDepth,
         uint256 actualPreRoot,
         VerifierLookupTable insertVerifiers,
+        VerifierLookupTable deletionVerifiers,
         VerifierLookupTable updateVerifiers,
         ISemaphoreVerifier actualSemaphoreVerifier
     ) public {
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
+        managerImplV1 = new ManagerImplV1();
+        managerImplV1Address = address(managerImplV1);
 
         bytes memory initCallData = abi.encodeCall(
-            ManagerImpl.initialize,
+            ManagerImplV1.initialize,
             (
                 actualTreeDepth,
                 actualPreRoot,
@@ -148,8 +156,20 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             )
         );
 
-        identityManager = new IdentityManager(managerImplAddress, initCallData);
+
+        identityManager = new IdentityManager(managerImplV1Address, initCallData);
         identityManagerAddress = address(identityManager);
+
+        // creates Manager Impl V2, which will be used for tests
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+
+        bytes memory initCallV2 = abi.encodeCall(ManagerImpl.initializeV2, (deletionVerifiers));
+        bytes memory upgradeCall =
+            abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2));
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
     }
 
     /// @notice Initialises a new identity manager using the provided information.
@@ -162,14 +182,16 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @custom:reverts string If any batch size exceeds 1000.
     /// @custom:reverts string If `batchSizes` is empty.
     function makeNewIdentityManager(uint256 actualPreRoot, uint256[] calldata batchSizes) public {
-        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
+        (VerifierLookupTable insertVerifiers, VerifierLookupTable deletionVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(batchSizes);
         defaultInsertVerifiers = insertVerifiers;
+        defaultDeletionVerifiers = deletionVerifiers;
         defaultUpdateVerifiers = updateVerifiers;
+
 
         // Now we can build the identity manager as usual.
         makeNewIdentityManager(
-            treeDepth, actualPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
+            treeDepth, actualPreRoot, insertVerifiers, deletionVerifiers, updateVerifiers, semaphoreVerifier
         );
     }
 
@@ -179,6 +201,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///        both insertions and updates. Must be non-empty and contain no duplicates.
     ///
     /// @return insertVerifiers The insertion verifier lookup table.
+    /// @return deletionVerifiers The deletion verifier lookup table.
     /// @return updateVerifiers The update verifier lookup table.
     ///
     /// @custom:reverts VerifierExists If `batchSizes` contains a duplicate.
@@ -186,7 +209,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @custom:reverts string If `batchSizes` is empty.
     function makeVerifierLookupTables(uint256[] memory batchSizes)
         public
-        returns (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers)
+        returns (VerifierLookupTable insertVerifiers, VerifierLookupTable deletionVerifiers, VerifierLookupTable updateVerifiers)
     {
         // Construct the verifier LUTs from the provided `batchSizes` info.
         if (batchSizes.length == 0) {
@@ -196,6 +219,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             revert("batch size greater than 1000.");
         }
         insertVerifiers = new VerifierLookupTable();
+        deletionVerifiers = new VerifierLookupTable();
         updateVerifiers = new VerifierLookupTable();
         for (uint256 i = 0; i < batchSizes.length; ++i) {
             uint256 batchSize = batchSizes[i];
@@ -205,6 +229,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
             ITreeVerifier batchVerifier = new SimpleVerifier(batchSize);
             insertVerifiers.addVerifier(batchSize, batchVerifier);
+            deletionVerifiers.addVerifier(batchSize, batchVerifier);
             updateVerifiers.addVerifier(batchSize, batchVerifier);
         }
     }

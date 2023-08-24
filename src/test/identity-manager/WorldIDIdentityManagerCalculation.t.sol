@@ -3,7 +3,8 @@ pragma solidity ^0.8.21;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Calculation Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -16,7 +17,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
     function testCalculateIdentityRegistrationInputHashFromParametersOnKnownInput() public {
         // Setup
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.calculateIdentityRegistrationInputHash,
+            ManagerImplV1.calculateIdentityRegistrationInputHash,
             (startIndex, preRoot, postRoot, identityCommitments)
         );
         bytes memory returnData = abi.encode(inputHash);
@@ -73,7 +74,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
             )
         );
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.calculateIdentityUpdateInputHash,
+            ManagerImplV1.calculateIdentityUpdateInputHash,
             (preRoot, postRoot, leafIndices, oldIdents, newIdents)
         );
         bytes memory expectedReturn = abi.encode(expectedResult);

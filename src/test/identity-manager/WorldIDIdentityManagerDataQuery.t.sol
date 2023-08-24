@@ -8,7 +8,7 @@ import {SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 
 /// @title World ID Identity Manager Data Querying Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -20,7 +20,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     function testQueryCurrentRoot(uint128 newPreRoot) public {
         // Setup
         makeNewIdentityManager(
-            treeDepth, newPreRoot, defaultInsertVerifiers, defaultUpdateVerifiers, semaphoreVerifier
+            treeDepth, newPreRoot, defaultInsertVerifiers, defaultDeletionVerifiers, defaultUpdateVerifiers, semaphoreVerifier
         );
         bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, newPreRoot);
         bytes memory returnData = abi.encode(ManagerImpl.RootInfo(newPreRoot, 0, true));

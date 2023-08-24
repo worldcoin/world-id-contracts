@@ -50,6 +50,22 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     /// @notice The table of verifiers for verifying batch identity deletions.
     VerifierLookupTable internal batchDeletionVerifiers;
 
+    /// @notice Initializes the V2 implementation contract.
+    /// @dev Must be called exactly once
+    /// @dev This is marked `reinitializer()` to allow for updated initialisation steps when working
+    ///      with upgrades based upon this contract. Be aware that there are only 256 (zero-indexed)
+    ///      initialisations allowed, so decide carefully when to use them. Many cases can safely be
+    ///      replaced by use of setters.
+    /// @dev This function is explicitly not virtual as it does not make sense to override even when
+    ///      upgrading. Create a separate initializer function instead.
+    ///
+    /// 
+    function initializeV2(
+        VerifierLookupTable _batchUpdateVerifiers
+    ) reinitializer(2) public {
+        batchDeletionVerifiers = _batchUpdateVerifiers;
+    }
+
     ///////////////////////////////////////////////////////////////////
     ///                     IDENTITY MANAGEMENT                     ///
     ///////////////////////////////////////////////////////////////////

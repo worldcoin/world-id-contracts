@@ -4,7 +4,7 @@ pragma solidity ^0.8.21;
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 
 /// @title World ID Identity Manager Initialization Tests
 /// @notice Contains tests for the WorldID identity manager.

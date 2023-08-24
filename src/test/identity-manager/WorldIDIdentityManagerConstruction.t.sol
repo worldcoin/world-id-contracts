@@ -3,8 +3,10 @@ pragma solidity ^0.8.21;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
+import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Construction Tests
 /// @notice Contains tests for the WorldID identity manager
@@ -30,9 +32,9 @@ contract WorldIDIdentityManagerConstruction is WorldIDIdentityManagerTest {
         // Setup
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
-        managerImpl = new ManagerImpl();
+        managerImplV1 = new ManagerImplV1();
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize,
+            ManagerImplV1.initialize,
             (
                 treeDepth,
                 initialRoot,
@@ -44,5 +46,18 @@ contract WorldIDIdentityManagerConstruction is WorldIDIdentityManagerTest {
 
         // Test
         identityManager = new IdentityManager(address(managerImpl), callData);
+
+        identityManagerAddress = address(identityManager);
+
+        // creates Manager Impl V2, which will be used for tests
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+
+        bytes memory initCallV2 = abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+        bytes memory upgradeCall =
+            abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2));
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
     }
 }

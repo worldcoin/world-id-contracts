@@ -8,7 +8,7 @@ import {SemaphoreTreeDepthValidator} from "../../utils/SemaphoreTreeDepthValidat
 import {SimpleSemaphoreVerifier} from "../mock/SimpleSemaphoreVerifier.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 
 /// @title World ID Identity Manager Semaphore Proof Verification Tests
 /// @notice Contains tests for the WorldID identity manager.
