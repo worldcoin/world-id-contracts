@@ -34,13 +34,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             makeVerifierLookupTables(TC.makeDynArray([40]));
         insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
-            treeDepth,
-            preRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, preRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
@@ -76,13 +70,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -121,13 +109,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length, secondIdentsLength]));
         makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -171,13 +153,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length - 1]));
         makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -207,13 +183,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -237,13 +207,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             makeVerifierLookupTables(TC.makeDynArray([70]));
         insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
-            treeDepth,
-            preRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, preRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities,
@@ -271,13 +235,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             makeVerifierLookupTables(TC.makeDynArray([70]));
         insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
-            treeDepth,
-            preRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, preRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImpl.registerIdentities, (proof, preRoot, startIndex, identities, postRoot)
@@ -302,15 +260,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         bytes memory callData = abi.encodeCall(
             ManagerImpl.initialize,
-            (
-                treeDepth,
-                preRoot,
-                insertVerifiers,
-                updateVerifiers,
-                semaphoreVerifier,
-                isStateBridgeEnabled,
-                stateBridge
-            )
+            (treeDepth, preRoot, insertVerifiers, updateVerifiers, semaphoreVerifier)
         );
 
         identityManager = new IdentityManager(managerImplAddress, callData);
@@ -359,9 +309,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             uint256(currentPreRoot),
             defaultInsertVerifiers,
             defaultUpdateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            semaphoreVerifier
         );
         bytes memory callData = abi.encodeCall(
             ManagerImpl.registerIdentities,
@@ -415,13 +363,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identitiesLength]));
         makeNewIdentityManager(
-            treeDepth,
-            initialRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, initialRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
 
         for (uint256 i = 0; i < zeroPosition; ++i) {

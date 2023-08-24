@@ -33,9 +33,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
             preRoot,
             defaultInsertVerifiers,
             defaultUpdateVerifiers,
-            actualSemaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            actualSemaphoreVerifier
         );
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImpl.verifyProof,
@@ -63,9 +61,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
             preRoot,
             defaultInsertVerifiers,
             defaultUpdateVerifiers,
-            actualSemaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            actualSemaphoreVerifier
         );
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImpl.verifyProof,

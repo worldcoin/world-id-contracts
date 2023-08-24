@@ -42,13 +42,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         (
             uint32[] memory leafIndices,
@@ -89,13 +83,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length, secondIdentsLength]));
         makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         (
             uint32[] memory leafIndices,
@@ -195,13 +183,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length - 1]));
         makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         (
             uint32[] memory leafIndices,
@@ -233,13 +215,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         (
             uint32[] memory leafIndices,
@@ -308,13 +284,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
-            treeDepth,
-            uint256(currentPreRoot),
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, uint256(currentPreRoot), insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
@@ -350,13 +320,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         if (changeOld) {
             oldIdents[position] = SNARK_SCALAR_FIELD + i;

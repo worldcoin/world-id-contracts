@@ -107,9 +107,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             initialRoot,
             defaultInsertVerifiers,
             defaultUpdateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            semaphoreVerifier
         );
 
         hevm.label(address(this), "Sender");
@@ -129,17 +127,12 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @param insertVerifiers The insertion verifier lookup table.
     /// @param updateVerifiers The udpate verifier lookup table.
     /// @param actualSemaphoreVerifier The Semaphore verifier instance to use.
-    /// @param enableStateBridge Whether or not the new identity manager should have the state
-    ///        bridge enabled.
-    /// @param actualStateBridge The current state bridge.
     function makeNewIdentityManager(
         uint8 actualTreeDepth,
         uint256 actualPreRoot,
         VerifierLookupTable insertVerifiers,
         VerifierLookupTable updateVerifiers,
-        ISemaphoreVerifier actualSemaphoreVerifier,
-        bool enableStateBridge,
-        IBridge actualStateBridge
+        ISemaphoreVerifier actualSemaphoreVerifier
     ) public {
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
@@ -151,9 +144,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
                 actualPreRoot,
                 insertVerifiers,
                 updateVerifiers,
-                actualSemaphoreVerifier,
-                enableStateBridge,
-                actualStateBridge
+                actualSemaphoreVerifier
             )
         );
 
@@ -165,20 +156,12 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @dev It is initialised in the globals.
     ///
     /// @param actualPreRoot The pre-root to use.
-    /// @param enableStateBridge Whether or not the new identity manager should have the state
-    ///        bridge enabled.
-    /// @param actualStateBridge The current state bridge.
     /// @param batchSizes The batch sizes to create verifiers for. Verifiers will be created for
     ///        both insertions and updates. Must be non-empty.
     ///
     /// @custom:reverts string If any batch size exceeds 1000.
     /// @custom:reverts string If `batchSizes` is empty.
-    function makeNewIdentityManager(
-        uint256 actualPreRoot,
-        bool enableStateBridge,
-        IBridge actualStateBridge,
-        uint256[] calldata batchSizes
-    ) public {
+    function makeNewIdentityManager(uint256 actualPreRoot, uint256[] calldata batchSizes) public {
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(batchSizes);
         defaultInsertVerifiers = insertVerifiers;
@@ -186,13 +169,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
         // Now we can build the identity manager as usual.
         makeNewIdentityManager(
-            treeDepth,
-            actualPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            enableStateBridge,
-            actualStateBridge
+            treeDepth, actualPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
     }
 

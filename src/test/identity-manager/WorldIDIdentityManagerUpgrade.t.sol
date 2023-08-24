@@ -67,9 +67,7 @@ contract WorldIDIdentityManagerUpdate is WorldIDIdentityManagerTest {
                 initialRoot,
                 defaultInsertVerifiers,
                 defaultUpdateVerifiers,
-                semaphoreVerifier,
-                isStateBridgeEnabled,
-                stateBridge
+                semaphoreVerifier
             )
         );
         vm.expectRevert("Function must be called through delegatecall");

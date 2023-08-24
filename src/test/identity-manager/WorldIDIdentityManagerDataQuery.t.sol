@@ -20,13 +20,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     function testQueryCurrentRoot(uint128 newPreRoot) public {
         // Setup
         makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            defaultInsertVerifiers,
-            defaultUpdateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, newPreRoot, defaultInsertVerifiers, defaultUpdateVerifiers, semaphoreVerifier
         );
         bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, newPreRoot);
         bytes memory returnData = abi.encode(ManagerImpl.RootInfo(newPreRoot, 0, true));
@@ -50,13 +44,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -89,13 +77,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
             makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
@@ -143,13 +125,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     function testCanGetLatestRoot(uint256 actualRoot) public {
         // Setup
         makeNewIdentityManager(
-            treeDepth,
-            actualRoot,
-            defaultInsertVerifiers,
-            defaultUpdateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            treeDepth, actualRoot, defaultInsertVerifiers, defaultUpdateVerifiers, semaphoreVerifier
         );
         bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory returnData = abi.encode(actualRoot);
@@ -176,9 +152,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             preRoot,
             defaultInsertVerifiers,
             defaultUpdateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            semaphoreVerifier
         );
         bytes memory callData = abi.encodeCall(ManagerImpl.getTreeDepth, ());
         bytes memory returnData = abi.encode(actualTreeDepth);

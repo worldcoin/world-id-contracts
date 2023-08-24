@@ -245,12 +245,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param _treeDepth The depth of the MerkeTree
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of the empty tree.
-    /// @param _enableStateBridge Whether or not the state bridge should be enabled when
-    ///        initialising the identity manager.
-    /// @param __stateBridge The initial state bridge contract to use.
-    event WorldIDIdentityManagerImplInitialized(
-        uint8 _treeDepth, uint256 initialRoot, bool _enableStateBridge, IBridge __stateBridge
-    );
+    event WorldIDIdentityManagerImplInitialized(uint8 _treeDepth, uint256 initialRoot);
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
@@ -279,9 +274,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param _batchInsertionVerifiers The verifier lookup table for batch insertions.
     /// @param _batchUpdateVerifiers The verifier lookup table for batch updates.
     /// @param _semaphoreVerifier The verifier to use for semaphore protocol proofs.
-    /// @param _enableStateBridge Whether or not the state bridge should be enabled when
-    ///        initialising the identity manager.
-    /// @param __stateBridge The initial state bridge contract to use.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
     /// @custom:reverts UnsupportedTreeDepth If passed tree depth is not among defined values.
@@ -290,9 +282,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 initialRoot,
         VerifierLookupTable _batchInsertionVerifiers,
         VerifierLookupTable _batchUpdateVerifiers,
-        ISemaphoreVerifier _semaphoreVerifier,
-        bool _enableStateBridge,
-        IBridge __stateBridge
+        ISemaphoreVerifier _semaphoreVerifier
     ) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
@@ -313,9 +303,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         // Say that the contract is initialized.
         __setInitialized();
 
-        emit WorldIDIdentityManagerImplInitialized(
-            _treeDepth, initialRoot, _enableStateBridge, __stateBridge
-        );
+        emit WorldIDIdentityManagerImplInitialized(_treeDepth, initialRoot);
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.

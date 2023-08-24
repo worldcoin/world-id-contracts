@@ -38,9 +38,7 @@ contract WorldIDIdentityManagerConstruction is WorldIDIdentityManagerTest {
                 initialRoot,
                 defaultInsertVerifiers,
                 defaultUpdateVerifiers,
-                semaphoreVerifier,
-                isStateBridgeEnabled,
-                stateBridge
+                semaphoreVerifier
             )
         );
 
