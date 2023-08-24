@@ -59,8 +59,6 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     IBridge internal stateBridge;
     bool internal isStateBridgeEnabled = true;
 
-    event StateRootSentMultichain(uint256 indexed root);
-
     // Mock Verifiers
     ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
     SemaphoreVerifier semaphoreVerifier = new SemaphoreVerifier();

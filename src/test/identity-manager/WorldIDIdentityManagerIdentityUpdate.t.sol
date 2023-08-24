@@ -68,8 +68,6 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
 
         // Expect that the state root was sent to the state bridge
         vm.expectEmit(true, true, true, true);
-        emit StateRootSentMultichain(newPostRoot);
-        vm.expectEmit(true, true, true, true);
         emit TreeChanged(newPreRoot, ManagerImpl.TreeChange.Update, newPostRoot);
         vm.prank(identityOperator);
 
@@ -174,16 +172,12 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
 
         vm.expectEmit(true, true, true, true);
         emit VerifiedProof(oldIdents.length);
-        vm.expectEmit(true, true, true, true);
-        emit StateRootSentMultichain(newPostRoot);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, firstCallData);
 
         vm.expectEmit(true, true, true, true);
         emit VerifiedProof(secondOldIdents.length);
-        vm.expectEmit(true, true, true, true);
-        emit StateRootSentMultichain(secondPostRoot);
 
         assertCallSucceedsOn(identityManagerAddress, secondCallData);
     }

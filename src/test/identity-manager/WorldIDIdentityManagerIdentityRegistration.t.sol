@@ -49,10 +49,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         bytes memory latestRootCallData = abi.encodeCall(ManagerImpl.latestRoot, ());
         bytes memory queryRootCallData = abi.encodeCall(ManagerImpl.queryRoot, (postRoot));
 
-        // Expect the root to have been sent to the state bridge.
-        vm.expectEmit(true, true, true, true);
-        emit StateRootSentMultichain(postRoot);
-
         // Test
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
         assertCallSucceedsOn(identityManagerAddress, latestRootCallData, abi.encode(postRoot));
@@ -101,8 +97,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         assert(success);
 
         // Expect the root to have been sent to the state bridge.
-        vm.expectEmit(true, true, true, true);
-        emit StateRootSentMultichain(newPostRoot);
         vm.expectEmit(true, true, true, true);
         emit TreeChanged(newPreRoot, ManagerImpl.TreeChange.Insertion, newPostRoot);
         vm.prank(identityOperator);
@@ -153,16 +147,12 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         vm.expectEmit(true, true, true, true);
         emit VerifiedProof(identities.length);
-        vm.expectEmit(true, true, true, true);
-        emit StateRootSentMultichain(newPostRoot);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, firstCallData);
 
         vm.expectEmit(true, true, true, true);
         emit VerifiedProof(identities.length / 2);
-        vm.expectEmit(true, true, true, true);
-        emit StateRootSentMultichain(secondPostRoot);
 
         assertCallSucceedsOn(identityManagerAddress, secondCallData);
     }

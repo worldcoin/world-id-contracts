@@ -85,7 +85,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice The table of verifiers for verifying batch identity insertions.
     VerifierLookupTable internal batchInsertionVerifiers;
 
-    /// @notice The table of verifiers for verifying batch identity insertions.
+    /// @notice The table of verifiers for verifying identity updates.
     VerifierLookupTable internal identityUpdateVerifiers;
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
@@ -127,6 +127,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice Represents the kind of change that is made to the root of the tree.
     enum TreeChange {
         Insertion,
+        Deletion,
         Update
     }
 
@@ -134,6 +135,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     enum Dependency {
         StateBridge,
         InsertionVerifierLookupTable,
+        DeletionVerifierLookupTable,
         UpdateVerifierLookupTable,
         SemaphoreVerifier
     }
@@ -306,8 +308,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         batchInsertionVerifiers = _batchInsertionVerifiers;
         identityUpdateVerifiers = _batchUpdateVerifiers;
         semaphoreVerifier = _semaphoreVerifier;
-        _stateBridge = __stateBridge;
-        _isStateBridgeEnabled = _enableStateBridge;
         _identityOperator = owner();
 
         // Say that the contract is initialized.
@@ -424,9 +424,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             // We also need to add the previous root to the history, and set the timestamp at
             // which it was expired.
             rootHistory[preRoot] = uint128(block.timestamp);
-
-            // With the update confirmed, we send the root across multiple chains to ensure sync.
-            sendRootToStateBridge();
 
             emit TreeChanged(preRoot, TreeChange.Insertion, postRoot);
         } catch Error(string memory errString) {
@@ -575,9 +572,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             // it was expired.
             rootHistory[preRoot] = uint128(block.timestamp);
 
-            // With the update confirmed, we send the root across multiple chains to ensure sync.
-            sendRootToStateBridge();
-
             emit TreeChanged(preRoot, TreeChange.Update, postRoot);
         } catch Error(string memory errString) {
             /// This is not the revert we're looking for.
@@ -667,78 +661,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         return _latestRoot;
     }
 
-    /// @notice Sends the latest root to the state bridge.
-    /// @dev Only sends if the state bridge address is not the zero address.
-    ///
-    function sendRootToStateBridge() internal virtual onlyProxy onlyInitialized {
-        if (_isStateBridgeEnabled && address(_stateBridge) != address(0)) {
-            _stateBridge.sendRootMultichain(_latestRoot);
-        }
-    }
-
-    /// @notice Allows a caller to query the address of the current stateBridge.
-    ///
-    /// @return stateBridgeContract The address of the currently used stateBridge
-    function stateBridge()
-        public
-        view
-        virtual
-        onlyProxy
-        onlyInitialized
-        returns (IBridge stateBridgeContract)
-    {
-        return _stateBridge;
-    }
-
-    /// @notice Allows a caller to upgrade the stateBridge.
-    /// @dev Only the owner of the contract can call this function.
-    ///
-    /// @param newStateBridge The new stateBridge contract
-    function setStateBridge(IBridge newStateBridge)
-        public
-        virtual
-        onlyProxy
-        onlyInitialized
-        onlyOwner
-    {
-        if (address(newStateBridge) == address(0)) {
-            revert InvalidStateBridgeAddress();
-        }
-
-        if (!_isStateBridgeEnabled) {
-            enableStateBridge();
-        }
-
-        IBridge oldStateBridge = _stateBridge;
-        _stateBridge = newStateBridge;
-
-        emit DependencyUpdated(
-            Dependency.StateBridge, address(oldStateBridge), address(newStateBridge)
-        );
-    }
-
-    /// @notice Enables the state bridge.
-    /// @dev Only the owner of the contract can call this function.
-    function enableStateBridge() public virtual onlyProxy onlyInitialized onlyOwner {
-        if (!_isStateBridgeEnabled) {
-            _isStateBridgeEnabled = true;
-            emit StateBridgeStateChange(true);
-        } else {
-            revert StateBridgeAlreadyEnabled();
-        }
-    }
-
-    /// @notice Disables the state bridge.
-    /// @dev Only the owner of the contract can call this function.
-    function disableStateBridge() public virtual onlyProxy onlyInitialized onlyOwner {
-        if (_isStateBridgeEnabled) {
-            _isStateBridgeEnabled = false;
-            emit StateBridgeStateChange(false);
-        } else {
-            revert StateBridgeAlreadyDisabled();
-        }
-    }
-
     /// @notice Allows a caller to query the root history for information about a given root.
     /// @dev Should be used sparingly as the query can be quite expensive.
     ///
@@ -801,11 +723,9 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             // if `element` is zero, it will underflow and be greater than SNARK_SCALAR_FIELD - 1.
             // If `element` is non-zero, we can cancel the -1 terms and the comparison becomes what
             // we want: `element < SNARK_SCALAR_FIELD`.
-            for
-                { }
-                and(lt(offset, max), lt(sub(calldataload(offset), 1), SNARK_SCALAR_FIELD_MIN_ONE))
-                { offset := add(offset, 32) }
-                { }
+            for {} and(
+                lt(offset, max), lt(sub(calldataload(offset), 1), SNARK_SCALAR_FIELD_MIN_ONE)
+            ) { offset := add(offset, 32) } {}
         }
 
         // check if the loop terminated before end of array and handle the remaining elements
@@ -817,17 +737,15 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             // this means we need to finish looping and make sure all remaining elements are zero.
             if (element == 0) {
                 assembly ("memory-safe") {
-                  // we just confirmed this element is zero
-                  offset := add(offset, 32)
+                    // we just confirmed this element is zero
+                    offset := add(offset, 32)
 
-                  // increment offset until either of the following happens:
-                  // - offset is equal to max, meaning we've reached the end of the array
-                  // - the element at offset is non-zero
-                  for
-                      { }
-                      and(lt(offset, max), iszero(calldataload(offset)))
-                      { offset := add(offset, 32) }
-                      { }
+                    // increment offset until either of the following happens:
+                    // - offset is equal to max, meaning we've reached the end of the array
+                    // - the element at offset is non-zero
+                    for {} and(lt(offset, max), iszero(calldataload(offset))) {
+                        offset := add(offset, 32)
+                    } {}
                 }
 
                 // check if the loop terminated because it found a non-zero element
@@ -840,7 +758,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             // otherwise check if the loop terminated because it found an unreduced element
             // if so, revert
             else if (element >= SNARK_SCALAR_FIELD) {
-              revert UnreducedElement(UnreducedElementType.IdentityCommitment, element);
+                revert UnreducedElement(UnreducedElementType.IdentityCommitment, element);
             }
         }
     }
@@ -861,13 +779,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             // increment offset until either of the following happens:
             // - offset is equal to max, meaning we've reached the end of the array
             // - the element at offset is greater than or equal to SNARK_SCALAR_FIELD
-            for
-                { }
-                and(lt(offset, max), lt(calldataload(offset), SNARK_SCALAR_FIELD))
-                { offset := add(offset, 32) }
-                { }
+            for {} and(lt(offset, max), lt(calldataload(offset), SNARK_SCALAR_FIELD)) {
+                offset := add(offset, 32)
+            } {}
         }
-          // check if the loop terminated before end of array and revert if so
+        // check if the loop terminated before end of array and revert if so
         if (offset < max) {
             uint256 index = identityCommitments.length - ((max - offset) >> 5);
             uint256 element = identityCommitments[index];
@@ -952,44 +868,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         batchInsertionVerifiers = newTable;
         emit DependencyUpdated(
             Dependency.InsertionVerifierLookupTable, address(oldTable), address(newTable)
-        );
-    }
-
-    
-
-    /// @notice Gets the address for the lookup table of merkle tree verifiers used for batch identity
-    ///         deletions.
-    /// @dev The deletion verifier supports batch deletions of size 10, 100 and 1000 members per batch.
-    ///
-    /// @return addr The address of the contract being used as the verifier lookup table.
-    function getDeleteIdentitiesVerifierLookupTableAddress()
-        public
-        view
-        virtual
-        onlyProxy
-        onlyInitialized
-        returns (address)
-    {
-        return address(batchDeletionVerifiers);
-    }
-
-    /// @notice Sets the address for the lookup table of merkle tree verifiers used for identity
-    ///         deletions.
-    /// @dev Only the owner of the contract can call this function.
-    ///
-    /// @param newTable The new verifier lookup table to be used for verifying identity
-    ///        deletions.
-    function setDeleteIdentitiesVerifierLookupTable(VerifierLookupTable newTable)
-        public
-        virtual
-        onlyProxy
-        onlyInitialized
-        onlyOwner
-    {
-        VerifierLookupTable oldTable = batchDeletionVerifiers;
-        batchDeletionVerifiers = newTable;
-        emit DependencyUpdated(
-            Dependency.DeletionVerifierLookupTable, address(oldTable), address(newTable)
         );
     }
 
@@ -1092,8 +970,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         }
         uint256 oldExpiry = rootHistoryExpiry;
         rootHistoryExpiry = newExpiryTime;
-
-        _stateBridge.setRootHistoryExpiry(newExpiryTime);
 
         emit RootHistoryExpirySet(oldExpiry, newExpiryTime);
     }

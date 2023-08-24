@@ -65,10 +65,6 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
         );
 
-        // expect event that state root was sent to state bridge
-        vm.expectEmit(true, true, true, true);
-        emit StateRootSentMultichain(newPostRoot);
-
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
         bytes memory queryCallData = abi.encodeCall(ManagerImpl.queryRoot, (newPreRoot));
         bytes memory returnData =
@@ -108,10 +104,6 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             ManagerImpl.registerIdentities,
             (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
         );
-
-        // expect event that state root was sent to state bridge
-        vm.expectEmit(true, true, true, true);
-        emit StateRootSentMultichain(newPostRoot);
 
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
         bytes memory queryCallData = abi.encodeCall(ManagerImpl.queryRoot, (newPreRoot));
