@@ -10,14 +10,14 @@ import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
 
-/// @title World ID Identity Manager Identity Registration Tests
+/// @title World ID Identity Manager Identity Deletion Tests
 /// @notice Contains tests for the WorldID identity manager.
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
-contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTest {
+contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
     /// Taken from SimpleVerifier.sol
     event VerifiedProof(uint256 batchSize);
 

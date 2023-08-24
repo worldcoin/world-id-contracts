@@ -2,6 +2,12 @@ pragma solidity ^0.8.21;
 
 import "./WorldIDIdentityManagerImplV1.sol";
 
+/// @title WorldID Identity Manager Implementation Version 2
+/// @author Worldcoin
+/// @notice An implementation of a batch-based identity manager for the WorldID protocol.
+/// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs
+///      to perform the insertions.
+/// @dev This is the implementation delegated to by a proxy.
 contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///////////////////////////////////////////////////////////////////////////////
     ///                   A NOTE ON IMPLEMENTATION CONTRACTS                    ///
