@@ -60,6 +60,8 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     uint256 identityCommitmentsSize = 3;
     uint256[8] proof;
 
+    uint32[] deletionIndices = [0, 1, 2];
+
     // Needed for testing things.
     uint256 internal constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
