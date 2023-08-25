@@ -302,6 +302,21 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @dev This is useful to make property-based fuzz testing work better by requiring less
     ///      constraints on the generated input.
     ///
+    /// @param prf The generated proof terms to convert.
+    ///
+    /// @return actualProof The conversion of `prf` to the proper type.
+    function prepareDeleteIdentitiesTestCase(uint128[8] memory prf)
+        public
+        pure
+        returns (uint256[8] memory actualProof)
+    {
+        actualProof = [uint256(prf[0]), prf[1], prf[2], prf[3], prf[4], prf[5], prf[6], prf[7]];
+    }
+
+    /// @notice Prepares a verifier test case.
+    /// @dev This is useful to make property-based fuzz testing work better by requiring less
+    ///      constraints on the generated input.
+    ///
     /// @param idents The generated identity commitments to convert.
     /// @param prf The generate proof terms to convert.
     ///

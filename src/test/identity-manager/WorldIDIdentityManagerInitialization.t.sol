@@ -48,7 +48,8 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
 
-        bytes memory initCallV2 = abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+        bytes memory initCallV2 =
+            abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
         bytes memory upgradeCall = abi.encodeCall(
             UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
         );
@@ -78,13 +79,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
 
-
-        callData = abi.encodeCall(
-            ManagerImpl.initializeV2,
-            (
-                defaultDeletionVerifiers
-            )
-        );
+        callData = abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
 
         assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
     }

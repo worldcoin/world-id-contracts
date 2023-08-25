@@ -42,8 +42,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         // Setup
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities,
-            (proof, preRoot, deletionIndices, postRoot)
+            ManagerImpl.deleteIdentities, (proof, preRoot, deletionIndices, postRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
@@ -181,10 +180,9 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallSetDeleteIdentitiesVerifierLookupTableWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        (,VerifierLookupTable deletionVerifiers ,) = makeVerifierLookupTables(TC.makeDynArray([75]));
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.setDeleteIdentitiesVerifierLookupTable, (deletionVerifiers)
-        );
+        (, VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([75]));
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.setDeleteIdentitiesVerifierLookupTable, (deletionVerifiers));
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
