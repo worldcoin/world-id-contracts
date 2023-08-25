@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
+import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
@@ -21,8 +23,9 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         // Setup
         delete identityManager;
         delete managerImpl;
+        delete managerImplV1;
 
-        managerImpl = new ManagerImpl();
+        managerImplV1 = new ManagerImplV1();
         managerImplAddress = address(managerImpl);
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.initialize,
@@ -38,8 +41,22 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
 
+        identityManager = new IdentityManager(managerImplV1Address, callData);
+        identityManagerAddress = address(identityManager);
+
+        // creates Manager Impl V2, which will be used for tests
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+
+        bytes memory initCallV2 = abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+        bytes memory upgradeCall = abi.encodeCall(
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+        );
+
+        vm.expectEmit(true, true, true, true);
+        emit Initialized(2);
         // Test
-        identityManager = new IdentityManager(managerImplAddress, callData);
+        assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
     }
 
     /// @notice Checks that it is not possible to initialise the contract more than once.
@@ -59,6 +76,16 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
             encodeStringRevert("Initializable: contract is already initialized");
 
         // Test
+        assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
+
+
+        callData = abi.encodeCall(
+            ManagerImpl.initializeV2,
+            (
+                defaultDeletionVerifiers
+            )
+        );
+
         assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
     }
 
