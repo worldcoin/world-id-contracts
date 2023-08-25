@@ -156,7 +156,6 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             )
         );
 
-
         identityManager = new IdentityManager(managerImplV1Address, initCallData);
         identityManagerAddress = address(identityManager);
 
@@ -165,8 +164,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         managerImplAddress = address(managerImpl);
 
         bytes memory initCallV2 = abi.encodeCall(ManagerImpl.initializeV2, (deletionVerifiers));
-        bytes memory upgradeCall =
-            abi.encodeCall(UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2));
+        bytes memory upgradeCall = abi.encodeCall(
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+        );
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
@@ -182,16 +182,23 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @custom:reverts string If any batch size exceeds 1000.
     /// @custom:reverts string If `batchSizes` is empty.
     function makeNewIdentityManager(uint256 actualPreRoot, uint256[] calldata batchSizes) public {
-        (VerifierLookupTable insertVerifiers, VerifierLookupTable deletionVerifiers, VerifierLookupTable updateVerifiers) =
-            makeVerifierLookupTables(batchSizes);
+        (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        ) = makeVerifierLookupTables(batchSizes);
         defaultInsertVerifiers = insertVerifiers;
         defaultDeletionVerifiers = deletionVerifiers;
         defaultUpdateVerifiers = updateVerifiers;
 
-
         // Now we can build the identity manager as usual.
         makeNewIdentityManager(
-            treeDepth, actualPreRoot, insertVerifiers, deletionVerifiers, updateVerifiers, semaphoreVerifier
+            treeDepth,
+            actualPreRoot,
+            insertVerifiers,
+            deletionVerifiers,
+            updateVerifiers,
+            semaphoreVerifier
         );
     }
 
@@ -209,7 +216,11 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @custom:reverts string If `batchSizes` is empty.
     function makeVerifierLookupTables(uint256[] memory batchSizes)
         public
-        returns (VerifierLookupTable insertVerifiers, VerifierLookupTable deletionVerifiers, VerifierLookupTable updateVerifiers)
+        returns (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        )
     {
         // Construct the verifier LUTs from the provided `batchSizes` info.
         if (batchSizes.length == 0) {

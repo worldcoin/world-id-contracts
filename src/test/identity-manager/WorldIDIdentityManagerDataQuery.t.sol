@@ -9,6 +9,7 @@ import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Data Querying Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -20,10 +21,15 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     function testQueryCurrentRoot(uint128 newPreRoot) public {
         // Setup
         makeNewIdentityManager(
-            treeDepth, newPreRoot, defaultInsertVerifiers, defaultDeletionVerifiers, defaultUpdateVerifiers, semaphoreVerifier
+            treeDepth,
+            newPreRoot,
+            defaultInsertVerifiers,
+            defaultDeletionVerifiers,
+            defaultUpdateVerifiers,
+            semaphoreVerifier
         );
-        bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, newPreRoot);
-        bytes memory returnData = abi.encode(ManagerImpl.RootInfo(newPreRoot, 0, true));
+        bytes memory callData = abi.encodeCall(ManagerImplV1.queryRoot, newPreRoot);
+        bytes memory returnData = abi.encode(ManagerImplV1.RootInfo(newPreRoot, 0, true));
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, returnData);
@@ -41,22 +47,30 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(identities.length <= 1000);
-        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
-            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
+        (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
-            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
+            treeDepth,
+            newPreRoot,
+            insertVerifiers,
+            deletionVerifiers,
+            updateVerifiers,
+            semaphoreVerifier
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
         bytes memory registerCallData = abi.encodeCall(
-            ManagerImpl.registerIdentities,
+            ManagerImplV1.registerIdentities,
             (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
         );
 
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
-        bytes memory queryCallData = abi.encodeCall(ManagerImpl.queryRoot, (newPreRoot));
+        bytes memory queryCallData = abi.encodeCall(ManagerImplV1.queryRoot, (newPreRoot));
         bytes memory returnData =
-            abi.encode(ManagerImpl.RootInfo(newPreRoot, uint128(block.timestamp), true));
+            abi.encode(ManagerImplV1.RootInfo(newPreRoot, uint128(block.timestamp), true));
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, queryCallData, returnData);
@@ -74,23 +88,31 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(identities.length <= 1000);
-        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
-            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
+        (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
-            treeDepth, newPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier
+            treeDepth,
+            newPreRoot,
+            insertVerifiers,
+            deletionVerifiers,
+            updateVerifiers,
+            semaphoreVerifier
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
         uint256 originalTimestamp = block.timestamp;
         bytes memory registerCallData = abi.encodeCall(
-            ManagerImpl.registerIdentities,
+            ManagerImplV1.registerIdentities,
             (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
         );
 
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
-        bytes memory queryCallData = abi.encodeCall(ManagerImpl.queryRoot, (newPreRoot));
+        bytes memory queryCallData = abi.encodeCall(ManagerImplV1.queryRoot, (newPreRoot));
         bytes memory returnData =
-            abi.encode(ManagerImpl.RootInfo(newPreRoot, uint128(originalTimestamp), false));
+            abi.encode(ManagerImplV1.RootInfo(newPreRoot, uint128(originalTimestamp), false));
         vm.warp(originalTimestamp + 2 hours); // Force preRoot to expire
 
         // Test
@@ -105,7 +127,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     function testQueryInvalidRoot(uint256 badRoot) public {
         // Setup
         vm.assume(badRoot != initialRoot);
-        bytes memory callData = abi.encodeCall(ManagerImpl.queryRoot, badRoot);
+        bytes memory callData = abi.encodeCall(ManagerImplV1.queryRoot, badRoot);
         bytes memory returnData = abi.encode(managerImpl.NO_SUCH_ROOT());
 
         // Test
@@ -125,9 +147,14 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
     function testCanGetLatestRoot(uint256 actualRoot) public {
         // Setup
         makeNewIdentityManager(
-            treeDepth, actualRoot, defaultInsertVerifiers, defaultUpdateVerifiers, semaphoreVerifier
+            treeDepth,
+            actualRoot,
+            defaultInsertVerifiers,
+            defaultDeletionVerifiers,
+            defaultUpdateVerifiers,
+            semaphoreVerifier
         );
-        bytes memory callData = abi.encodeCall(ManagerImpl.latestRoot, ());
+        bytes memory callData = abi.encodeCall(ManagerImplV1.latestRoot, ());
         bytes memory returnData = abi.encode(actualRoot);
 
         // Test
@@ -151,10 +178,11 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             actualTreeDepth,
             preRoot,
             defaultInsertVerifiers,
+            defaultDeletionVerifiers,
             defaultUpdateVerifiers,
             semaphoreVerifier
         );
-        bytes memory callData = abi.encodeCall(ManagerImpl.getTreeDepth, ());
+        bytes memory callData = abi.encodeCall(ManagerImplV1.getTreeDepth, ());
         bytes memory returnData = abi.encode(actualTreeDepth);
 
         // Test

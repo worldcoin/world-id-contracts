@@ -7,6 +7,7 @@ import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable
 import {WorldIDIdentityManagerImplMock} from "../mock/WorldIDIdentityManagerImplMock.sol";
 
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Upgrade Test
 /// @notice Contains tests for the WorldID identity manager.
@@ -61,7 +62,7 @@ contract WorldIDIdentityManagerUpdate is WorldIDIdentityManagerTest {
         WorldIDIdentityManagerImplMock mockUpgrade = new WorldIDIdentityManagerImplMock();
         address mockUpgradeAddress = address(mockUpgrade);
         bytes memory initCall = abi.encodeCall(
-            ManagerImpl.initialize,
+            ManagerImplV1.initialize,
             (
                 treeDepth,
                 initialRoot,

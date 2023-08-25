@@ -9,6 +9,7 @@ import {SimpleSemaphoreVerifier} from "../mock/SimpleSemaphoreVerifier.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Semaphore Proof Verification Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -32,11 +33,12 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
             actualTreeDepth,
             preRoot,
             defaultInsertVerifiers,
+            defaultDeletionVerifiers,
             defaultUpdateVerifiers,
             actualSemaphoreVerifier
         );
         bytes memory verifyProofCallData = abi.encodeCall(
-            ManagerImpl.verifyProof,
+            ManagerImplV1.verifyProof,
             (preRoot, nullifierHash, signalHash, externalNullifierHash, proof)
         );
 
@@ -60,11 +62,12 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
             actualTreeDepth,
             preRoot,
             defaultInsertVerifiers,
+            defaultDeletionVerifiers,
             defaultUpdateVerifiers,
             actualSemaphoreVerifier
         );
         bytes memory verifyProofCallData = abi.encodeCall(
-            ManagerImpl.verifyProof,
+            ManagerImplV1.verifyProof,
             (preRoot, nullifierHash, signalHash, externalNullifierHash, prf)
         );
 

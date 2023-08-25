@@ -10,6 +10,7 @@ import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Getter and Setter Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -28,7 +29,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     function testCanGetRegisterIdentitiesVerifierLookupTableAddress() public {
         // Setup
         bytes memory callData =
-            abi.encodeCall(ManagerImpl.getRegisterIdentitiesVerifierLookupTableAddress, ());
+            abi.encodeCall(ManagerImplV1.getRegisterIdentitiesVerifierLookupTableAddress, ());
         bytes memory expectedReturn = abi.encode(address(defaultInsertVerifiers));
 
         // Test
@@ -49,17 +50,17 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     ///         identity registration proofs.
     function testCanSetRegisterIdentitiesVerifierLookupTable() public {
         // Setup
-        (VerifierLookupTable insertionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        (VerifierLookupTable insertionVerifiers,,) = makeVerifierLookupTables(TC.makeDynArray([40]));
         address newVerifiersAddress = address(insertionVerifiers);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.setRegisterIdentitiesVerifierLookupTable, (insertionVerifiers)
+            ManagerImplV1.setRegisterIdentitiesVerifierLookupTable, (insertionVerifiers)
         );
         bytes memory checkCallData =
-            abi.encodeCall(ManagerImpl.getRegisterIdentitiesVerifierLookupTableAddress, ());
+            abi.encodeCall(ManagerImplV1.getRegisterIdentitiesVerifierLookupTableAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifiersAddress);
         vm.expectEmit(true, false, true, true);
         emit DependencyUpdated(
-            ManagerImpl.Dependency.InsertionVerifierLookupTable, nullAddress, newVerifiersAddress
+            ManagerImplV1.Dependency.InsertionVerifierLookupTable, nullAddress, newVerifiersAddress
         );
 
         // Test
@@ -73,9 +74,9 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     {
         // Setup
         vm.assume(notOwner != address(this) && notOwner != address(0x0));
-        (VerifierLookupTable insertionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        (VerifierLookupTable insertionVerifiers,,) = makeVerifierLookupTables(TC.makeDynArray([40]));
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.setRegisterIdentitiesVerifierLookupTable, (insertionVerifiers)
+            ManagerImplV1.setRegisterIdentitiesVerifierLookupTable, (insertionVerifiers)
         );
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(notOwner);
@@ -88,7 +89,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     ///         identity registration unless called via the proxy.
     function testCannotSetRegisterIdentitiesVerifierLookupTableUnlessViaProxy() public {
         // Setup
-        (VerifierLookupTable insertionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        (VerifierLookupTable insertionVerifiers,,) = makeVerifierLookupTables(TC.makeDynArray([40]));
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
@@ -100,7 +101,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     function testCanGetIdentityUpdateVerifierLookupTableAddress() public {
         // Setup
         bytes memory callData =
-            abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierLookupTableAddress, ());
+            abi.encodeCall(ManagerImplV1.getIdentityUpdateVerifierLookupTableAddress, ());
         bytes memory expectedReturn = abi.encode(defaultUpdateVerifiers);
 
         // Test
@@ -121,16 +122,16 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     ///         identity update proofs.
     function testCanSetIdentityUpdateVerifierLookupTable() public {
         // Setup
-        (, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        (,, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([40]));
         address newVerifierAddress = address(updateVerifiers);
         bytes memory callData =
-            abi.encodeCall(ManagerImpl.setIdentityUpdateVerifierLookupTable, (updateVerifiers));
+            abi.encodeCall(ManagerImplV1.setIdentityUpdateVerifierLookupTable, (updateVerifiers));
         bytes memory checkCallData =
-            abi.encodeCall(ManagerImpl.getIdentityUpdateVerifierLookupTableAddress, ());
+            abi.encodeCall(ManagerImplV1.getIdentityUpdateVerifierLookupTableAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifierAddress);
         vm.expectEmit(true, false, true, true);
         emit DependencyUpdated(
-            ManagerImpl.Dependency.UpdateVerifierLookupTable, nullAddress, newVerifierAddress
+            ManagerImplV1.Dependency.UpdateVerifierLookupTable, nullAddress, newVerifierAddress
         );
 
         // Test
@@ -143,9 +144,9 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     function testCannotSetIdentityUpdateVerifierLookupTableUnlessOwner(address notOwner) public {
         // Setup
         vm.assume(notOwner != address(this) && notOwner != address(0x0));
-        (, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        (,, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([40]));
         bytes memory callData =
-            abi.encodeCall(ManagerImpl.setIdentityUpdateVerifierLookupTable, (updateVerifiers));
+            abi.encodeCall(ManagerImplV1.setIdentityUpdateVerifierLookupTable, (updateVerifiers));
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(notOwner);
 
@@ -157,7 +158,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     ///         identity removal unless called via the proxy.
     function testCannotSetIdentityUpdateVerifierLookupTableUnlessViaProxy() public {
         // Setup
-        (, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        (,, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([40]));
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
@@ -167,7 +168,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     /// @notice Ensures that we can get the address of the semaphore verifier.
     function testCanGetSemaphoreVerifierAddress() public {
         // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.getSemaphoreVerifierAddress, ());
+        bytes memory callData = abi.encodeCall(ManagerImplV1.getSemaphoreVerifierAddress, ());
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData);
@@ -189,12 +190,12 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         // Setup
         SemaphoreVerifier newVerifier = new SemaphoreVerifier();
         address newVerifierAddress = address(newVerifier);
-        bytes memory callData = abi.encodeCall(ManagerImpl.setSemaphoreVerifier, (newVerifier));
-        bytes memory checkCallData = abi.encodeCall(ManagerImpl.getSemaphoreVerifierAddress, ());
+        bytes memory callData = abi.encodeCall(ManagerImplV1.setSemaphoreVerifier, (newVerifier));
+        bytes memory checkCallData = abi.encodeCall(ManagerImplV1.getSemaphoreVerifierAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifierAddress);
         vm.expectEmit(true, false, true, true);
         emit DependencyUpdated(
-            ManagerImpl.Dependency.SemaphoreVerifier, nullAddress, newVerifierAddress
+            ManagerImplV1.Dependency.SemaphoreVerifier, nullAddress, newVerifierAddress
         );
 
         // Test
@@ -207,7 +208,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(notOwner != address(this) && notOwner != address(0x0));
         SemaphoreVerifier newVerifier = new SemaphoreVerifier();
-        bytes memory callData = abi.encodeCall(ManagerImpl.setSemaphoreVerifier, (newVerifier));
+        bytes memory callData = abi.encodeCall(ManagerImplV1.setSemaphoreVerifier, (newVerifier));
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(notOwner);
 
@@ -229,7 +230,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     /// @notice Ensures that it's possible to get the root history expiry time.
     function testCanGetRootHistoryExpiry() public {
         // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.getRootHistoryExpiry, ());
+        bytes memory callData = abi.encodeCall(ManagerImplV1.getRootHistoryExpiry, ());
         bytes memory result = abi.encode(uint256(1 hours));
 
         // Test
@@ -249,8 +250,8 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     function testCanSetRootHistoryExpiry(uint256 newExpiry) public {
         // Setup
         vm.assume(newExpiry != 0 && newExpiry != 1 hours);
-        bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (newExpiry));
-        bytes memory checkCallData = abi.encodeCall(ManagerImpl.getRootHistoryExpiry, ());
+        bytes memory callData = abi.encodeCall(ManagerImplV1.setRootHistoryExpiry, (newExpiry));
+        bytes memory checkCallData = abi.encodeCall(ManagerImplV1.getRootHistoryExpiry, ());
         bytes memory expectedReturn = abi.encode(newExpiry);
         vm.expectEmit(true, true, true, true);
         emit RootHistoryExpirySet(1 hours, newExpiry);
@@ -263,7 +264,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     /// @notice Ensures that the root history expiry time can't be set to zero.
     function testCannotSetRootHistoryExpiryToZero() public {
         // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.setRootHistoryExpiry, (0));
+        bytes memory callData = abi.encodeCall(ManagerImplV1.setRootHistoryExpiry, (0));
         bytes memory expectedError = encodeStringRevert("Expiry time cannot be zero.");
 
         // Test
@@ -275,7 +276,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(notOwner != address(this) && notOwner != address(0x0));
         SemaphoreVerifier newVerifier = new SemaphoreVerifier();
-        bytes memory callData = abi.encodeCall(ManagerImpl.setSemaphoreVerifier, (newVerifier));
+        bytes memory callData = abi.encodeCall(ManagerImplV1.setSemaphoreVerifier, (newVerifier));
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(notOwner);
 

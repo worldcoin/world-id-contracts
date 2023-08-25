@@ -59,10 +59,8 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     /// @dev This function is explicitly not virtual as it does not make sense to override even when
     ///      upgrading. Create a separate initializer function instead.
     ///
-    /// 
-    function initializeV2(
-        VerifierLookupTable _batchUpdateVerifiers
-    ) reinitializer(2) public {
+    ///
+    function initializeV2(VerifierLookupTable _batchUpdateVerifiers) public reinitializer(2) {
         batchDeletionVerifiers = _batchUpdateVerifiers;
     }
 

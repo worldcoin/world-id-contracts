@@ -5,6 +5,7 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Initialization Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -24,7 +25,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize,
+            ManagerImplV1.initialize,
             (
                 treeDepth,
                 initialRoot,
@@ -45,7 +46,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     function testInitializationOnlyOnce() public {
         // Setup
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize,
+            ManagerImplV1.initialize,
             (
                 treeDepth,
                 initialRoot,
@@ -64,7 +65,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     /// @notice Checks that it is impossible to initialize the delegate on its own.
     function testCannotInitializeTheDelegate() public {
         // Setup
-        ManagerImpl localImpl = new ManagerImpl();
+        ManagerImplV1 localImpl = new ManagerImpl();
         vm.expectRevert("Initializable: contract is already initialized");
 
         // Test
@@ -88,7 +89,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         uint8 unsupportedDepth = 15;
 
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize,
+            ManagerImplV1.initialize,
             (
                 unsupportedDepth,
                 initialRoot,
@@ -98,7 +99,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
             )
         );
 
-        vm.expectRevert(abi.encodeWithSelector(ManagerImpl.UnsupportedTreeDepth.selector, 15));
+        vm.expectRevert(abi.encodeWithSelector(ManagerImplV1.UnsupportedTreeDepth.selector, 15));
 
         // Test
         identityManager = new IdentityManager(managerImplAddress, callData);
