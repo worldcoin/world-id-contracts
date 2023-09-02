@@ -11,7 +11,7 @@
 > [Hardhat](https://github.com/worldcoin/world-id-starter-hardhat) starter kits.
 
 This repository contains the underlying contracts that make World ID work, powered by the
-[Semaphore library](http://semaphore.appliedzkp.org/). These contracts are responsible for
+[Semaphore library](https://semaphore.pse.dev/). These contracts are responsible for
 performing identity operations on chain, and attestation of identities for the purposes of semaphore
 proofs. Check out [user-flows.md](./docs/user-flows.md) for more information on how these contracts
 relate to the rest of the World ID system.
