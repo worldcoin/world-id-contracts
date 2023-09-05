@@ -113,7 +113,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         bytes memory queryCallData = abi.encodeCall(ManagerImplV1.queryRoot, (newPreRoot));
         bytes memory returnData =
             abi.encode(ManagerImplV1.RootInfo(newPreRoot, uint128(originalTimestamp), false));
-        vm.warp(originalTimestamp + 2 hours); // Force preRoot to expire
+        vm.warp(originalTimestamp + 2 hours); // Force insertionPreRoot to expire
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, queryCallData, returnData);
@@ -176,7 +176,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.assume(SemaphoreTreeDepthValidator.validate(actualTreeDepth));
         makeNewIdentityManager(
             actualTreeDepth,
-            preRoot,
+            insertionPreRoot,
             defaultInsertVerifiers,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,

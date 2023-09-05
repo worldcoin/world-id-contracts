@@ -8,7 +8,7 @@ import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {CheckInitialized} from "../../utils/CheckInitialized.sol";
 import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
-import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
+import {Verifier as TreeVerifier} from "../mock/InsertionTreeVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
@@ -27,7 +27,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.registerIdentities,
-            (proof, preRoot, startIndex, identityCommitments, postRoot)
+            (insertionProof, insertionPreRoot, startIndex, identityCommitments, insertionPostRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
@@ -42,7 +42,8 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         // Setup
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities, (proof, preRoot, deletionIndices, postRoot)
+            ManagerImpl.deleteIdentities,
+            (deletionProof, insertionPreRoot, deletionIndices, insertionPostRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
@@ -67,7 +68,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.updateIdentities,
-            (actualProof, initialRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, initialRoot, leafIndices, oldIdents, newIdents, insertionPostRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
@@ -83,7 +84,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.calculateIdentityRegistrationInputHash,
-            (startIndex, preRoot, postRoot, identityCommitments)
+            (startIndex, insertionPreRoot, insertionPostRoot, identityCommitments)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
@@ -110,7 +111,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallQueryRootWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImplV1.queryRoot, (preRoot));
+        bytes memory callData = abi.encodeCall(ManagerImplV1.queryRoot, (insertionPreRoot));
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
@@ -123,7 +124,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallRequireValidRootWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(ManagerImplV1.requireValidRoot, (preRoot));
+        bytes memory callData = abi.encodeCall(ManagerImplV1.requireValidRoot, (insertionPreRoot));
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 

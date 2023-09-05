@@ -18,9 +18,9 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
         // Setup
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.calculateIdentityRegistrationInputHash,
-            (startIndex, preRoot, postRoot, identityCommitments)
+            (startIndex, insertionPreRoot, insertionPostRoot, identityCommitments)
         );
-        bytes memory returnData = abi.encode(inputHash);
+        bytes memory returnData = abi.encode(insertionInputHash);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, returnData);
@@ -33,14 +33,39 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
 
         // Test
         managerImpl.calculateIdentityRegistrationInputHash(
-            startIndex, preRoot, postRoot, identityCommitments
+            startIndex, insertionPreRoot, insertionPostRoot, identityCommitments
+        );
+    }
+
+    /// @notice Tests whether it is possible to correctly calculate the `inputHash` to the merkle
+    ///         tree verifier.
+    function testCalculateIdentityDeletionInputHashFromParametersOnKnownInput() public {
+        // Setup
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.calculateIdentityDeletionInputHash,
+            (deletionIndices, insertionPreRoot, insertionPostRoot)
+        );
+        bytes memory returnData = abi.encode(deletionInputHash);
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, returnData);
+    }
+
+    /// @notice Checks that the input hash can only be calculated if behind the proxy.
+    function testCannotCalculateIdentityDeletionInputHashIfNotViaProxy() public {
+        // Setup
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.calculateIdentityDeletionInputHash(
+            deletionIndices, insertionPreRoot, insertionPostRoot
         );
     }
 
     /// @notice Check whether it's possible to caculate the identity update input hash.
     function testCanCalculateIdentityUpdateInputHash(
-        uint256 preRoot,
-        uint256 postRoot,
+        uint256 insertionPreRoot,
+        uint256 insertionPostRoot,
         uint32 startIndex1,
         uint32 startIndex2,
         uint256 oldIdent1,
@@ -63,8 +88,8 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
 
         bytes32 expectedResult = keccak256(
             abi.encodePacked(
-                preRoot,
-                postRoot,
+                insertionPreRoot,
+                insertionPostRoot,
                 uint256(startIndex1),
                 uint256(startIndex2),
                 oldIdent1,
@@ -75,7 +100,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
         );
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.calculateIdentityUpdateInputHash,
-            (preRoot, postRoot, leafIndices, oldIdents, newIdents)
+            (insertionPreRoot, insertionPostRoot, leafIndices, oldIdents, newIdents)
         );
         bytes memory expectedReturn = abi.encode(expectedResult);
 
@@ -86,8 +111,8 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
     /// @notice Ensures that the identity update hash can only be calculated when called via the
     ///         proxy.
     function testCannotCalculateIdentityUpdateHashIfNotViaProxy(
-        uint256 preRoot,
-        uint256 postRoot,
+        uint256 insertionPreRoot,
+        uint256 insertionPostRoot,
         uint32[] memory leafIndices,
         uint256[] memory oldIdents,
         uint256[] memory newIdents
@@ -97,7 +122,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
 
         // Test
         managerImpl.calculateIdentityUpdateInputHash(
-            preRoot, postRoot, leafIndices, oldIdents, newIdents
+            insertionPreRoot, insertionPostRoot, leafIndices, oldIdents, newIdents
         );
     }
 }

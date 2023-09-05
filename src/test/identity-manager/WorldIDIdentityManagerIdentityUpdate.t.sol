@@ -6,7 +6,7 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
-import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
+import {Verifier as TreeVerifier} from "../mock/InsertionTreeVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
@@ -23,7 +23,9 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
 
     /// Taken from WorldIDIdentityManagerImplV1.sol
     event TreeChanged(
-        uint256 indexed preRoot, ManagerImpl.TreeChange indexed kind, uint256 indexed postRoot
+        uint256 indexed insertionPreRoot,
+        ManagerImpl.TreeChange indexed kind,
+        uint256 indexed insertionPostRoot
     );
 
     /// @notice Checks that the proof validates properly with correct inputs.
@@ -283,7 +285,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, preRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, insertionPreRoot, leafIndices, oldIdents, newIdents, insertionPostRoot)
         );
         bytes memory errorData =
             abi.encodeWithSelector(ManagerImpl.Unauthorized.selector, nonOperator);
@@ -328,7 +330,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         );
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, actualRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, actualRoot, leafIndices, oldIdents, newIdents, insertionPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.NotLatestRoot.selector, actualRoot, uint256(currentPreRoot)
@@ -392,7 +394,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
     ) internal {
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, insertionPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -421,7 +423,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, insertionPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -433,7 +435,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to update identities with a postRoot
+    /// @notice Tests that it reverts if an attempt is made to update identities with a insertionPostRoot
     ///         that is not in reduced form.
     function testCannotUpdateIdentitiesWithUnreducedPostRoot(
         uint128 i,
@@ -480,7 +482,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
 
         // Test
         managerImpl.updateIdentities(
-            actualProof, initialRoot, leafIndices, oldIdents, newIdents, postRoot
+            actualProof, initialRoot, leafIndices, oldIdents, newIdents, insertionPostRoot
         );
     }
 }

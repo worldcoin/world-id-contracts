@@ -47,20 +47,36 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
     uint256 internal slotCounter = 0;
 
-    // All hardcoded test data taken from `src/test/data/TestParams.json`. This will be dynamically
+    ///////////////////////////////////////////////////////////////////
+    ///                          INSERTION                          ///
+    ///////////////////////////////////////////////////////////////////
+    // All hardcoded test data taken from `src/test/data/TestInsertionParams.json`. This will be dynamically
     // generated at some point in the future.
-    bytes32 internal constant inputHash =
+    bytes32 internal constant insertionInputHash =
         0x7d7f77c56064e1f8577de14bba99eff85599ab0e76d0caeadd1ad61674b8a9c3;
     uint32 internal constant startIndex = 0;
-    uint256 internal constant preRoot =
+    uint256 internal constant insertionPreRoot =
         0x18f43331537ee2af2e3d758d50f72106467c6eea50371dd528d57eb2b856d238;
-    uint256 internal constant postRoot =
+    uint256 internal constant insertionPostRoot =
         0x5c1e52b41a571293b30efacd2afdb7173b20cfaf1f646c4ac9f96eb75848270;
+
     uint256[] identityCommitments;
     uint256 identityCommitmentsSize = 3;
-    uint256[8] proof;
+    uint256[8] insertionProof;
 
-    uint32[] deletionIndices = [0, 1, 2];
+    ///////////////////////////////////////////////////////////////////
+    ///                           DELETION                          ///
+    ///////////////////////////////////////////////////////////////////
+    // All hardcoded test data taken from `src/test/data/TestDeletionParams.json`. This will be dynamically
+    // generated at some point in the future.
+    bytes32 internal constant deletionInputHash =
+        0xfe7bd6158c7603ed86cef4dbe90a417fe7c16e94a730ae75ff0135837c6f4dd1;
+    uint256 internal constant deletionPreRoot =
+        0x218676b10b4d8c25fce789f3b13f2b3e49497ce0b20f57bacd7dfda85c0b6ac2;
+    uint256 internal constant deletionPostRoot =
+        0x7c453712267d1cca763c6da89bb632bd85bf9d8b48ef71bd0b7595f81357edb;
+    uint32[] deletionIndices = [0, 2, 4];
+    uint256[8] deletionProof;
 
     // Needed for testing things.
     uint256 internal constant SNARK_SCALAR_FIELD =
@@ -87,8 +103,8 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         identityCommitments[1] = 0x2;
         identityCommitments[2] = 0x3;
 
-        // Create the proof term.
-        proof = [
+        // Create the insertion proof term.
+        insertionProof = [
             0x2a45bf326884bbf13c821a5e4f30690a391156cccf80a2922fb24250111dd7eb,
             0x23a7376a159513e6d0e22d43fcdca9d0c8a5c54a73b59fce6962a41e71355894,
             0x21b9fc7c2d1f76c2e1a972b00f18728a57a34d7e4ae040811bf1626132ff3658,
@@ -97,6 +113,18 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             0x110740f0b21fb329de682dffc95a5ede11c11c6328606fe254b6ba469b15f68,
             0x23115ff1573808639f19724479b195b7894a45c9868242ad2a416767359c6c78,
             0x23f3fa30273c7f38e360496e7f9790450096d4a9592e1fe6e0a996cb05b8fb28
+        ];
+
+        // Create the deletion proof term.
+        deletionProof = [
+            0x10145dce25fb4a9a1e4e305873c2a7ac91075da0db580fb1f6eeffa33ef52f5,
+            0x192814271941d11d6185e154da26f194e07472704a0f94ec7bffc4fc1e3bbb40,
+            0x3bfad23cb9da38fb86524c50c6dc69e3439ee56037ed559a7cf5851326d5922,
+            0x2ea282b1ac2aa9faf003c7346d294cf77b78027db61a6165e5c461ac9fcc7e0c,
+            0x2fdf35f34b7f3b97ce8bdf2a0641c25cb07cb67350ef9757b43a0b7778a73a5d,
+            0xf2f797f11e59fe3d034777f97378f7d5f7702474b545e52c01db129f9555425,
+            0x19f3b8fa4f138d70da5b0afea373f2eff69c58377f15c089062a463d3dfa6c65,
+            0x2c53aeeaf305844fad88b917bf7fffbf5d57a384b6d959a957cf31fe8eb3779f
         ];
     }
 

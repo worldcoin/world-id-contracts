@@ -31,7 +31,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         vm.assume(prf[0] != 0);
         makeNewIdentityManager(
             actualTreeDepth,
-            preRoot,
+            insertionPreRoot,
             defaultInsertVerifiers,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
@@ -39,7 +39,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         );
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImplV1.verifyProof,
-            (preRoot, nullifierHash, signalHash, externalNullifierHash, proof)
+            (insertionPreRoot, nullifierHash, signalHash, externalNullifierHash, insertionProof)
         );
 
         // Test
@@ -60,7 +60,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         vm.assume(prf[0] % 2 == 0);
         makeNewIdentityManager(
             actualTreeDepth,
-            preRoot,
+            insertionPreRoot,
             defaultInsertVerifiers,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
@@ -68,7 +68,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         );
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImplV1.verifyProof,
-            (preRoot, nullifierHash, signalHash, externalNullifierHash, prf)
+            (insertionPreRoot, nullifierHash, signalHash, externalNullifierHash, prf)
         );
 
         vm.expectRevert("Semaphore__InvalidProof()");

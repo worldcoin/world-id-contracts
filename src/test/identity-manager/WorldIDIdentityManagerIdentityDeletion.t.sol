@@ -6,7 +6,7 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
-import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
+import {Verifier as TreeVerifier} from "../mock/DeletionTreeVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
@@ -24,37 +24,49 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
 
     /// Taken from WorldIDIdentityManagerImplV1.sol
     event TreeChanged(
-        uint256 indexed preRoot, ManagerImpl.TreeChange indexed kind, uint256 indexed postRoot
+        uint256 indexed deletionPreRoot,
+        ManagerImpl.TreeChange indexed kind,
+        uint256 indexed deletionPostRoot
     );
 
-    // /// @notice Checks that the proof validates properly with the correct inputs.
-    // function testDeleteIdentitiesWithCorrectInputsFromKnown() public {
-    //     // Setup
-    //     ITreeVerifier actualVerifier = new TreeVerifier();
-    //     (VerifierLookupTable insertVerifiers, VerifierLookupTable deletionVerifiers, VerifierLookupTable updateVerifiers) =
-    //         makeVerifierLookupTables(TC.makeDynArray([40]));
-    //     deletionVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
-    //     makeNewIdentityManager(
-    //         treeDepth, preRoot, insertVerifiers, deletionVerifiers, updateVerifiers, semaphoreVerifier
-    //     );
-    //     bytes memory deleteCallData = abi.encodeCall(
-    //         ManagerImpl.deleteIdentities,
-    //         (proof, preRoot, deletionIndices, postRoot)
-    //     );
-    //     bytes memory latestRootCallData = abi.encodeCall(ManagerImplV1.latestRoot, ());
-    //     bytes memory queryRootCallData = abi.encodeCall(ManagerImplV1.queryRoot, (postRoot));
+    /// @notice Checks that the deletionProof validates properly with the correct inputs.
+    function testDeleteIdentitiesWithCorrectInputsFromKnown() public {
+        // Setup
+        ITreeVerifier actualVerifier = new TreeVerifier();
+        (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        ) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        deletionVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
+        makeNewIdentityManager(
+            treeDepth,
+            deletionPreRoot,
+            insertVerifiers,
+            deletionVerifiers,
+            updateVerifiers,
+            semaphoreVerifier
+        );
+        bytes memory deleteCallData = abi.encodeCall(
+            ManagerImpl.deleteIdentities,
+            (deletionProof, deletionPreRoot, deletionIndices, deletionPostRoot)
+        );
+        bytes memory latestRootCallData = abi.encodeCall(ManagerImplV1.latestRoot, ());
+        bytes memory queryRootCallData = abi.encodeCall(ManagerImplV1.queryRoot, (deletionPostRoot));
 
-    //     // Test
-    //     assertCallSucceedsOn(identityManagerAddress, deleteCallData);
-    //     assertCallSucceedsOn(identityManagerAddress, latestRootCallData, abi.encode(postRoot));
-    //     assertCallSucceedsOn(
-    //         identityManagerAddress,
-    //         queryRootCallData,
-    //         abi.encode(ManagerImplV1.RootInfo(postRoot, 0, true))
-    //     );
-    // }
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, deleteCallData);
+        assertCallSucceedsOn(
+            identityManagerAddress, latestRootCallData, abi.encode(deletionPostRoot)
+        );
+        assertCallSucceedsOn(
+            identityManagerAddress,
+            queryRootCallData,
+            abi.encode(ManagerImplV1.RootInfo(deletionPostRoot, 0, true))
+        );
+    }
 
-    /// @notice Checks that the proof validates properly with correct inputs.
+    /// @notice Checks that the deletionProof validates properly with correct inputs.
     function testDeleteIdentitiesWithCorrectInputs(
         uint128[8] memory prf,
         uint128 newPreRoot,
@@ -183,7 +195,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, errorData);
     }
 
-    /// @notice Checks that it reverts if the provided proof is incorrect for the public inputs.
+    /// @notice Checks that it reverts if the provided deletionProof is incorrect for the public inputs.
     function testCannotDeleteIdentitiesWithIncorrectInputs(
         uint128[8] memory prf,
         uint128 newPreRoot,
@@ -217,37 +229,37 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
-    //
-    //
-    //     /// @notice Checks that it reverts if the provided post root is incorrect.
-    //     function testCannotRegisterIdentitiesIfPostRootIncorrect(uint256 newPostRoot) public {
-    //         // Setup
-    //         vm.assume(newPostRoot != postRoot && newPostRoot < SNARK_SCALAR_FIELD);
-    //         managerImpl = new ManagerImpl();
-    //         managerImplAddress = address(managerImpl);
-    //         ITreeVerifier actualVerifier = new TreeVerifier();
-    //         (VerifierLookupTable insertVerifiers, VerifierLookupTable deletionVerifiers, VerifierLookupTable updateVerifiers) =
-    //             makeVerifierLookupTables(TC.makeDynArray([70]));
-    //         insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
-    //
-    //         bytes memory callData = abi.encodeCall(
-    //             ManagerImplV1.initialize,
-    //             (treeDepth, preRoot, insertVerifiers, deletionVerifiers, updateVerifiers, semaphoreVerifier)
-    //         );
-    //
-    //         identityManager = new IdentityManager(managerImplAddress, callData);
-    //         identityManagerAddress = address(identityManager);
-    //         bytes memory registerCallData = abi.encodeCall(
-    //             ManagerImplV1.registerIdentities,
-    //             (proof, preRoot, startIndex, identityCommitments, newPostRoot)
-    //         );
-    //         bytes memory expectedError =
-    //             abi.encodeWithSelector(ManagerImplV1.ProofValidationFailure.selector);
-    //
-    //         // Test
-    //         assertCallFailsOn(identityManagerAddress, registerCallData, expectedError);
-    //     }
-    //
+
+    /// @notice Checks that it reverts if the provided post root is incorrect.
+    function testCannotDeleteIdentitiesIfPostRootIncorrect(uint256 newPostRoot) public {
+        // Setup
+        vm.assume(newPostRoot != deletionPostRoot && newPostRoot < SNARK_SCALAR_FIELD);
+        ITreeVerifier actualVerifier = new TreeVerifier();
+        (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        ) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        deletionVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
+        makeNewIdentityManager(
+            treeDepth,
+            deletionPreRoot,
+            insertVerifiers,
+            deletionVerifiers,
+            updateVerifiers,
+            semaphoreVerifier
+        );
+
+        bytes memory deletionCallData = abi.encodeCall(
+            ManagerImpl.deleteIdentities,
+            (deletionProof, deletionPreRoot, deletionIndices, newPostRoot)
+        );
+        bytes memory expectedError =
+            abi.encodeWithSelector(ManagerImplV1.ProofValidationFailure.selector);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, deletionCallData, expectedError);
+    }
 
     /// @notice Tests that it reverts if an attempt is made to delete identities as an address
     ///         that is not the identity operator address.
@@ -255,7 +267,8 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(nonOperator != address(this) && nonOperator != address(0x0));
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities, (proof, preRoot, deletionIndices, postRoot)
+            ManagerImpl.deleteIdentities,
+            (deletionProof, deletionPreRoot, deletionIndices, deletionPostRoot)
         );
         bytes memory errorData =
             abi.encodeWithSelector(ManagerImplV1.Unauthorized.selector, nonOperator);
@@ -284,7 +297,8 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
             semaphoreVerifier
         );
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities, (proof, actualRoot, deletionIndices, postRoot)
+            ManagerImpl.deleteIdentities,
+            (deletionProof, actualRoot, deletionIndices, deletionPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImplV1.NotLatestRoot.selector, actualRoot, uint256(currentPreRoot)
@@ -300,7 +314,8 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         // Setup
         uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities, (proof, newPreRoot, deletionIndices, postRoot)
+            ManagerImpl.deleteIdentities,
+            (deletionProof, newPreRoot, deletionIndices, deletionPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImplV1.UnreducedElement.selector,
@@ -312,13 +327,13 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to delete identities with a postRoot
+    /// @notice Tests that it reverts if an attempt is made to delete identities with a deletionPostRoot
     ///         that is not in reduced form.
     function testCannotDeleteIdentitiesWithUnreducedPostRoot(uint128 i) public {
         // Setup
         uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities, (proof, initialRoot, deletionIndices, newPostRoot)
+            ManagerImpl.deleteIdentities, (deletionProof, initialRoot, deletionIndices, newPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImplV1.UnreducedElement.selector,
@@ -338,6 +353,6 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         vm.prank(expectedOwner);
 
         // Test
-        managerImpl.deleteIdentities(proof, initialRoot, deletionIndices, postRoot);
+        managerImpl.deleteIdentities(deletionProof, initialRoot, deletionIndices, deletionPostRoot);
     }
 }

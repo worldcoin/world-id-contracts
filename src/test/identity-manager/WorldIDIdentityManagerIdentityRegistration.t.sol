@@ -8,7 +8,7 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
-import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
+import {Verifier as TreeVerifier} from "../mock/InsertionTreeVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
@@ -26,7 +26,9 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
     /// Taken from WorldIDIdentityManagerImplV1.sol
     event TreeChanged(
-        uint256 indexed preRoot, ManagerImpl.TreeChange indexed kind, uint256 indexed postRoot
+        uint256 indexed insertionPreRoot,
+        ManagerImpl.TreeChange indexed kind,
+        uint256 indexed insertionPostRoot
     );
 
     /// @notice Checks that the proof validates properly with the correct inputs.
@@ -41,7 +43,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
-            preRoot,
+            insertionPreRoot,
             insertVerifiers,
             deletionVerifiers,
             updateVerifiers,
@@ -49,18 +51,21 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImplV1.registerIdentities,
-            (proof, preRoot, startIndex, identityCommitments, postRoot)
+            (insertionProof, insertionPreRoot, startIndex, identityCommitments, insertionPostRoot)
         );
         bytes memory latestRootCallData = abi.encodeCall(ManagerImplV1.latestRoot, ());
-        bytes memory queryRootCallData = abi.encodeCall(ManagerImplV1.queryRoot, (postRoot));
+        bytes memory queryRootCallData =
+            abi.encodeCall(ManagerImplV1.queryRoot, (insertionPostRoot));
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
-        assertCallSucceedsOn(identityManagerAddress, latestRootCallData, abi.encode(postRoot));
+        assertCallSucceedsOn(
+            identityManagerAddress, latestRootCallData, abi.encode(insertionPostRoot)
+        );
         assertCallSucceedsOn(
             identityManagerAddress,
             queryRootCallData,
-            abi.encode(ManagerImplV1.RootInfo(postRoot, 0, true))
+            abi.encode(ManagerImplV1.RootInfo(insertionPostRoot, 0, true))
         );
     }
 
@@ -253,7 +258,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
-            preRoot,
+            insertionPreRoot,
             insertVerifiers,
             deletionVerifiers,
             updateVerifiers,
@@ -261,7 +266,13 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         );
         bytes memory registerCallData = abi.encodeCall(
             ManagerImplV1.registerIdentities,
-            (proof, preRoot, newStartIndex, identityCommitments, postRoot)
+            (
+                insertionProof,
+                insertionPreRoot,
+                newStartIndex,
+                identityCommitments,
+                insertionPostRoot
+            )
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImplV1.ProofValidationFailure.selector);
@@ -289,14 +300,15 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
-            preRoot,
+            insertionPreRoot,
             insertVerifiers,
             deletionVerifiers,
             updateVerifiers,
             semaphoreVerifier
         );
         bytes memory registerCallData = abi.encodeCall(
-            ManagerImplV1.registerIdentities, (proof, preRoot, startIndex, identities, postRoot)
+            ManagerImplV1.registerIdentities,
+            (insertionProof, insertionPreRoot, startIndex, identities, insertionPostRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImplV1.ProofValidationFailure.selector);
@@ -308,7 +320,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
     /// @notice Checks that it reverts if the provided post root is incorrect.
     function testCannotRegisterIdentitiesIfPostRootIncorrect(uint256 newPostRoot) public {
         // Setup
-        vm.assume(newPostRoot != postRoot && newPostRoot < SNARK_SCALAR_FIELD);
+        vm.assume(newPostRoot != insertionPostRoot && newPostRoot < SNARK_SCALAR_FIELD);
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
         ITreeVerifier actualVerifier = new TreeVerifier();
@@ -321,7 +333,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.initialize,
-            (treeDepth, preRoot, insertVerifiers, updateVerifiers, semaphoreVerifier)
+            (treeDepth, insertionPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier)
         );
 
         identityManager = new IdentityManager(managerImplAddress, callData);
@@ -336,7 +348,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         bytes memory registerCallData = abi.encodeCall(
             ManagerImplV1.registerIdentities,
-            (proof, preRoot, startIndex, identityCommitments, newPostRoot)
+            (insertionProof, insertionPreRoot, startIndex, identityCommitments, newPostRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImplV1.ProofValidationFailure.selector);
@@ -352,7 +364,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(nonOperator != address(this) && nonOperator != address(0x0));
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.registerIdentities,
-            (proof, preRoot, startIndex, identityCommitments, postRoot)
+            (insertionProof, insertionPreRoot, startIndex, identityCommitments, insertionPostRoot)
         );
         bytes memory errorData =
             abi.encodeWithSelector(ManagerImplV1.Unauthorized.selector, nonOperator);
@@ -383,7 +395,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         );
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.registerIdentities,
-            (proof, actualRoot, startIndex, identityCommitments, postRoot)
+            (insertionProof, actualRoot, startIndex, identityCommitments, insertionPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImplV1.NotLatestRoot.selector, actualRoot, uint256(currentPreRoot)
@@ -411,7 +423,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.registerIdentities,
-            (proof, initialRoot, startIndex, invalidCommitments, postRoot)
+            (insertionProof, initialRoot, startIndex, invalidCommitments, insertionPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImplV1.InvalidCommitment.selector, uint256(invalidPosition + 1)
@@ -453,7 +465,13 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.registerIdentities,
-            ([uint256(2), 1, 3, 4, 5, 6, 7, 9], initialRoot, startIndex, identities, postRoot)
+            (
+                [uint256(2), 1, 3, 4, 5, 6, 7, 9],
+                initialRoot,
+                startIndex,
+                identities,
+                insertionPostRoot
+            )
         );
 
         // Test
@@ -469,7 +487,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         unreducedCommitments[position] = SNARK_SCALAR_FIELD + i;
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.registerIdentities,
-            (proof, initialRoot, startIndex, unreducedCommitments, postRoot)
+            (insertionProof, initialRoot, startIndex, unreducedCommitments, insertionPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImplV1.UnreducedElement.selector,
@@ -488,7 +506,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.registerIdentities,
-            (proof, newPreRoot, startIndex, identityCommitments, postRoot)
+            (insertionProof, newPreRoot, startIndex, identityCommitments, insertionPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImplV1.UnreducedElement.selector,
@@ -500,14 +518,14 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to register identities with a postRoot
+    /// @notice Tests that it reverts if an attempt is made to register identities with a insertionPostRoot
     ///         that is not in reduced form.
     function testCannotRegisterIdentitiesWithUnreducedPostRoot(uint128 i) public {
         // Setup
         uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.registerIdentities,
-            (proof, initialRoot, startIndex, identityCommitments, newPostRoot)
+            (insertionProof, initialRoot, startIndex, identityCommitments, newPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImplV1.UnreducedElement.selector,
@@ -528,7 +546,12 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         bytes4 functionSelector = ManagerImplV1.registerIdentities.selector;
         // Have to encode with selector as otherwise it's typechecked.
         bytes memory callData = abi.encodeWithSelector(
-            functionSelector, proof, preRoot, i, identityCommitments, postRoot
+            functionSelector,
+            insertionProof,
+            insertionPreRoot,
+            i,
+            identityCommitments,
+            insertionPostRoot
         );
 
         // Test
@@ -544,7 +567,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         // Test
         managerImpl.registerIdentities(
-            proof, initialRoot, startIndex, identityCommitments, postRoot
+            insertionProof, initialRoot, startIndex, identityCommitments, insertionPostRoot
         );
     }
 }
