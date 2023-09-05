@@ -96,6 +96,78 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         managerImpl.setRegisterIdentitiesVerifierLookupTable(insertionVerifiers);
     }
 
+    /// @notice Checks that it is possible to get the address of the contract currently being used
+    ///         to verify identity deletion proofs.
+    function testCanGetDeleteIdentitiesVerifierLookupTableAddress() public {
+        // Setup
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.getDeleteIdentitiesVerifierLookupTableAddress, ());
+        bytes memory expectedReturn = abi.encode(address(defaultDeletionVerifiers));
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData, expectedReturn);
+    }
+
+    /// @notice Ensures that it is not possible to get the address of the verifier lookup table for
+    ///         identity deletion unless called via the proxy.
+    function testCannotGetDeleteIdentitiesVerifierLookupTableAddressUnlessViaProxy() public {
+        // Setup
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.getDeleteIdentitiesVerifierLookupTableAddress();
+    }
+
+    /// @notice Checks that it is possible to set the lookup table currently being used to verify
+    ///         identity deletion proofs.
+    function testCanSetDeleteIdentitiesVerifierLookupTable() public {
+        // Setup
+        (,VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        address newVerifiersAddress = address(deletionVerifiers);
+        bytes memory callData = abi.encodeCall(
+            ManagerImpl.setDeleteIdentitiesVerifierLookupTable, (deletionVerifiers)
+        );
+        bytes memory checkCallData =
+            abi.encodeCall(ManagerImpl.getDeleteIdentitiesVerifierLookupTableAddress, ());
+        bytes memory expectedReturn = abi.encode(newVerifiersAddress);
+        vm.expectEmit(true, false, true, true);
+        emit DependencyUpdated(
+            ManagerImplV1.Dependency.DeletionVerifierLookupTable, nullAddress, newVerifiersAddress
+        );
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, callData);
+        assertCallSucceedsOn(identityManagerAddress, checkCallData, expectedReturn);
+    }
+
+    /// @notice Checks that the delete identities lookup table cannot be set except by the owner.
+    function testCannotSetDeleteIdentitiesVerifierLookupTableUnlessOwner(address notOwner)
+        public
+    {
+        // Setup
+        vm.assume(notOwner != address(this) && notOwner != address(0x0));
+        (,VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        bytes memory callData = abi.encodeCall(
+            ManagerImplV1.setRegisterIdentitiesVerifierLookupTable, (deletionVerifiers)
+        );
+        bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
+        vm.prank(notOwner);
+
+        // Test
+        assertCallFailsOn(identityManagerAddress, callData, errorData);
+    }
+
+    /// @notice Ensures that it is not possible to set the address of the verifier lookup table for
+    ///         identity deletion unless called via the proxy.
+    function testCannotSetDeleteIdentitiesVerifierLookupTableUnlessViaProxy() public {
+        // Setup
+        (,VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        vm.expectRevert("Function must be called through delegatecall");
+
+        // Test
+        managerImpl.setDeleteIdentitiesVerifierLookupTable(deletionVerifiers);
+    }
+
     /// @notice Checks that it is possible to get the address of the lookup table currently being
     ///         used to verify identity update proofs.
     function testCanGetIdentityUpdateVerifierLookupTableAddress() public {
