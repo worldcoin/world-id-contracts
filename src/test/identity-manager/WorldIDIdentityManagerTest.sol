@@ -70,12 +70,13 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     // All hardcoded test data taken from `src/test/data/TestDeletionParams.json`. This will be dynamically
     // generated at some point in the future.
     bytes32 internal constant deletionInputHash =
-        0xfe7bd6158c7603ed86cef4dbe90a417fe7c16e94a730ae75ff0135837c6f4dd1;
+        0x227590f99431e20f2f95fdfb1b7dfb648c04242c950c31263ba165647c96501a;
     uint256 internal constant deletionPreRoot =
-        0x218676b10b4d8c25fce789f3b13f2b3e49497ce0b20f57bacd7dfda85c0b6ac2;
+        0x18cb13df3e79b9f847a1494d0a2e6f3cc0041d9cae7e5ccb8cd1852ecdc4af58;
     uint256 internal constant deletionPostRoot =
-        0x7c453712267d1cca763c6da89bb632bd85bf9d8b48ef71bd0b7595f81357edb;
-    uint32[] deletionIndices = [0, 2, 4];
+        0x82fcf94594d7363636338e2c29242cc77e3d04f36c8ad64d294d2ab4d251708;
+    uint256[] packedDeletionIndices = [0x20000000400000006000000080000000a0000000c0000000e];
+    uint32 deletionBatchSize = 8;
     uint256[8] deletionProof;
 
     // Needed for testing things.
@@ -117,14 +118,14 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
         // Create the deletion proof term.
         deletionProof = [
-            0x10145dce25fb4a9a1e4e305873c2a7ac91075da0db580fb1f6eeffa33ef52f5,
-            0x192814271941d11d6185e154da26f194e07472704a0f94ec7bffc4fc1e3bbb40,
-            0x3bfad23cb9da38fb86524c50c6dc69e3439ee56037ed559a7cf5851326d5922,
-            0x2ea282b1ac2aa9faf003c7346d294cf77b78027db61a6165e5c461ac9fcc7e0c,
-            0x2fdf35f34b7f3b97ce8bdf2a0641c25cb07cb67350ef9757b43a0b7778a73a5d,
-            0xf2f797f11e59fe3d034777f97378f7d5f7702474b545e52c01db129f9555425,
-            0x19f3b8fa4f138d70da5b0afea373f2eff69c58377f15c089062a463d3dfa6c65,
-            0x2c53aeeaf305844fad88b917bf7fffbf5d57a384b6d959a957cf31fe8eb3779f
+            0x226cb5c88ce8ccf2774dc13847c3b579c4e4bc8d47bfc2a9ac1454e1a9a42ee3,
+            0x1e69ced73a40a88c9f68df4a1bf34c3ff67efca6e2682bd8d1bb96a7a3e4bf50,
+            0x1029d8179a82355f902562af0f0e719e31ac12f63effb0c9006ee3332c280e01,
+            0x24ae80c2f18161206a0eacc736ddef2c518e0dec37e13c6f0cf17034d04508cc,
+            0x29213a2cb6582178edd743f8e8b5541175855b55d0c90f1894a1e415b625af70,
+            0x2c9119a368d137dd2409dee4796eb96059296f87009e3d47b0a858cfd05d6954,
+            0x2cdd77b17d2270a8fe1385ec60fdd6c644f83549331ae116a538c555f56a9540,
+            0x1f7214627223f7839a538052d96ad480a9565a6ec8a9e1fcecf54a7d73a55495
         ];
     }
 

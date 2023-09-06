@@ -122,11 +122,10 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     ///         identity deletion proofs.
     function testCanSetDeleteIdentitiesVerifierLookupTable() public {
         // Setup
-        (,VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        (, VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
         address newVerifiersAddress = address(deletionVerifiers);
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.setDeleteIdentitiesVerifierLookupTable, (deletionVerifiers)
-        );
+        bytes memory callData =
+            abi.encodeCall(ManagerImpl.setDeleteIdentitiesVerifierLookupTable, (deletionVerifiers));
         bytes memory checkCallData =
             abi.encodeCall(ManagerImpl.getDeleteIdentitiesVerifierLookupTableAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifiersAddress);
@@ -141,12 +140,10 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     }
 
     /// @notice Checks that the delete identities lookup table cannot be set except by the owner.
-    function testCannotSetDeleteIdentitiesVerifierLookupTableUnlessOwner(address notOwner)
-        public
-    {
+    function testCannotSetDeleteIdentitiesVerifierLookupTableUnlessOwner(address notOwner) public {
         // Setup
         vm.assume(notOwner != address(this) && notOwner != address(0x0));
-        (,VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        (, VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.setRegisterIdentitiesVerifierLookupTable, (deletionVerifiers)
         );
@@ -161,7 +158,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     ///         identity deletion unless called via the proxy.
     function testCannotSetDeleteIdentitiesVerifierLookupTableUnlessViaProxy() public {
         // Setup
-        (,VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        (, VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test

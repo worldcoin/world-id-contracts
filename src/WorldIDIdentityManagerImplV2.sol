@@ -122,7 +122,8 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
         }
 
         // Having validated the preconditions we can now check the proof itself.
-        bytes32 inputHash = calculateIdentityDeletionInputHash(packedDeletionIndices, preRoot, postRoot, batchSize);
+        bytes32 inputHash =
+            calculateIdentityDeletionInputHash(packedDeletionIndices, preRoot, postRoot, batchSize);
 
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
@@ -130,8 +131,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
         uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
         // We need to look up the correct verifier before we can verify.
-        ITreeVerifier deletionVerifier =
-            batchDeletionVerifiers.getVerifierFor(batchSize);
+        ITreeVerifier deletionVerifier = batchDeletionVerifiers.getVerifierFor(batchSize);
 
         // With that, we can properly try and verify.
         try deletionVerifier.verifyProof(
