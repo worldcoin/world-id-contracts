@@ -80,7 +80,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///        and 7 are the `x` and `y` coordinates for `krs`.
     /// @param preRoot The value for the root of the tree before the `identityCommitments` have been
     ///       inserted. Must be an element of the field `Kr`.
-    /// @param deletionIndices The indices of the identities that were deleted from the tree.
+    /// @param packedDeletionIndices The indices of the identities that were deleted from the tree.
     /// @param postRoot The root obtained after deleting all of `identityCommitments` into the tree
     ///        described by `preRoot`. Must be an element of the field `Kr`.
     ///
@@ -98,8 +98,9 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///                 batch size.
     function deleteIdentities(
         uint256[8] calldata deletionProof,
+        uint32 batchSize,
+        uint256[] calldata packedDeletionIndices,
         uint256 preRoot,
-        uint32[] calldata deletionIndices,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
         // We can only operate on the latest root in reduced form.
@@ -121,7 +122,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
         }
 
         // Having validated the preconditions we can now check the proof itself.
-        bytes32 inputHash = calculateIdentityDeletionInputHash(deletionIndices, preRoot, postRoot);
+        bytes32 inputHash = calculateIdentityDeletionInputHash(packedDeletionIndices, preRoot, postRoot, batchSize);
 
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
@@ -130,7 +131,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
 
         // We need to look up the correct verifier before we can verify.
         ITreeVerifier deletionVerifier =
-            batchDeletionVerifiers.getVerifierFor(deletionIndices.length);
+            batchDeletionVerifiers.getVerifierFor(batchSize);
 
         // With that, we can properly try and verify.
         try deletionVerifier.verifyProof(
@@ -206,7 +207,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     /// @notice Calculates the input hash for the identity deletion verifier.
     /// @dev Implements the computation described below.
     ///
-    /// @param deletionIndices The indices of the identities that were deleted from the tree.
+    /// @param packedDeletionIndices The indices of the identities that were deleted from the tree.
     /// @param preRoot The root value of the tree before these insertions were made.
     /// @param postRoot The root value of the tree after these insertions were made.
     ///
@@ -217,12 +218,19 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     /// deletionIndices[0] || deletionIndices[1] || ... || deletionIndices[batchSize-1] || PreRoot || PostRoot
     ///        32          ||        32          || ... ||              32              ||   256   ||    256
     function calculateIdentityDeletionInputHash(
-        uint32[] calldata deletionIndices,
+        uint256[] calldata packedDeletionIndices,
         uint256 preRoot,
-        uint256 postRoot
+        uint256 postRoot,
+        uint32 batchSize
     ) public view virtual onlyProxy onlyInitialized returns (bytes32 hash) {
-        bytes memory bytesToHash = abi.encodePacked(deletionIndices, preRoot, postRoot);
-
-        hash = keccak256(bytesToHash);
+        assembly {
+            let startOffset := mload(0x40)
+            let indicesByteSize := mul(batchSize, 4)
+            calldatacopy(startOffset, packedDeletionIndices.offset, indicesByteSize)
+            let rootsOffset := add(startOffset, indicesByteSize)
+            mstore(rootsOffset, preRoot)
+            mstore(add(rootsOffset, 32), postRoot)
+            hash := keccak256(startOffset, add(64, indicesByteSize))
+        }
     }
 }
