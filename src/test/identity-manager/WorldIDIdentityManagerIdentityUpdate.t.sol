@@ -359,43 +359,33 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             uint256[] memory newIdents,
             uint256[8] memory actualProof
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
-        (
-            VerifierLookupTable insertVerifiers,
-            VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers
-        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
-        makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            deletionVerifiers,
-            updateVerifiers,
-            semaphoreVerifier
-        );
+        // scoping to avoid stack too deep errors
+        {
+            (
+                VerifierLookupTable insertVerifiers,
+                VerifierLookupTable deletionVerifiers,
+                VerifierLookupTable updateVerifiers
+            ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
+            makeNewIdentityManager(
+                treeDepth,
+                newPreRoot,
+                insertVerifiers,
+                deletionVerifiers,
+                updateVerifiers,
+                semaphoreVerifier
+            );
+        }
+
         if (changeOld) {
             oldIdents[position] = SNARK_SCALAR_FIELD + i;
         } else {
             newIdents[position] = SNARK_SCALAR_FIELD + i;
         }
-
-        // breaking up into two due to stack too deep error
-        testCannotRegisterIdentitiesWithUnreducedIdentitiesPart2(
-            i, newPreRoot, actualProof, oldIdents, newIdents, leafIndices
-        );
-    }
-
-    function testCannotRegisterIdentitiesWithUnreducedIdentitiesPart2(
-        uint128 i,
-        uint128 newPreRoot,
-        uint256[8] memory actualProof,
-        uint256[] memory oldIdents,
-        uint256[] memory newIdents,
-        uint32[] memory leafIndices
-    ) internal {
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
             (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, insertionPostRoot)
         );
+
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
             ManagerImpl.UnreducedElementType.IdentityCommitment,

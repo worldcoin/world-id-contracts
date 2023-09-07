@@ -101,7 +101,13 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         uint256[8] memory actualProof = prepareDeleteIdentitiesTestCase(prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.deleteIdentities,
-            (actualProof, uint32(packedDeletionIndices.length * 8), packedDeletionIndices, newPreRoot, newPostRoot)
+            (
+                actualProof,
+                uint32(packedDeletionIndices.length * 8),
+                packedDeletionIndices,
+                newPreRoot,
+                newPostRoot
+            )
         );
 
         bytes memory setupCallData =
