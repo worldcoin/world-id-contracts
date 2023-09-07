@@ -210,16 +210,17 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     /// @param packedDeletionIndices The indices of the identities that were deleted from the tree.
     /// @param preRoot The root value of the tree before these insertions were made.
     /// @param postRoot The root value of the tree after these insertions were made.
+    /// @param batchSize The number of identities that were deleted in this batch
     ///
     /// @return hash The input hash calculated as described below.
     ///
-    /// @dev the deletion indices are packed into a uint256[] array where each element of the array
-    /// packs 8 different uint32 indices,
+    /// @dev the deletion indices are packed into bytes calldata where each deletion index is 32 bits
+    ///     wide. The indices are encoded using abi.encodePacked for testing.
     ///
-    /// We keccak hash all input to save verification gas. Inputs are arranged as follows:
+    /// We keccak hash all input to save verification gas. Inputs for the hash are arranged as follows:
     ///
-    /// deletionIndices[0] || deletionIndices[1] || ... || deletionIndices[batchSize-1] || PreRoot || PostRoot
-    ///        32          ||        32          || ... ||              32              ||   256   ||    256
+    /// packedDeletionIndices || PreRoot || PostRoot
+    ///   32 bits * batchSize ||   256   ||    256
     function calculateIdentityDeletionInputHash(
         bytes calldata packedDeletionIndices,
         uint256 preRoot,
