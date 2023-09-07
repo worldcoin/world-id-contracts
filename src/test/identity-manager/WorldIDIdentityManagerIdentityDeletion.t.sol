@@ -38,7 +38,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
             VerifierLookupTable deletionVerifiers,
             VerifierLookupTable updateVerifiers
         ) = makeVerifierLookupTables(TC.makeDynArray([40]));
-        deletionVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
+        deletionVerifiers.addVerifier(deletionBatchSize, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
             deletionPreRoot,
@@ -83,13 +83,13 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        vm.assume(packedDeletionIndices.length <= 1000);
+        vm.assume(packedDeletionIndices.length <= 125);
         vm.assume(identityOperator != nullAddress && identityOperator != thisAddress);
         (
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
             VerifierLookupTable updateVerifiers
-        ) = makeVerifierLookupTables(TC.makeDynArray([packedDeletionIndices.length]));
+        ) = makeVerifierLookupTables(TC.makeDynArray([packedDeletionIndices.length * 8]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
@@ -101,7 +101,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         uint256[8] memory actualProof = prepareDeleteIdentitiesTestCase(prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.deleteIdentities,
-            (actualProof, deletionBatchSize, packedDeletionIndices, newPreRoot, newPostRoot)
+            (actualProof, uint32(packedDeletionIndices.length * 8), packedDeletionIndices, newPreRoot, newPostRoot)
         );
 
         bytes memory setupCallData =
@@ -129,14 +129,14 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(packedDeletionIndices.length <= 125 && packedDeletionIndices.length > 0);
-        uint256 secondIndicesLength = packedDeletionIndices.length / 2;
+        uint256 secondIndicesArrayLength = 1;
+        // Half of the first batch of 8
+        uint32 secondIndicesLength = uint32(4);
         (
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
             VerifierLookupTable updateVerifiers
-        ) = makeVerifierLookupTables(
-            TC.makeDynArray([packedDeletionIndices.length, secondIndicesLength])
-        );
+        ) = makeVerifierLookupTables(TC.makeDynArray([deletionBatchSize, secondIndicesLength]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
@@ -146,8 +146,8 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
             semaphoreVerifier
         );
         uint256[8] memory actualProof = prepareDeleteIdentitiesTestCase(prf);
-        uint256[] memory secondIndices = new uint256[](secondIndicesLength);
-        for (uint256 i = 0; i < secondIndicesLength; ++i) {
+        uint256[] memory secondIndices = new uint256[](secondIndicesArrayLength);
+        for (uint256 i = 0; i < secondIndicesArrayLength; ++i) {
             secondIndices[i] = packedDeletionIndices[i];
         }
         bytes memory firstCallData = abi.encodeCall(
@@ -157,17 +157,17 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         uint256 secondPostRoot = uint256(newPostRoot) + 1;
         bytes memory secondCallData = abi.encodeCall(
             ManagerImpl.deleteIdentities,
-            (actualProof, deletionBatchSize, secondIndices, newPostRoot, secondPostRoot)
+            (actualProof, secondIndicesLength, secondIndices, newPostRoot, secondPostRoot)
         );
 
         vm.expectEmit(true, true, true, true);
-        emit VerifiedProof(packedDeletionIndices.length);
+        emit VerifiedProof(deletionBatchSize);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, firstCallData);
 
         vm.expectEmit(true, true, true, true);
-        emit VerifiedProof(packedDeletionIndices.length / 2);
+        emit VerifiedProof(uint256(secondIndicesLength));
 
         assertCallSucceedsOn(identityManagerAddress, secondCallData);
     }
@@ -186,7 +186,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
             VerifierLookupTable updateVerifiers
-        ) = makeVerifierLookupTables(TC.makeDynArray([packedDeletionIndices.length - 1]));
+        ) = makeVerifierLookupTables(TC.makeDynArray([deletionBatchSize - 1]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
@@ -217,14 +217,14 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        vm.assume(packedDeletionIndices.length <= 1000);
+        vm.assume(packedDeletionIndices.length <= 125);
         uint32 indicesLength = uint32(packedDeletionIndices.length * 8);
 
         (
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
             VerifierLookupTable updateVerifiers
-        ) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        ) = makeVerifierLookupTables(TC.makeDynArray([indicesLength]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
@@ -236,7 +236,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         uint256[8] memory actualProof = prepareDeleteIdentitiesTestCase(prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.deleteIdentities,
-            (actualProof,indicesLength, packedDeletionIndices, newPreRoot, newPostRoot)
+            (actualProof, indicesLength, packedDeletionIndices, newPreRoot, newPostRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImplV1.ProofValidationFailure.selector);
@@ -254,7 +254,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
             VerifierLookupTable updateVerifiers
-        ) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        ) = makeVerifierLookupTables(TC.makeDynArray([deletionBatchSize]));
         deletionVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
