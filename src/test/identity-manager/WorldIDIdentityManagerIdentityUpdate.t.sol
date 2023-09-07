@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
-import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
+import {Verifier as TreeVerifier} from "../mock/InsertionTreeVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
@@ -23,7 +23,9 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
 
     /// Taken from WorldIDIdentityManagerImplV1.sol
     event TreeChanged(
-        uint256 indexed preRoot, ManagerImpl.TreeChange indexed kind, uint256 indexed postRoot
+        uint256 indexed insertionPreRoot,
+        ManagerImpl.TreeChange indexed kind,
+        uint256 indexed insertionPostRoot
     );
 
     /// @notice Checks that the proof validates properly with correct inputs.
@@ -39,16 +41,18 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(identities.length <= 1000); // Keeps the test time sane-ish.
         vm.assume(identityOperator != nullAddress && identityOperator != thisAddress);
-        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
-            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
+        (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
             insertVerifiers,
+            deletionVerifiers,
             updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            semaphoreVerifier
         );
         (
             uint32[] memory leafIndices,
@@ -68,8 +72,6 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
 
         // Expect that the state root was sent to the state bridge
         vm.expectEmit(true, true, true, true);
-        emit StateRootSentMultichain(newPostRoot);
-        vm.expectEmit(true, true, true, true);
         emit TreeChanged(newPreRoot, ManagerImpl.TreeChange.Update, newPostRoot);
         vm.prank(identityOperator);
 
@@ -88,16 +90,18 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(identities.length <= 1000 && identities.length > 0);
         uint256 secondIdentsLength = identities.length / 2;
-        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
-            makeVerifierLookupTables(TC.makeDynArray([identities.length, secondIdentsLength]));
+        (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length, secondIdentsLength]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
             insertVerifiers,
+            deletionVerifiers,
             updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            semaphoreVerifier
         );
         (
             uint32[] memory leafIndices,
@@ -174,16 +178,12 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
 
         vm.expectEmit(true, true, true, true);
         emit VerifiedProof(oldIdents.length);
-        vm.expectEmit(true, true, true, true);
-        emit StateRootSentMultichain(newPostRoot);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, firstCallData);
 
         vm.expectEmit(true, true, true, true);
         emit VerifiedProof(secondOldIdents.length);
-        vm.expectEmit(true, true, true, true);
-        emit StateRootSentMultichain(secondPostRoot);
 
         assertCallSucceedsOn(identityManagerAddress, secondCallData);
     }
@@ -198,16 +198,18 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(identities.length > 0);
-        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
-            makeVerifierLookupTables(TC.makeDynArray([identities.length - 1]));
+        (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length - 1]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
             insertVerifiers,
+            deletionVerifiers,
             updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            semaphoreVerifier
         );
         (
             uint32[] memory leafIndices,
@@ -236,16 +238,18 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(identities.length <= 1000);
-        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
-            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
+        (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
             insertVerifiers,
+            deletionVerifiers,
             updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            semaphoreVerifier
         );
         (
             uint32[] memory leafIndices,
@@ -281,7 +285,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, preRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, insertionPreRoot, leafIndices, oldIdents, newIdents, insertionPostRoot)
         );
         bytes memory errorData =
             abi.encodeWithSelector(ManagerImpl.Unauthorized.selector, nonOperator);
@@ -311,20 +315,22 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             uint256[] memory newIdents,
             uint256[8] memory actualProof
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
-        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
-            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
+        (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             uint256(currentPreRoot),
             insertVerifiers,
+            deletionVerifiers,
             updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            semaphoreVerifier
         );
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, actualRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, actualRoot, leafIndices, oldIdents, newIdents, insertionPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.NotLatestRoot.selector, actualRoot, uint256(currentPreRoot)
@@ -353,17 +359,23 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
             uint256[] memory newIdents,
             uint256[8] memory actualProof
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
-        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
-            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
-        makeNewIdentityManager(
-            treeDepth,
-            newPreRoot,
-            insertVerifiers,
-            updateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
-        );
+        // scoping to avoid stack too deep errors
+        {
+            (
+                VerifierLookupTable insertVerifiers,
+                VerifierLookupTable deletionVerifiers,
+                VerifierLookupTable updateVerifiers
+            ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
+            makeNewIdentityManager(
+                treeDepth,
+                newPreRoot,
+                insertVerifiers,
+                deletionVerifiers,
+                updateVerifiers,
+                semaphoreVerifier
+            );
+        }
+
         if (changeOld) {
             oldIdents[position] = SNARK_SCALAR_FIELD + i;
         } else {
@@ -371,8 +383,9 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         }
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, insertionPostRoot)
         );
+
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
             ManagerImpl.UnreducedElementType.IdentityCommitment,
@@ -400,7 +413,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         ) = prepareUpdateIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImpl.updateIdentities,
-            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, postRoot)
+            (actualProof, newPreRoot, leafIndices, oldIdents, newIdents, insertionPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImpl.UnreducedElement.selector,
@@ -412,7 +425,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to update identities with a postRoot
+    /// @notice Tests that it reverts if an attempt is made to update identities with a insertionPostRoot
     ///         that is not in reduced form.
     function testCannotUpdateIdentitiesWithUnreducedPostRoot(
         uint128 i,
@@ -459,7 +472,7 @@ contract WorldIDIdentityManagerIdentityUpdate is WorldIDIdentityManagerTest {
 
         // Test
         managerImpl.updateIdentities(
-            actualProof, initialRoot, leafIndices, oldIdents, newIdents, postRoot
+            actualProof, initialRoot, leafIndices, oldIdents, newIdents, insertionPostRoot
         );
     }
 }

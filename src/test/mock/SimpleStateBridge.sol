@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import {IBridge} from "../../interfaces/IBridge.sol";
 import {IWorldID} from "../../interfaces/IWorldID.sol";
