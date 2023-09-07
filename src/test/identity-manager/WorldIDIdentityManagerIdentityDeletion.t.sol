@@ -13,6 +13,8 @@ import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityMa
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
+import {console} from "forge-std/console.sol";
+
 /// @title World ID Identity Manager Identity Deletion Tests
 /// @notice Contains tests for the WorldID identity manager.
 /// @author Worldcoin
@@ -76,7 +78,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
     function testDeleteIdentitiesWithCorrectInputs(
         uint128[8] memory prf,
         uint128 newPreRoot,
-        uint256[] memory packedDeletionIndices,
+        bytes calldata packedDeletionIndices,
         uint128 newPostRoot,
         address identityOperator
     ) public {
@@ -129,15 +131,16 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
     function testDeleteIdentitiesSelectsCorrectVerifier(
         uint128[8] memory prf,
         uint128 newPreRoot,
-        uint256[] memory packedDeletionIndices,
+        bytes calldata packedDeletionIndices,
         uint128 newPostRoot
     ) public {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        vm.assume(packedDeletionIndices.length <= 125 && packedDeletionIndices.length > 0);
-        uint256 secondIndicesArrayLength = 1;
-        // Half of the first batch of 8
-        uint32 secondIndicesLength = uint32(4);
+        vm.assume(packedDeletionIndices.length <= 1000 && packedDeletionIndices.length > 0);
+       
+        bytes memory secondIndices = abi.encodePacked(uint32(0), uint32(2), uint32(4), uint32(6));
+        uint32 secondIndicesLength = uint32(secondIndices.length);
+
         (
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
@@ -152,10 +155,6 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
             semaphoreVerifier
         );
         uint256[8] memory actualProof = prepareDeleteIdentitiesTestCase(prf);
-        uint256[] memory secondIndices = new uint256[](secondIndicesArrayLength);
-        for (uint256 i = 0; i < secondIndicesArrayLength; ++i) {
-            secondIndices[i] = packedDeletionIndices[i];
-        }
         bytes memory firstCallData = abi.encodeCall(
             ManagerImpl.deleteIdentities,
             (actualProof, deletionBatchSize, packedDeletionIndices, newPreRoot, newPostRoot)
@@ -182,7 +181,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
     function testCannotDeleteIdentitiesWithInvalidBatchSize(
         uint128[8] memory prf,
         uint128 newPreRoot,
-        uint256[] memory packedDeletionIndices,
+        bytes calldata packedDeletionIndices,
         uint128 newPostRoot
     ) public {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
@@ -217,13 +216,13 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
     function testCannotDeleteIdentitiesWithIncorrectInputs(
         uint128[8] memory prf,
         uint128 newPreRoot,
-        uint256[] memory packedDeletionIndices,
+        bytes calldata packedDeletionIndices,
         uint128 newPostRoot
     ) public {
         // Setup
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        vm.assume(packedDeletionIndices.length <= 125);
+        vm.assume(packedDeletionIndices.length <= 1000);
         uint32 indicesLength = uint32(packedDeletionIndices.length * 8);
 
         (
