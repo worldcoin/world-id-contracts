@@ -43,7 +43,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
         // Setup
         bytes memory callData = abi.encodeCall(
             ManagerImpl.calculateIdentityDeletionInputHash,
-            (packedDeletionIndices, insertionPreRoot, insertionPostRoot, deletionBatchSize)
+            (packedDeletionIndices, deletionPreRoot, deletionPostRoot, deletionBatchSize)
         );
         bytes memory returnData = abi.encode(deletionInputHash);
 
