@@ -137,7 +137,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(packedDeletionIndices.length <= 1000 && packedDeletionIndices.length > 0);
-       
+
         bytes memory secondIndices = abi.encodePacked(uint32(0), uint32(2), uint32(4), uint32(6));
         uint32 secondIndicesLength = uint32(secondIndices.length);
 

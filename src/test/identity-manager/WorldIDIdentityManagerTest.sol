@@ -75,7 +75,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         0x18cb13df3e79b9f847a1494d0a2e6f3cc0041d9cae7e5ccb8cd1852ecdc4af58;
     uint256 internal constant deletionPostRoot =
         0x82fcf94594d7363636338e2c29242cc77e3d04f36c8ad64d294d2ab4d251708;
-    bytes packedDeletionIndices = abi.encodePacked(uint32(0), uint32(2), uint32(4), uint32(6),uint32(8),uint32(10),uint32(12),uint32(14));
+    bytes packedDeletionIndices = abi.encodePacked(
+        uint32(0), uint32(2), uint32(4), uint32(6), uint32(8), uint32(10), uint32(12), uint32(14)
+    );
     uint32 deletionBatchSize = 8;
     uint256[8] deletionProof;
 

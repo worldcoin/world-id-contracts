@@ -73,14 +73,15 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     /// @dev Deletion is performed off-chain and verified on-chain via the `deletionProof`.
     ///      This saves gas and time over deleting identities one at a time.
     ///
-    /// @param deletionProof The proof that given the conditions (`preRoot`, `startIndex` and
-    ///        `identityCommitments`), deletion into the tree results in `postRoot`. Elements 0 and
-    ///        1 are the `x` and `y` coordinates for `ar` respectively. Elements 2 and 3 are the `x`
-    ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
-    ///        and 7 are the `x` and `y` coordinates for `krs`.
+    /// @param deletionProof The proof that given the conditions (`preRoot` and `packedDeletionIndices`),
+    ///        deletion into the tree results in `postRoot`. Elements 0 and 1 are the `x` and `y`
+    ///        coordinates for `ar` respectively. Elements 2 and 3 are the `x` coordinate for `bs`,
+    ///         and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6 and 7 are the `x`
+    ///         and `y` coordinates for `krs`.
+    /// @param batchSize The number of identities that are to be deleted in the current batch.
+    /// @param packedDeletionIndices The indices of the identities that were deleted from the tree.
     /// @param preRoot The value for the root of the tree before the `identityCommitments` have been
     ///       inserted. Must be an element of the field `Kr`.
-    /// @param packedDeletionIndices The indices of the identities that were deleted from the tree.
     /// @param postRoot The root obtained after deleting all of `identityCommitments` into the tree
     ///        described by `preRoot`. Must be an element of the field `Kr`.
     ///
@@ -110,11 +111,6 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
         if (preRoot != _latestRoot) {
             revert NotLatestRoot(preRoot, _latestRoot);
         }
-
-        // As the `startIndex` is restricted to a uint32, where
-        // `type(uint32).max <<< SNARK_SCALAR_FIELD`, we are safe not to check this. As verified in
-        // the tests, a revert happens if you pass a value larger than `type(uint32).max` when
-        // calling outside the type-checker's protection.
 
         // We need the post root to be in reduced form.
         if (postRoot >= SNARK_SCALAR_FIELD) {
