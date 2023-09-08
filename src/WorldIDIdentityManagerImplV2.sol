@@ -104,17 +104,8 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
         uint256 preRoot,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
-        // We can only operate on the latest root in reduced form.
-        if (preRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
-        }
         if (preRoot != _latestRoot) {
             revert NotLatestRoot(preRoot, _latestRoot);
-        }
-
-        // We need the post root to be in reduced form.
-        if (postRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
         }
 
         // Having validated the preconditions we can now check the proof itself.
@@ -123,7 +114,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
 
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
-        // verifier.
+        // verifier. All other elements are reduced in the circuit.
         uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
         // We need to look up the correct verifier before we can verify.

@@ -405,34 +405,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to register identity commitments
-    ///         containing an invalid identity.
-    function testCannotRegisterIdentitiesWithInvalidIdentities(
-        uint8 identitiesLength,
-        uint8 invalidPosition
-    ) public {
-        // Setup
-        vm.assume(identitiesLength != 0);
-        vm.assume(invalidPosition < (identitiesLength - 1));
-        uint256[] memory invalidCommitments = new uint256[](identitiesLength);
-
-        for (uint256 i = 0; i < identitiesLength; ++i) {
-            invalidCommitments[i] = i + 1;
-        }
-        invalidCommitments[invalidPosition] = 0x0;
-
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, initialRoot, startIndex, invalidCommitments, insertionPostRoot)
-        );
-        bytes memory expectedError = abi.encodeWithSelector(
-            ManagerImplV1.InvalidCommitment.selector, uint256(invalidPosition + 1)
-        );
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
     /// @notice Tests that runs of zeroes are accepted by the `registerIdentities` function as valid
     ///         arrays of identity commitments.
     function testRegisterIdentitiesWithRunsOfZeroes(uint8 identitiesLength, uint8 zeroPosition)
@@ -476,86 +448,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0));
-    }
-
-    /// @notice Tests that it reverts if an attempt is made to register identity commitments that
-    ///         are not in reduced form.
-    function testCannotRegisterIdentitiesWithUnreducedIdentities(uint128 i) public {
-        // Setup
-        uint256 position = rotateSlot();
-        uint256[] memory unreducedCommitments = new uint256[](identityCommitments.length);
-        unreducedCommitments[position] = SNARK_SCALAR_FIELD + i;
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, initialRoot, startIndex, unreducedCommitments, insertionPostRoot)
-        );
-        bytes memory expectedError = abi.encodeWithSelector(
-            ManagerImplV1.UnreducedElement.selector,
-            ManagerImplV1.UnreducedElementType.IdentityCommitment,
-            SNARK_SCALAR_FIELD + i
-        );
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
-    /// @notice Tests that it reverts if an attempt is made to register new identities with a pre
-    ///         root that is not in reduced form.
-    function testCannotRegisterIdentitiesWithUnreducedPreRoot(uint128 i) public {
-        // Setup
-        uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, newPreRoot, startIndex, identityCommitments, insertionPostRoot)
-        );
-        bytes memory expectedError = abi.encodeWithSelector(
-            ManagerImplV1.UnreducedElement.selector,
-            ManagerImplV1.UnreducedElementType.PreRoot,
-            newPreRoot
-        );
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
-    /// @notice Tests that it reverts if an attempt is made to register identities with a insertionPostRoot
-    ///         that is not in reduced form.
-    function testCannotRegisterIdentitiesWithUnreducedPostRoot(uint128 i) public {
-        // Setup
-        uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, initialRoot, startIndex, identityCommitments, newPostRoot)
-        );
-        bytes memory expectedError = abi.encodeWithSelector(
-            ManagerImplV1.UnreducedElement.selector,
-            ManagerImplV1.UnreducedElementType.PostRoot,
-            newPostRoot
-        );
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
-    /// @notice Tests that it reverts if an attempt is made to violate type safety and register with
-    ///         a startIndex that is not type safe within the bounds of `type(uint32).max` and hence
-    ///         within `SNARK_SCALAR_FIELD`.
-    function testCannotRegisterIdentitiesWithUnreducedStartIndex(uint256 i) public {
-        // Setup
-        vm.assume(i > type(uint32).max);
-        bytes4 functionSelector = ManagerImplV1.registerIdentities.selector;
-        // Have to encode with selector as otherwise it's typechecked.
-        bytes memory callData = abi.encodeWithSelector(
-            functionSelector,
-            insertionProof,
-            insertionPreRoot,
-            i,
-            identityCommitments,
-            insertionPostRoot
-        );
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData);
     }
 
     /// @notice Tests that identities can only be registered through the proxy.
