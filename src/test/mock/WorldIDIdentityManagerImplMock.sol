@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import {WorldIDIdentityManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
@@ -13,7 +13,7 @@ contract WorldIDIdentityManagerImplMock is WorldIDIdentityManagerImplV1 {
     }
 
     /// @notice Used to initialize the new things in the upgraded contract.
-    function initialize(uint32 data) public virtual reinitializer(2) {
+    function initialize(uint32 data) public virtual reinitializer(3) {
         _someMoreData = data;
     }
 

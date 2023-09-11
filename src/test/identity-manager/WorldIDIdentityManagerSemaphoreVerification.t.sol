@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
@@ -8,7 +8,8 @@ import {SemaphoreTreeDepthValidator} from "../../utils/SemaphoreTreeDepthValidat
 import {SimpleSemaphoreVerifier} from "../mock/SimpleSemaphoreVerifier.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Semaphore Proof Verification Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -30,16 +31,15 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         vm.assume(prf[0] != 0);
         makeNewIdentityManager(
             actualTreeDepth,
-            preRoot,
+            insertionPreRoot,
             defaultInsertVerifiers,
+            defaultDeletionVerifiers,
             defaultUpdateVerifiers,
-            actualSemaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            actualSemaphoreVerifier
         );
         bytes memory verifyProofCallData = abi.encodeCall(
-            ManagerImpl.verifyProof,
-            (preRoot, nullifierHash, signalHash, externalNullifierHash, proof)
+            ManagerImplV1.verifyProof,
+            (insertionPreRoot, nullifierHash, signalHash, externalNullifierHash, insertionProof)
         );
 
         // Test
@@ -60,16 +60,15 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         vm.assume(prf[0] % 2 == 0);
         makeNewIdentityManager(
             actualTreeDepth,
-            preRoot,
+            insertionPreRoot,
             defaultInsertVerifiers,
+            defaultDeletionVerifiers,
             defaultUpdateVerifiers,
-            actualSemaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            actualSemaphoreVerifier
         );
         bytes memory verifyProofCallData = abi.encodeCall(
-            ManagerImpl.verifyProof,
-            (preRoot, nullifierHash, signalHash, externalNullifierHash, prf)
+            ManagerImplV1.verifyProof,
+            (insertionPreRoot, nullifierHash, signalHash, externalNullifierHash, prf)
         );
 
         vm.expectRevert("Semaphore__InvalidProof()");

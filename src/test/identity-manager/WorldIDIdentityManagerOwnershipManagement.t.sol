@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
@@ -11,12 +11,13 @@ import {Ownable2StepUpgradeable} from "contracts-upgradeable/access/Ownable2Step
 import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {Verifier as TreeVerifier} from "../mock/TreeVerifier.sol";
+import {Verifier as TreeVerifier} from "../mock/InsertionTreeVerifier.sol";
 import {WorldIDIdentityManagerImplMock} from "../mock/WorldIDIdentityManagerImplMock.sol";
 import {WorldIDImpl} from "../../abstract/WorldIDImpl.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Ownership Management Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -122,7 +123,7 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
     /// @notice Enures that the contract has a notion of identity operator.
     function testHasIdentityOperator() public {
         // Setup
-        bytes memory callData = abi.encodeCall(ManagerImpl.identityOperator, ());
+        bytes memory callData = abi.encodeCall(ManagerImplV1.identityOperator, ());
         bytes memory returnData = abi.encode(thisAddress);
 
         // Test
@@ -144,9 +145,9 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
     function testCanSetIdentityOperatorAsOwner(address newOperator) public {
         // Setup
         vm.assume(newOperator != thisAddress);
-        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityOperator, (newOperator));
+        bytes memory callData = abi.encodeCall(ManagerImplV1.setIdentityOperator, (newOperator));
         bytes memory returnData = abi.encode(thisAddress);
-        bytes memory checkCallData1 = abi.encodeCall(ManagerImpl.identityOperator, ());
+        bytes memory checkCallData1 = abi.encodeCall(ManagerImplV1.identityOperator, ());
         bytes memory checkCallReturn1 = abi.encode(newOperator);
         bytes memory checkCallData2 = abi.encodeCall(OwnableUpgradeable.owner, ());
         bytes memory checkCallReturn2 = abi.encode(thisAddress);
@@ -164,7 +165,7 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
     function testCannotSetIdentityOperatorAsNonOwner(address newOperator, address naughty) public {
         // Setup
         vm.assume(naughty != nullAddress && naughty != thisAddress);
-        bytes memory callData = abi.encodeCall(ManagerImpl.setIdentityOperator, (newOperator));
+        bytes memory callData = abi.encodeCall(ManagerImplV1.setIdentityOperator, (newOperator));
         bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
         vm.prank(naughty);
 

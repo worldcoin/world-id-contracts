@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
+
+import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Initialization Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -20,42 +23,54 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         // Setup
         delete identityManager;
         delete managerImpl;
+        delete managerImplV1;
 
-        managerImpl = new ManagerImpl();
+        managerImplV1 = new ManagerImplV1();
         managerImplAddress = address(managerImpl);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize,
+            ManagerImplV1.initialize,
             (
                 treeDepth,
                 initialRoot,
                 defaultInsertVerifiers,
                 defaultUpdateVerifiers,
-                semaphoreVerifier,
-                isStateBridgeEnabled,
-                stateBridge
+                semaphoreVerifier
             )
         );
 
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
 
+        identityManager = new IdentityManager(managerImplV1Address, callData);
+        identityManagerAddress = address(identityManager);
+
+        // creates Manager Impl V2, which will be used for tests
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+
+        bytes memory initCallV2 =
+            abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+        bytes memory upgradeCall = abi.encodeCall(
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+        );
+
+        vm.expectEmit(true, true, true, true);
+        emit Initialized(2);
         // Test
-        identityManager = new IdentityManager(managerImplAddress, callData);
+        assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
     }
 
     /// @notice Checks that it is not possible to initialise the contract more than once.
     function testInitializationOnlyOnce() public {
         // Setup
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize,
+            ManagerImplV1.initialize,
             (
                 treeDepth,
                 initialRoot,
                 defaultInsertVerifiers,
                 defaultUpdateVerifiers,
-                semaphoreVerifier,
-                isStateBridgeEnabled,
-                stateBridge
+                semaphoreVerifier
             )
         );
         bytes memory expectedReturn =
@@ -63,12 +78,16 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
+
+        callData = abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+
+        assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
     }
 
     /// @notice Checks that it is impossible to initialize the delegate on its own.
     function testCannotInitializeTheDelegate() public {
         // Setup
-        ManagerImpl localImpl = new ManagerImpl();
+        ManagerImplV1 localImpl = new ManagerImpl();
         vm.expectRevert("Initializable: contract is already initialized");
 
         // Test
@@ -77,9 +96,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
             initialRoot,
             defaultInsertVerifiers,
             defaultUpdateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            semaphoreVerifier
         );
     }
 
@@ -94,19 +111,17 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         uint8 unsupportedDepth = 15;
 
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.initialize,
+            ManagerImplV1.initialize,
             (
                 unsupportedDepth,
                 initialRoot,
                 defaultInsertVerifiers,
                 defaultUpdateVerifiers,
-                semaphoreVerifier,
-                isStateBridgeEnabled,
-                stateBridge
+                semaphoreVerifier
             )
         );
 
-        vm.expectRevert(abi.encodeWithSelector(ManagerImpl.UnsupportedTreeDepth.selector, 15));
+        vm.expectRevert(abi.encodeWithSelector(ManagerImplV1.UnsupportedTreeDepth.selector, 15));
 
         // Test
         identityManager = new IdentityManager(managerImplAddress, callData);
