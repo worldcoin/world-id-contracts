@@ -6,7 +6,7 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
 import {SemaphoreTreeDepthValidator} from "../../utils/SemaphoreTreeDepthValidator.sol";
 import {SimpleSemaphoreVerifier} from "../mock/SimpleSemaphoreVerifier.sol";
-
+import {Verifier} from "src/Verifier.sol";
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -74,5 +74,34 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         vm.expectRevert("Semaphore__InvalidProof()");
         // Test
         assertCallFailsOn(identityManagerAddress, verifyProofCallData);
+    }
+
+     /// @notice Checks that the proof validates properly with the correct inputs.
+    function testOptimizedProofVerificationWithCorrectInputs(
+        uint8 actualTreeDepth,
+        uint256 nullifierHash,
+        uint256 signalHash,
+        uint256 externalNullifierHash,
+        uint256[8] memory prf
+    ) public {
+        // Setup
+        ISemaphoreVerifier actualSemaphoreVerifier = ISemaphoreVerifier(address(new Verifier()));
+        vm.assume(SemaphoreTreeDepthValidator.validate(actualTreeDepth));
+        vm.assume(prf[0] != 0);
+        makeNewIdentityManager(
+            actualTreeDepth,
+            insertionPreRoot,
+            defaultInsertVerifiers,
+            defaultDeletionVerifiers,
+            defaultUpdateVerifiers,
+            actualSemaphoreVerifier
+        );
+        bytes memory verifyProofCallData = abi.encodeCall(
+            ManagerImplV1.verifyProof,
+            (insertionPreRoot, nullifierHash, signalHash, externalNullifierHash, insertionProof)
+        );
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, verifyProofCallData);
     }
 }
