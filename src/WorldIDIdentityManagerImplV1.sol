@@ -327,22 +327,18 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
     ///        and 7 are the `x` and `y` coordinates for `krs`.
     /// @param preRoot The value for the root of the tree before the `identityCommitments` have been
-    ////       inserted. Must be an element of the field `Kr`.
+    ////       inserted. Must be an element of the field `Kr`. (already in reduced form)
     /// @param startIndex The position in the tree at which the insertions were made.
     /// @param identityCommitments The identities that were inserted into the tree starting at
     ///        `startIndex` and `preRoot` to give `postRoot`. All of the commitments must be
     ///        elements of the field `Kr`.
     /// @param postRoot The root obtained after inserting all of `identityCommitments` into the tree
-    ///        described by `preRoot`. Must be an element of the field `Kr`.
+    ///        described by `preRoot`. Must be an element of the field `Kr`. (alread in reduced form)
     ///
     /// @custom:reverts Unauthorized If the message sender is not authorised to add identities.
-    /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid.
     /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
     /// @custom:reverts ProofValidationFailure If `insertionProof` cannot be verified using the
     ///                 provided inputs.
-    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
-    ///                 `identityCommitments` is not an element of the field `Kr`. It describes the
-    ///                 type and value of the unreduced element.
     /// @custom:reverts VerifierLookupTable.NoSuchVerifier If the batch sizes doesn't match a known
     ///                 verifier.
     /// @custom:reverts VerifierLookupTable.BatchTooLarge If the batch size exceeds the maximum
@@ -354,26 +350,9 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256[] calldata identityCommitments,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
-        // We can only operate on the latest root in reduced form.
-        if (preRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
-        }
         if (preRoot != _latestRoot) {
             revert NotLatestRoot(preRoot, _latestRoot);
         }
-
-        // As the `startIndex` is restricted to a uint32, where
-        // `type(uint32).max <<< SNARK_SCALAR_FIELD`, we are safe not to check this. As verified in
-        // the tests, a revert happens if you pass a value larger than `type(uint32).max` when
-        // calling outside the type-checker's protection.
-
-        // We need the post root to be in reduced form.
-        if (postRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
-        }
-
-        // We can only operate on identities that are valid and in reduced form.
-        validateIdentityCommitmentsForRegistration(identityCommitments);
 
         // Having validated the preconditions we can now check the proof itself.
         bytes32 inputHash = calculateIdentityRegistrationInputHash(
@@ -382,7 +361,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
-        // verifier.
+        // verifier. All other elements are reduced in the circuit.
         uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
         // We need to look up the correct verifier before we can verify.
@@ -464,17 +443,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256[] calldata newIdentities,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
-        // We can only operate on the latest root in reduced form.
-        if (preRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
-        }
         if (preRoot != _latestRoot) {
             revert NotLatestRoot(preRoot, _latestRoot);
-        }
-
-        // We also need the post root to be in reduced form.
-        if (postRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
         }
 
         // We also need the arrays to be of the same length.
@@ -484,16 +454,14 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             revert MismatchedInputLengths();
         }
 
-        // We only operate on identities that are in reduced form.
-        validateIdentitiesForUpdate(oldIdentities, newIdentities);
-
         // With valid preconditions we can calculate the input to the proof.
         bytes32 inputHash = calculateIdentityUpdateInputHash(
             preRoot, postRoot, leafIndices, oldIdentities, newIdentities
         );
 
-        // No matter what, the input hashing process can result in a hash that is not an element of
-        // the field Fr. We reduce it into the field to give it safely to the verifier.
+        // No matter what, the inputs can result in a hash that is not an element of the scalar
+        // field in which we're operating. We reduce it into the field before handing it to the
+        // verifier. All other elements are reduced in the circuit.
         uint256 reducedInputHash = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
         // We have to look up the correct verifier before we can verify.
@@ -672,126 +640,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             bool isValid = !(block.timestamp - rootTimestamp > rootHistoryExpiry);
             return RootInfo(root, rootTimestamp, isValid);
         }
-    }
-
-    /// @notice Validates an array of identity commitments, reverting if it finds one that is
-    ///         invalid or has not been reduced.
-    /// @dev Identities are not valid if an identity is a non-zero element that occurs after a zero
-    ///      element in the array.
-    ///
-    /// @param identityCommitments The array of identity commitments to be validated.
-    ///
-    /// @custom:reverts Reverts with `InvalidCommitment` if one or more of the provided commitments
-    ///                 is invalid.
-    /// @custom:reverts Reverts with `UnreducedElement` if one or more of the provided commitments
-    ///                 is not in reduced form.
-    function validateIdentityCommitmentsForRegistration(uint256[] calldata identityCommitments)
-        internal
-        view
-        virtual
-    {
-        uint256 offset;
-        uint256 max;
-        assembly ("memory-safe") {
-            // offset of the first element in the array
-            offset := identityCommitments.offset
-            // offset one byte after the end of argument section
-            max := add(offset, shl(5, identityCommitments.length))
-
-            // increment offset until either of the following happens:
-            // - offset is equal to max, meaning we've reached the end of the array
-            // - the element at offset is zero
-            // - the element at offset is greater than or equal to SNARK_SCALAR_FIELD
-            // The latter two conditions are combined into a single check of the form
-            // `element - 1 < SNARK_SCALAR_FIELD - 1`. This abuses unsigned comparisons:
-            // if `element` is zero, it will underflow and be greater than SNARK_SCALAR_FIELD - 1.
-            // If `element` is non-zero, we can cancel the -1 terms and the comparison becomes what
-            // we want: `element < SNARK_SCALAR_FIELD`.
-            for {} and(
-                lt(offset, max), lt(sub(calldataload(offset), 1), SNARK_SCALAR_FIELD_MIN_ONE)
-            ) { offset := add(offset, 32) } {}
-        }
-
-        // check if the loop terminated before end of array and handle the remaining elements
-        if (offset < max) {
-            uint256 index = identityCommitments.length - ((max - offset) >> 5);
-            uint256 element = identityCommitments[index];
-
-            // Check if the loop terminated because it found a zero
-            // this means we need to finish looping and make sure all remaining elements are zero.
-            if (element == 0) {
-                assembly ("memory-safe") {
-                    // we just confirmed this element is zero
-                    offset := add(offset, 32)
-
-                    // increment offset until either of the following happens:
-                    // - offset is equal to max, meaning we've reached the end of the array
-                    // - the element at offset is non-zero
-                    for {} and(lt(offset, max), iszero(calldataload(offset))) {
-                        offset := add(offset, 32)
-                    } {}
-                }
-
-                // check if the loop terminated because it found a non-zero element
-                // if yes, revert.
-                if (offset < max) {
-                    index = identityCommitments.length - ((max - offset) >> 5);
-                    revert InvalidCommitment(index);
-                }
-            }
-            // otherwise check if the loop terminated because it found an unreduced element
-            // if so, revert
-            else if (element >= SNARK_SCALAR_FIELD) {
-                revert UnreducedElement(UnreducedElementType.IdentityCommitment, element);
-            }
-        }
-    }
-
-    /// @notice Validates that an array of identity commitments is within bounds of the SNARK_SCALAR_FIELD
-    /// @param identityCommitments The array of identity commitments to be validated.
-    function validateArrayIsInReducedForm(uint256[] calldata identityCommitments)
-        internal
-        view
-        virtual
-    {
-        uint256 offset;
-        uint256 max;
-        assembly ("memory-safe") {
-            // offset of the first element in the array
-            offset := identityCommitments.offset
-            // offset one byte after the end of argument section
-            max := add(offset, shl(5, identityCommitments.length))
-
-            // increment offset until either of the following happens:
-            // - offset is equal to max, meaning we've reached the end of the array
-            // - the element at offset is greater than or equal to SNARK_SCALAR_FIELD
-            for {} and(lt(offset, max), lt(calldataload(offset), SNARK_SCALAR_FIELD)) {
-                offset := add(offset, 32)
-            } {}
-        }
-        // check if the loop terminated before end of array and revert if so
-        if (offset < max) {
-            uint256 index = identityCommitments.length - ((max - offset) >> 5);
-            uint256 element = identityCommitments[index];
-            revert UnreducedElement(UnreducedElementType.IdentityCommitment, element);
-        }
-    }
-
-    /// @notice Validates the array of identities for each of the old and new commitments being in
-    ///         reduced form.
-    /// @dev Must be called with arrays of the same length.
-    ///
-    /// @param oldIdentities The array of old values for the identities.
-    /// @param newIdentities The array of new values for the identities.
-    ///
-    /// @custom:reverts UnreducedElement If one or more of the provided commitments is not in
-    ////                reduced form.
-    function validateIdentitiesForUpdate(
-        uint256[] calldata oldIdentities,
-        uint256[] calldata newIdentities
-    ) internal view virtual {
-        validateArrayIsInReducedForm(oldIdentities);
-        validateArrayIsInReducedForm(newIdentities);
     }
 
     /// @notice Reverts if the provided root value is not valid.

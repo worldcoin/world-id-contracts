@@ -334,44 +334,6 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to delete identities with a pre
-    ///         root that is not in reduced form.
-    function testCannotDeleteIdentitiesWithUnreducedPreRoot(uint128 i) public {
-        // Setup
-        uint256 newPreRoot = SNARK_SCALAR_FIELD + i;
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities,
-            (deletionProof, deletionBatchSize, packedDeletionIndices, newPreRoot, deletionPostRoot)
-        );
-        bytes memory expectedError = abi.encodeWithSelector(
-            ManagerImplV1.UnreducedElement.selector,
-            ManagerImplV1.UnreducedElementType.PreRoot,
-            newPreRoot
-        );
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
-    /// @notice Tests that it reverts if an attempt is made to delete identities with a deletionPostRoot
-    ///         that is not in reduced form.
-    function testCannotDeleteIdentitiesWithUnreducedPostRoot(uint128 i) public {
-        // Setup
-        uint256 newPostRoot = SNARK_SCALAR_FIELD + i;
-        bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities,
-            (deletionProof, deletionBatchSize, packedDeletionIndices, initialRoot, newPostRoot)
-        );
-        bytes memory expectedError = abi.encodeWithSelector(
-            ManagerImplV1.UnreducedElement.selector,
-            ManagerImplV1.UnreducedElementType.PostRoot,
-            newPostRoot
-        );
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
     /// @notice Tests that identities can only be deleted through the proxy.
     function testCannotDelteIdentitiesIfNotViaProxy() public {
         // Setup
