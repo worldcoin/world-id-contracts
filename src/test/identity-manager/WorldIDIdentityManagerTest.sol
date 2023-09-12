@@ -171,6 +171,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         VerifierLookupTable updateVerifiers,
         ISemaphoreVerifier actualSemaphoreVerifier
     ) public {
+        managerImplV1 = new ManagerImplV1();
+        managerImplV1Address = address(managerImplV1);
+
         bytes memory initCallData = abi.encodeCall(
             ManagerImplV1.initialize,
             (
@@ -182,17 +185,20 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             )
         );
 
-                // creates Manager Impl V2, which will be used for tests
+        identityManager = new IdentityManager(managerImplV1Address, initCallData);
+        identityManagerAddress = address(identityManager);
+
+        // creates Manager Impl V2, which will be used for tests
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
 
-        identityManager = new IdentityManager(managerImplAddress, initCallData);
-        identityManagerAddress = address(identityManager);
-
         bytes memory initCallV2 = abi.encodeCall(ManagerImpl.initializeV2, (deletionVerifiers));
+        bytes memory upgradeCall = abi.encodeCall(
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+        );
 
         // Test
-        assertCallSucceedsOn(identityManagerAddress, initCallV2, new bytes(0x0));
+        assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
     }
 
     /// @notice Initialises a new identity manager using the provided information.
