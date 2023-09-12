@@ -3,13 +3,15 @@
 
 pragma solidity ^0.8.0;
 
+import {ITreeVerifier} from "src/interfaces/ITreeVerifier.sol";
+
 /// @title Groth16 verifier template.
 /// @author Remco Bloemen
 /// @notice Supports verifying Groth16 proofs. Proofs can be in uncompressed
 /// (256 bytes) and compressed (128 bytes) format. A view function is provided
 /// to compress proofs.
 /// @notice See <https://2π.com/23/bn254-compression> for further explanation.
-contract Verifier {
+contract Verifier is ITreeVerifier{
     
     /// Some of the provided public input values are larger than the field modulus.
     /// @dev Public input elements are not automatically reduced, as this is can be
