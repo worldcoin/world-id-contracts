@@ -18,8 +18,51 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     /// @notice Taken from Initializable.sol
     event Initialized(uint8 version);
 
-    /// @notice Checks that it is possible to initialise the contract.
+   /// @notice Checks that it is possible to initialise the contract.
     function testInitialisation() public {
+        // Setup
+        delete identityManager;
+        delete managerImpl;
+        delete managerImplV1;
+
+        bytes memory V1CallData = abi.encodeCall(
+            ManagerImplV1.initialize,
+            (
+                treeDepth,
+                initialRoot,
+                defaultInsertVerifiers,
+                defaultUpdateVerifiers,
+                semaphoreVerifier
+            )
+        );
+
+        managerImplV1 = new ManagerImplV1();
+        managerImplAddress = address(managerImpl);
+
+        vm.expectEmit(true, true, true, true);
+        emit Initialized(1);
+
+        identityManager = new IdentityManager(managerImplV1Address, V1CallData);
+        identityManagerAddress = address(identityManager);
+
+        // creates Manager Impl V2, which will be used for tests
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+
+        bytes memory initCallV2 =
+            abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+        bytes memory upgradeCall = abi.encodeCall(
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+        );
+
+        vm.expectEmit(true, true, true, true);
+        emit Initialized(2);
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
+    } 
+
+    /// @notice Checks that it is possible to initialise the contract.
+    function testInitialisation2() public {
         // Setup
         delete identityManager;
         delete managerImpl;
