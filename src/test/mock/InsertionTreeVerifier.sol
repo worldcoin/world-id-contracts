@@ -217,15 +217,15 @@ contract Verifier is ITreeVerifier {
      *          above and the public inputs
      */
     function verifyProof(
-        uint256[2] memory a,
-        uint256[2][2] memory b,
-        uint256[2] memory c,
+        uint256[8] memory _proof,
         uint256[1] memory input
-    ) public view returns (bool r) {
+    ) public view {
         Proof memory proof;
-        proof.A = Pairing.G1Point(a[0], a[1]);
-        proof.B = Pairing.G2Point([b[0][0], b[0][1]], [b[1][0], b[1][1]]);
-        proof.C = Pairing.G1Point(c[0], c[1]);
+
+        //TODO: going to need to double check the order of nested b
+        proof.A = Pairing.G1Point(_proof[0], _proof[1]);
+        proof.B = Pairing.G2Point([_proof[2], _proof[3]], [_proof[4], _proof[5]]);
+        proof.C = Pairing.G1Point(_proof[6], _proof[7]);
 
         VerifyingKey memory vk = verifyingKey();
 
@@ -253,7 +253,7 @@ contract Verifier is ITreeVerifier {
 
         vk_x = Pairing.plus(vk_x, vk.IC[0]);
 
-        return Pairing.pairing(
+     require(Pairing.pairing(
             Pairing.negate(proof.A),
             proof.B,
             vk.alfa1,
@@ -262,6 +262,6 @@ contract Verifier is ITreeVerifier {
             vk.gamma2,
             proof.C,
             vk.delta2
-        );
+        ), "Invalid proof");
     }
 }

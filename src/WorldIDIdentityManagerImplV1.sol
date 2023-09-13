@@ -391,16 +391,9 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
         // With that, we can properly try and verify.
         try insertionVerifier.verifyProof(
-            [insertionProof[0], insertionProof[1]],
-            [[insertionProof[2], insertionProof[3]], [insertionProof[4], insertionProof[5]]],
-            [insertionProof[6], insertionProof[7]],
+            insertionProof,
             [reducedElement]
-        ) returns (bool verifierResult) {
-            // If the proof did not verify, we revert with a failure.
-            if (!verifierResult) {
-                revert ProofValidationFailure();
-            }
-
+        ) {
             // If it did verify, we need to update the contract's state. We set the currently valid
             // root to the root after the insertions.
             _latestRoot = postRoot;
@@ -534,20 +527,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 preRoot,
         uint256 postRoot
     ) internal virtual onlyProxy onlyInitialized onlyIdentityOperator {
-        // Pull out the proof terms and verifier input.
-        uint256[2] memory ar = [updateProof[0], updateProof[1]];
-        uint256[2][2] memory bs =
-            [[updateProof[2], updateProof[3]], [updateProof[4], updateProof[5]]];
-        uint256[2] memory krs = [updateProof[6], updateProof[7]];
+        // Pull out the verifier input.
         uint256[1] memory proofInput = [inputHash];
 
         // Now it's possible to verify the proof.
-        try updateVerifier.verifyProof(ar, bs, krs, proofInput) returns (bool verifierResult) {
-            // If the proof did not verify, we revert with a failure.
-            if (!verifierResult) {
-                revert ProofValidationFailure();
-            }
-
+        try updateVerifier.verifyProof(updateProof, proofInput) {
             // If it did verify, we need to update the contract's state. We set the currently valid
             // root to the root after the insertions.
             _latestRoot = postRoot;

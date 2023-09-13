@@ -131,16 +131,9 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
 
         // With that, we can properly try and verify.
         try deletionVerifier.verifyProof(
-            [deletionProof[0], deletionProof[1]],
-            [[deletionProof[2], deletionProof[3]], [deletionProof[4], deletionProof[5]]],
-            [deletionProof[6], deletionProof[7]],
+            deletionProof,
             [reducedElement]
-        ) returns (bool verifierResult) {
-            // If the proof did not verify, we revert with a failure.
-            if (!verifierResult) {
-                revert ProofValidationFailure();
-            }
-
+        ) {
             // If it did verify, we need to update the contract's state. We set the currently valid
             // root to the root after the insertions.
             _latestRoot = postRoot;
