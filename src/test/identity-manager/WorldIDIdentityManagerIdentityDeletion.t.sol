@@ -222,7 +222,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        vm.assume(packedDeletionIndices.length <= 1000);
+        vm.assume(packedDeletionIndices.length >0 && packedDeletionIndices.length <= 1000);
         uint32 indicesLength = uint32(packedDeletionIndices.length * 8);
 
         (

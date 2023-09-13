@@ -130,10 +130,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
         ITreeVerifier deletionVerifier = batchDeletionVerifiers.getVerifierFor(batchSize);
 
         // With that, we can properly try and verify.
-        try deletionVerifier.verifyProof(
-            deletionProof,
-            [reducedElement]
-        ) {
+        try deletionVerifier.verifyProof(deletionProof, [reducedElement]) {
             // If it did verify, we need to update the contract's state. We set the currently valid
             // root to the root after the insertions.
             _latestRoot = postRoot;

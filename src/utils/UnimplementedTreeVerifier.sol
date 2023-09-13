@@ -14,7 +14,7 @@ contract UnimplementedTreeVerifier is ITreeVerifier {
     /// @notice Thrown when an operation is not supported.
     error UnsupportedOperation();
 
-     /// @notice Verify an uncompressed Groth16 proof.
+    /// @notice Verify an uncompressed Groth16 proof.
     /// @notice Reverts with InvalidProof if the proof is invalid or
     /// with PublicInputNotInField the public input is not reduced.
     /// @notice There is no return value. If the function does not revert, the
@@ -24,10 +24,7 @@ contract UnimplementedTreeVerifier is ITreeVerifier {
     /// @param input the public input field elements in the scalar field Fr.
     /// Elements must be reduced.
     /// @custom:reverts UnsupportedOperation When called.
-    function verifyProof(
-        uint256[8] memory proof,
-        uint256[1] memory input
-    ) external pure {
+    function verifyProof(uint256[8] memory proof, uint256[1] memory input) external pure {
         delete proof;
         delete input;
         revert UnsupportedOperation();

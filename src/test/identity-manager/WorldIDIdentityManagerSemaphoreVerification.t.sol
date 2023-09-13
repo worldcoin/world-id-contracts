@@ -76,7 +76,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         assertCallFailsOn(identityManagerAddress, verifyProofCallData);
     }
 
-     /// @notice Checks that the proof validates properly with the correct inputs.
+    /// @notice Checks that the proof validates properly with the correct inputs.
     function testOptimizedProofVerificationWithCorrectInputs(
         uint8 actualTreeDepth,
         uint256 nullifierHash,

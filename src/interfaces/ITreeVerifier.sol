@@ -14,8 +14,5 @@ interface ITreeVerifier {
     /// of compressProof.
     /// @param input the public input field elements in the scalar field Fr.
     /// Elements must be reduced.
-    function verifyProof(
-        uint256[8] calldata proof,
-        uint256[1] calldata input
-    ) external;
+    function verifyProof(uint256[8] calldata proof, uint256[1] calldata input) external;
 }

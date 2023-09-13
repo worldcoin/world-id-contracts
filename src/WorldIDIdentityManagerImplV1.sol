@@ -390,10 +390,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             batchInsertionVerifiers.getVerifierFor(identityCommitments.length);
 
         // With that, we can properly try and verify.
-        try insertionVerifier.verifyProof(
-            insertionProof,
-            [reducedElement]
-        ) {
+        try insertionVerifier.verifyProof(insertionProof, [reducedElement]) {
             // If it did verify, we need to update the contract's state. We set the currently valid
             // root to the root after the insertions.
             _latestRoot = postRoot;

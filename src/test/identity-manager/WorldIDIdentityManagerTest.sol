@@ -52,13 +52,14 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///////////////////////////////////////////////////////////////////
     // All hardcoded test data taken from `src/test/data/TestInsertionParams.json`. This will be dynamically
     // generated at some point in the future.
+    /// @dev generated using `./semaphore-mtb/gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3`
     bytes32 internal constant insertionInputHash =
-        0x7d7f77c56064e1f8577de14bba99eff85599ab0e76d0caeadd1ad61674b8a9c3;
+        0x66f12f84870ce040647fb5f207b08f69676c8a7f6063dbe6b20de111183f2688;
     uint32 internal constant startIndex = 0;
     uint256 internal constant insertionPreRoot =
-        0x18f43331537ee2af2e3d758d50f72106467c6eea50371dd528d57eb2b856d238;
+        0x2a7c7c9b6ce5880b9f6f228d72bf6a575a526f29c66ecceef8b753d38bba7323;
     uint256 internal constant insertionPostRoot =
-        0x5c1e52b41a571293b30efacd2afdb7173b20cfaf1f646c4ac9f96eb75848270;
+        0x193289951bec3e4a099d9f1b0fb22cf20fe9dc4ea75c253352f22848b08c888b;
 
     uint256[] identityCommitments;
     uint256 identityCommitmentsSize = 3;
@@ -69,6 +70,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///////////////////////////////////////////////////////////////////
     // All hardcoded test data taken from `src/test/data/TestDeletionParams.json`. This will be dynamically
     // generated at some point in the future.
+    /// @dev generated using semaphore-mtb: ./gnark-mbu gen-test-params --mode deletion --tree-depth 16 --batch-size 8
     bytes32 internal constant deletionInputHash =
         0x227590f99431e20f2f95fdfb1b7dfb648c04242c950c31263ba165647c96501a;
     uint256 internal constant deletionPreRoot =
@@ -100,34 +102,41 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///////////////////////////////////////////////////////////////////////////////
 
     constructor() {
-        // Make the identity commitments.
+        // Make the identity commitments to be inserted.
+        // needs to match the params in src/test/data/TestInsertionParams.json
         identityCommitments = new uint256[](identityCommitmentsSize);
         identityCommitments[0] = 0x1;
         identityCommitments[1] = 0x2;
         identityCommitments[2] = 0x3;
 
         // Create the insertion proof term.
+        // output from semaphore-mtb prove in src/test/data/InsertionProof.json
+        /// @dev test_insertion.ps is generated using semaphore-mtb: `./gnark-mbu setup --mode insertion --batch-size 3 --tree-depth 16 --output test_insertion.ps`
+        /// @dev generated using semaphore-mtb: `./gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3 | ./gnark-mbu prove --mode insertion --keys-file test_insertion.ps`
         insertionProof = [
-            0x2a45bf326884bbf13c821a5e4f30690a391156cccf80a2922fb24250111dd7eb,
-            0x23a7376a159513e6d0e22d43fcdca9d0c8a5c54a73b59fce6962a41e71355894,
-            0x21b9fc7c2d1f76c2e1a972b00f18728a57a34d7e4ae040811bf1626132ff3658,
-            0x2a7c3c660190a33ab92cd84e4b2540e49ea80bdc766eb3aeec49806a78071c75,
-            0x2fc9a52a7f4bcc29faab28a8d8ec126b4fe604a7b41e7d2b3efe92422951d706,
-            0x110740f0b21fb329de682dffc95a5ede11c11c6328606fe254b6ba469b15f68,
-            0x23115ff1573808639f19724479b195b7894a45c9868242ad2a416767359c6c78,
-            0x23f3fa30273c7f38e360496e7f9790450096d4a9592e1fe6e0a996cb05b8fb28
+            0x6753336854c309cda0b340dae718f8b625dc5fcf13c6358d3095dfe6d88c3f4,
+            0x2bd788a6291ec15ec23d33cb457a750ee373c82b508d9e936048500764627427,
+            0x116b49f6c3092a835be023b86fd70aa9e7af5800402061e86b58dd51af4185a4,
+            0x2e7528a5fe5b6e8d80052f215d1d12a3201154887f5cf4a99b5d9aef4a02ea8e,
+            0x1f4b9f9e7456d6b50ee5407caa71364689db7ce3d29750e86ff697f4fb3ab12d,
+            0xa624c5d6e8bcfae6c0e9953e251f3b7f7ae04fdacee382beecc309417c182be,
+            0xcb161f852a6c7449377fc637e691017d6a18e74ef9617f92210d173bac0add8,
+            0x24fd0a88c531515e53001fc2df8df624a913f791a8bf8eaf62dba753391b8960
         ];
 
         // Create the deletion proof term.
+        // output from semaphore-mtb prove in src/test/data/DeletionProof.json
+        /// @dev test_deletion.ps is generated using semaphore-mtb: `./gnark-mbu setup --mode deletion --batch-size 3 --tree-depth 16 --output test_deletion.ps`
+        /// @dev generated using semaphore-mtb: `./gnark-mbu gen-test-params --mode deletion --tree-depth 16 --batch-size 3 | ./gnark-mbu prove --mode deletion --keys-file test_deletion.ps`
         deletionProof = [
-            0x226cb5c88ce8ccf2774dc13847c3b579c4e4bc8d47bfc2a9ac1454e1a9a42ee3,
-            0x1e69ced73a40a88c9f68df4a1bf34c3ff67efca6e2682bd8d1bb96a7a3e4bf50,
-            0x1029d8179a82355f902562af0f0e719e31ac12f63effb0c9006ee3332c280e01,
-            0x24ae80c2f18161206a0eacc736ddef2c518e0dec37e13c6f0cf17034d04508cc,
-            0x29213a2cb6582178edd743f8e8b5541175855b55d0c90f1894a1e415b625af70,
-            0x2c9119a368d137dd2409dee4796eb96059296f87009e3d47b0a858cfd05d6954,
-            0x2cdd77b17d2270a8fe1385ec60fdd6c644f83549331ae116a538c555f56a9540,
-            0x1f7214627223f7839a538052d96ad480a9565a6ec8a9e1fcecf54a7d73a55495
+            0x218c1210810f33ec6afd6edbd3311ebdc91ad86c5bd9f6c40e632c001fcb6589,
+            0x283fed97c26434f2fb1209d5b8182475805985fa9465593b4de6f73983e11a70,
+            0x2876bbb4c3c686df15f3c91de08a26da35fce97ff4c0172426bb0619b11435e1,
+            0x20fe2c10422b1350f688501e67bbb2154ac4ff63a6da3f8d049fae7a0e59f7d7,
+            0x156b3808aff9884cb83bea0658b65b53e56f68033ace4b0da14271a84d98e9b7,
+            0x10f2dba2ada60a0cf804fc9292da6f05dec6692e07406d6f77716b8c9b9dbf8c,
+            0x1f751a85dc3bae8c055d57e072a1d5ce5a849f22b2a5d121cebb24fe636c5d3,
+            0x98eb20c27302e047f4ad218e1c15e6bd823936bbecceceac6c470606734716b
         ];
     }
 

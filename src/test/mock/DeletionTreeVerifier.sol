@@ -265,10 +265,7 @@ contract Verifier is ITreeVerifier {
      * @returns Whether the proof is valid given the hardcoded verifying key
      *          above and the public inputs
      */
-    function verifyProof(
-        uint256[8] memory _proof,
-        uint256[1] memory input
-    ) public view {
+    function verifyProof(uint256[8] memory _proof, uint256[1] memory input) public view {
         Proof memory proof;
 
         //TODO: going to need to double check the order of nested b
@@ -321,15 +318,18 @@ contract Verifier is ITreeVerifier {
         mul_input[2] = input[0];
         accumulate(mul_input, q, add_input, vk_x); // vk_x += vk.K[1] * input[0]
 
-        require(Pairing.pairing(
-            Pairing.negate(proof.A),
-            proof.B,
-            vk.alfa1,
-            vk.beta2,
-            vk_x,
-            vk.gamma2,
-            proof.C,
-            vk.delta2
-        ), "Invalid proof");
+        require(
+            Pairing.pairing(
+                Pairing.negate(proof.A),
+                proof.B,
+                vk.alfa1,
+                vk.beta2,
+                vk_x,
+                vk.gamma2,
+                proof.C,
+                vk.delta2
+            ),
+            "Invalid proof"
+        );
     }
 }

@@ -11,10 +11,7 @@ contract SequencerVerifier is ITreeVerifier {
     uint256 internal constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
 
-    function verifyProof(
-        uint256[8] memory proof,
-        uint256[1] memory input
-    ) external  {
+    function verifyProof(uint256[8] memory proof, uint256[1] memory input) external {
         require(proof[0] % 2 == 0 && proof[1] % SNARK_SCALAR_FIELD == input[0], "Invalid Proof");
     }
 }
