@@ -58,31 +58,6 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Checks that it is impossible to call `updateIdentities` while the contract is not
-    ///         initialised.
-    function testShouldNotCallUpdateIdentitiesWhileUninit(
-        uint128[] memory identities,
-        uint128[8] memory prf
-    ) public {
-        // Setup
-        makeUninitIdentityManager();
-        (
-            uint32[] memory leafIndices,
-            uint256[] memory oldIdents,
-            uint256[] memory newIdents,
-            uint256[8] memory actualProof
-        ) = prepareUpdateIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.updateIdentities,
-            (actualProof, initialRoot, leafIndices, oldIdents, newIdents, insertionPostRoot)
-        );
-        bytes memory expectedError =
-            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
     /// @notice Checks that it is impossible to call `calculateIdentityRegistrationInputHash` while
     ///         the contract is not initialised.
     function testShouldNotCallCalculateIdentityRegistrationInputHash() public {
@@ -190,35 +165,6 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         (, VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([75]));
         bytes memory callData =
             abi.encodeCall(ManagerImpl.setDeleteIdentitiesVerifierLookupTable, (deletionVerifiers));
-        bytes memory expectedError =
-            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
-    /// @notice Checks that it is impossible to call `getIdentityUpdateVerifierLookupTableAddress`
-    ///         while the contract is not initialized.
-    function testShouldNotCallGetIdentityUpdateVerifierLookupTableAddressWhileUninit() public {
-        // Setup
-        makeUninitIdentityManager();
-        bytes memory callData =
-            abi.encodeCall(ManagerImplV1.getIdentityUpdateVerifierLookupTableAddress, ());
-        bytes memory expectedError =
-            abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
-    /// @notice Checks that it is impossible to call `setIdentityUpdateVerifierLookupTable` while
-    ///         the contract is not initialized.
-    function testShouldNotCallSetIdentityUpdateVerifierLookupTableWhileUninit() public {
-        // Setup
-        makeUninitIdentityManager();
-        (,, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([75]));
-        bytes memory callData =
-            abi.encodeCall(ManagerImplV1.setIdentityUpdateVerifierLookupTable, (updateVerifiers));
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
 
