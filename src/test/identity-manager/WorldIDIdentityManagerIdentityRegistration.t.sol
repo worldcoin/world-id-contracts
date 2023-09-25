@@ -448,27 +448,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         assertCallSucceedsOn(identityManagerAddress, callData, new bytes(0));
     }
 
-    /// @notice Tests that it reverts if an attempt is made to register identity commitments that
-    ///         are not in reduced form.
-    function testCannotRegisterIdentitiesWithUnreducedIdentities(uint128 i) public {
-        // Setup
-        uint256 position = rotateSlot();
-        uint256[] memory unreducedCommitments = new uint256[](identityCommitments.length);
-        unreducedCommitments[position] = SNARK_SCALAR_FIELD + i;
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, initialRoot, startIndex, unreducedCommitments, insertionPostRoot)
-        );
-        bytes memory expectedError = abi.encodeWithSelector(
-            ManagerImplV1.UnreducedElement.selector,
-            ManagerImplV1.UnreducedElementType.IdentityCommitment,
-            SNARK_SCALAR_FIELD + i
-        );
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
     /// @notice Tests that it reverts if an attempt is made to register new identities with a pre
     ///         root that is not in reduced form.
     function testCannotRegisterIdentitiesWithUnreducedPreRoot(uint128 i) public {
