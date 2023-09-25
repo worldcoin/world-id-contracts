@@ -113,30 +113,30 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         // output from semaphore-mtb prove in src/test/data/InsertionProof.json
         /// @dev test_insertion.ps is generated using semaphore-mtb: `./gnark-mbu setup --mode insertion --batch-size 3 --tree-depth 16 --output test_insertion.ps`
         /// @dev generated using semaphore-mtb: `./gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3 | ./gnark-mbu prove --mode insertion --keys-file test_insertion.ps`
-        insertionProof = [
-            0x6753336854c309cda0b340dae718f8b625dc5fcf13c6358d3095dfe6d88c3f4,
-            0x2bd788a6291ec15ec23d33cb457a750ee373c82b508d9e936048500764627427,
-            0x116b49f6c3092a835be023b86fd70aa9e7af5800402061e86b58dd51af4185a4,
-            0x2e7528a5fe5b6e8d80052f215d1d12a3201154887f5cf4a99b5d9aef4a02ea8e,
-            0x1f4b9f9e7456d6b50ee5407caa71364689db7ce3d29750e86ff697f4fb3ab12d,
-            0xa624c5d6e8bcfae6c0e9953e251f3b7f7ae04fdacee382beecc309417c182be,
-            0xcb161f852a6c7449377fc637e691017d6a18e74ef9617f92210d173bac0add8,
-            0x24fd0a88c531515e53001fc2df8df624a913f791a8bf8eaf62dba753391b8960
+                insertionProof = [
+            0x18491e665bc7128f0113b3cf187502311cf5a82b0304e02464099782483b14ba,
+            0x1dace8033bc22eda25b483b2a260195b67ee5bef07990bf0e2c5f7923423fe,
+            0x1d4489b99a91a972e878bef7a147251c8d4941b415bb7b36a9740e714f995b7e,
+            0x772049285800265c330a0850d30d32c1ece88a0aa6adbd6a6197d0a1c2e2de2,
+            0x27afc608a28bd2f8743bc2b423dbc34829b374cf702789f9549d4b730fcc7ec8,
+            0x1011cfd2347e8db6cd489a8090331a73db380b6774ec3bc14c77a2dabe0e83dd,
+            0x2f5f37e84d6acff8cfd7988d33aaea072dbe5071093b2df022d23047f134ac45,
+            0x24830332559eada283d4473b17091b239443e75e9e09f0ebce8e72c235ee665d
         ];
 
         // Create the deletion proof term.
         // output from semaphore-mtb prove in src/test/data/DeletionProof.json
-        /// @dev test_deletion.ps is generated using semaphore-mtb: `./gnark-mbu setup --mode deletion --batch-size 3 --tree-depth 16 --output test_deletion.ps`
-        /// @dev generated using semaphore-mtb: `./gnark-mbu gen-test-params --mode deletion --tree-depth 16 --batch-size 3 | ./gnark-mbu prove --mode deletion --keys-file test_deletion.ps`
+        /// @dev test_deletion.ps is generated using semaphore-mtb: `./gnark-mbu setup --mode deletion --batch-size 8 --tree-depth 16 --output test_deletion.ps`
+        /// @dev generated using semaphore-mtb: `./gnark-mbu gen-test-params --mode deletion --tree-depth 16 --batch-size 8 | ./gnark-mbu prove --mode deletion --keys-file test_deletion.ps`
         deletionProof = [
-            0x218c1210810f33ec6afd6edbd3311ebdc91ad86c5bd9f6c40e632c001fcb6589,
-            0x283fed97c26434f2fb1209d5b8182475805985fa9465593b4de6f73983e11a70,
-            0x2876bbb4c3c686df15f3c91de08a26da35fce97ff4c0172426bb0619b11435e1,
-            0x20fe2c10422b1350f688501e67bbb2154ac4ff63a6da3f8d049fae7a0e59f7d7,
-            0x156b3808aff9884cb83bea0658b65b53e56f68033ace4b0da14271a84d98e9b7,
-            0x10f2dba2ada60a0cf804fc9292da6f05dec6692e07406d6f77716b8c9b9dbf8c,
-            0x1f751a85dc3bae8c055d57e072a1d5ce5a849f22b2a5d121cebb24fe636c5d3,
-            0x98eb20c27302e047f4ad218e1c15e6bd823936bbecceceac6c470606734716b
+            0x19233cf0c60aa740585125dd5936462b1795bc2c8da7b9d0b7e92392cf91e1fd,
+            0x244096da06de365f3bd8e7f428c2de4214096c4cd0feeba579642435ab15e90a,
+            0x107395cd3aa9bfe3bcaada7f171d43a1ffffd576325598e2b9c8fbe1cfd6d032,
+            0xac23f21fb0376055adeee2a78491ca13afc288c63c6450d0ce6ded6fda14344,
+            0x29022f4cf64701ff88807430b9e333d87c670a4bdfe7d495d76271044a2d3711,
+            0x134e41bef89e02289885852b368395b1b679dd243e5cf9e2f36b04ba990ab6a2,
+            0x280894db66e6a9f9bf8aa48ffa1de98b755adadcf5962fb308cd1802a1101a0c,
+            0x1484814b74243a07930c6af61079f94eefd843efe95e2388d9d49956cfacf3ab
         ];
     }
 
