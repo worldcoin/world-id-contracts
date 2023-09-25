@@ -403,34 +403,6 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         assertCallFailsOn(identityManagerAddress, callData, expectedError);
     }
 
-    /// @notice Tests that it reverts if an attempt is made to register identity commitments
-    ///         containing an invalid identity.
-    function testCannotRegisterIdentitiesWithInvalidIdentities(
-        uint8 identitiesLength,
-        uint8 invalidPosition
-    ) public {
-        // Setup
-        vm.assume(identitiesLength != 0);
-        vm.assume(invalidPosition < (identitiesLength - 1));
-        uint256[] memory invalidCommitments = new uint256[](identitiesLength);
-
-        for (uint256 i = 0; i < identitiesLength; ++i) {
-            invalidCommitments[i] = i + 1;
-        }
-        invalidCommitments[invalidPosition] = 0x0;
-
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, initialRoot, startIndex, invalidCommitments, insertionPostRoot)
-        );
-        bytes memory expectedError = abi.encodeWithSelector(
-            ManagerImplV1.InvalidCommitment.selector, uint256(invalidPosition + 1)
-        );
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, expectedError);
-    }
-
     /// @notice Tests that runs of zeroes are accepted by the `registerIdentities` function as valid
     ///         arrays of identity commitments.
     function testRegisterIdentitiesWithRunsOfZeroes(uint8 identitiesLength, uint8 zeroPosition)

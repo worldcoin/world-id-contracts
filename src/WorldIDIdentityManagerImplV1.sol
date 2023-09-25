@@ -168,6 +168,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @param index The index in the array of identity commitments where the invalid commitment was
     ///        found.
+    /// @dev This error is no longer in use as we now verify the commitments off-chain within the circuit
+    /// no need to check for reduced elements or invalid commitments.
     error InvalidCommitment(uint256 index);
 
     /// @notice Thrown when the provided proof cannot be verified for the accompanying inputs.
@@ -336,7 +338,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///        described by `preRoot`. Must be an element of the field `Kr`.
     ///
     /// @custom:reverts Unauthorized If the message sender is not authorised to add identities.
-    /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid.
     /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
     /// @custom:reverts ProofValidationFailure If `insertionProof` cannot be verified using the
     ///                 provided inputs.
