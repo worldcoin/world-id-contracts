@@ -83,6 +83,18 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     uint32 deletionBatchSize = 8;
     uint256[8] deletionProof;
 
+    ///////////////////////////////////////////////////////////////////
+    ///                          INCLUSION                          ///
+    ///////////////////////////////////////////////////////////////////
+    /// @dev generated using https://github.com/worldcoin/semaphore-mock
+    /// steps: 
+    /// 1. cargo run --release generate-identities --identities 10
+    /// 2. cargo run --release prove-inclusion --identities out/random_identities.json --tree-depth 16 --identity-index 3
+    uint256 internal constant inclusionRoot =
+        0xdf9f0cb5a3afe2129e349c1435bfbe9e6f091832fdfa7b739b61c5db2cbdde9;
+
+    uint256[8] inclusionProof;
+
     // Needed for testing things.
     uint256 internal constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
@@ -137,6 +149,24 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             0x134e41bef89e02289885852b368395b1b679dd243e5cf9e2f36b04ba990ab6a2,
             0x280894db66e6a9f9bf8aa48ffa1de98b755adadcf5962fb308cd1802a1101a0c,
             0x1484814b74243a07930c6af61079f94eefd843efe95e2388d9d49956cfacf3ab
+        ];
+
+        // Create the inclusion proof term.
+        // output from semaphore-mtb prove in src/test/data/InclusionProof.json
+        // 
+        /// @dev generated using https://github.com/worldcoin/semaphore-mock
+        /// steps: 
+        /// 1. cargo run --release generate-identities --identities 10
+        /// 2. cargo run --release prove-inclusion --identities out/random_identities.json --tree-depth 16 --identity-index 3
+        inclusionProof = [
+            0x27d70bdecb420a7322a0e44ef68345fc67e9903a3980762c23dfda5cf4d65715,
+            0x1aba064ef272dd53b498d856c711890249a63a46825fe6d332fc5868ad854ef4,
+            0x23a76f9777710f268d2092d859344cdc8d7f77abef35695f89d1ebf771d8a520,
+            0x295ab87eb7c0ad9470ec2b56b35309f5e4576679ef6180ed78124e3f549f125d,
+            0x1da63a007225659d3a70a2dfe807df5c3e8423bfd8e059d72909a1def161573f,
+            0x2578db76ee9f64ff4eb0b532cb796dfa27d86ae8cd29e2d6b32f9428c71acb8b,
+            0xd00d49d5db4c5b11a13aca379f5c3c627a6e8fc1c4470e7a56017307aca51a2,
+            0xf6ee8db704ecb5c149e5a046a03e8767ba5a818c08320f6245070e4c0e99b77
         ];
     }
 

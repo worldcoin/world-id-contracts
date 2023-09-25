@@ -31,7 +31,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         vm.assume(prf[0] != 0);
         makeNewIdentityManager(
             actualTreeDepth,
-            insertionPreRoot,
+            inclusionRoot,
             defaultInsertVerifiers,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
@@ -39,7 +39,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         );
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImplV1.verifyProof,
-            (insertionPreRoot, nullifierHash, signalHash, externalNullifierHash, insertionProof)
+            (inclusionRoot, nullifierHash, signalHash, externalNullifierHash, inclusionProof)
         );
 
         // Test
@@ -60,7 +60,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         vm.assume(prf[0] % 2 == 0);
         makeNewIdentityManager(
             actualTreeDepth,
-            insertionPreRoot,
+            inclusionRoot,
             defaultInsertVerifiers,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
@@ -68,7 +68,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         );
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImplV1.verifyProof,
-            (insertionPreRoot, nullifierHash, signalHash, externalNullifierHash, prf)
+            (inclusionRoot, nullifierHash, signalHash, externalNullifierHash, prf)
         );
 
         vm.expectRevert("Semaphore__InvalidProof()");
@@ -90,7 +90,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         vm.assume(prf[0] != 0);
         makeNewIdentityManager(
             actualTreeDepth,
-            insertionPreRoot,
+            inclusionRoot,
             defaultInsertVerifiers,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
@@ -98,7 +98,7 @@ contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest
         );
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImplV1.verifyProof,
-            (insertionPreRoot, nullifierHash, signalHash, externalNullifierHash, insertionProof)
+            (inclusionRoot, nullifierHash, signalHash, externalNullifierHash, inclusionProof)
         );
 
         // Test
