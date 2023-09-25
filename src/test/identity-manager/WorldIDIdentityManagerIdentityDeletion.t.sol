@@ -216,20 +216,19 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
     function testCannotDeleteIdentitiesWithIncorrectInputs(
         uint128[8] memory prf,
         uint128 newPreRoot,
-        bytes calldata packedDeletionIndices,
         uint128 newPostRoot
     ) public {
         // Setup
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
-        vm.assume(packedDeletionIndices.length >0 && packedDeletionIndices.length <= 1000);
-        uint32 indicesLength = uint32(packedDeletionIndices.length * 8);
-
+        ITreeVerifier actualVerifier = new TreeVerifier();
+        uint32 indicesLength = uint32(packedDeletionIndices.length);
         (
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
             VerifierLookupTable updateVerifiers
-        ) = makeVerifierLookupTables(TC.makeDynArray([indicesLength]));
+        ) = makeVerifierLookupTables(TC.makeDynArray([70]));
+        deletionVerifiers.addVerifier(indicesLength, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
@@ -259,8 +258,8 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
             VerifierLookupTable updateVerifiers
-        ) = makeVerifierLookupTables(TC.makeDynArray([deletionBatchSize]));
-        deletionVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
+        ) = makeVerifierLookupTables(TC.makeDynArray([70]));
+        deletionVerifiers.addVerifier(deletionBatchSize, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
             deletionPreRoot,

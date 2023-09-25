@@ -118,7 +118,7 @@ contract Verifier is ITreeVerifier {
         } 
     }
 
-    /// Invertsion in Fp.
+    /// Inversion in Fp.
     /// @notice Returns a number x such that a * x = 1 in Fp.
     /// @notice The input does not need to be reduced.
     /// @notice Reverts with ProofInvalid() if the inverse does not exist
