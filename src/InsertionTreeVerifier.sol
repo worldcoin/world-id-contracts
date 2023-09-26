@@ -1,4 +1,4 @@
-import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
+import {ITreeVerifier} from "src/interfaces/ITreeVerifier.sol";
 
 // SPDX-License-Identifier: MIT
 

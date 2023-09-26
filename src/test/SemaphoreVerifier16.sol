@@ -1,4 +1,4 @@
-import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
+import {ISemaphoreVerifier} from "src/interfaces/ISemaphoreVerifier.sol";
 
 // SPDX-License-Identifier: MIT
 
@@ -10,7 +10,7 @@ pragma solidity ^0.8.0;
 /// (256 bytes) and compressed (128 bytes) format. A view function is provided
 /// to compress proofs.
 /// @notice See <https://2π.com/23/bn254-compression> for further explanation.
-contract Verifier is ITreeVerifier {
+contract Verifier is ISemaphoreVerifier {
     
     /// Some of the provided public input values are larger than the field modulus.
     /// @dev Public input elements are not automatically reduced, as this is can be
@@ -54,32 +54,38 @@ contract Verifier is ITreeVerifier {
     uint256 constant EXP_SQRT_FP = 0xC19139CB84C680A6E14116DA060561765E05AA45A1C72A34F082305B61F3F52; // (P + 1) / 4;
 
     // Groth16 alpha point in G1
-    uint256 constant ALPHA_X = 10540806559887167104588299892241621164255487150461496341626858664281664558273;
-    uint256 constant ALPHA_Y = 18696534755308846201677397222792953217528992421163095056941057317509629524722;
+    uint256 constant ALPHA_X = 20491192805390485299153009773594534940189261866228447918068658471970481763042;
+    uint256 constant ALPHA_Y = 9383485363053290200918347156157836566562967994039712273449902621266178545958;
 
     // Groth16 beta point in G2 in powers of i
-    uint256 constant BETA_NEG_X_0 = 9289144700177602508224796928305680819301212642031268209898370879595438760917;
-    uint256 constant BETA_NEG_X_1 = 10547839143610067056656195135986672966679578259812908443118403685682429861701;
-    uint256 constant BETA_NEG_Y_0 = 12915174887173266773990929270621008261886710141330627051375005843032324032816;
-    uint256 constant BETA_NEG_Y_1 = 20204556387398089691578608866734867938413428713768226934160981536705045926684;
+    uint256 constant BETA_NEG_X_0 = 6375614351688725206403948262868962793625744043794305715222011528459656738731;
+    uint256 constant BETA_NEG_X_1 = 4252822878758300859123897981450591353533073413197771768651442665752259397132;
+    uint256 constant BETA_NEG_Y_0 = 11383000245469012944693504663162918391286475477077232690815866754273895001727;
+    uint256 constant BETA_NEG_Y_1 = 41207766310529818958173054109690360505148424997958324311878202295167071904;
 
     // Groth16 gamma point in G2 in powers of i
-    uint256 constant GAMMA_NEG_X_0 = 12125917802287751299598970306127232317234244065863085706149700341692909445135;
-    uint256 constant GAMMA_NEG_X_1 = 12148123627061259167145600433069418819234101862686655936951485568840483717123;
-    uint256 constant GAMMA_NEG_Y_0 = 5988769189388486153600786474675906426283316229539620228678444567681682777498;
-    uint256 constant GAMMA_NEG_Y_1 = 5738750612292361316155676119434475570600542711558566821477860588397762422487;
+    uint256 constant GAMMA_NEG_X_0 = 10857046999023057135944570762232829481370756359578518086990519993285655852781;
+    uint256 constant GAMMA_NEG_X_1 = 11559732032986387107991004021392285783925812861821192530917403151452391805634;
+    uint256 constant GAMMA_NEG_Y_0 = 13392588948715843804641432497768002650278120570034223513918757245338268106653;
+    uint256 constant GAMMA_NEG_Y_1 = 17805874995975841540914202342111839520379459829704422454583296818431106115052;
 
     // Groth16 delta point in G2 in powers of i
-    uint256 constant DELTA_NEG_X_0 = 1634881525453069381539064669198838164371392344721377194711591834696682352477;
-    uint256 constant DELTA_NEG_X_1 = 17279327023445589453594845467776134123782766121800267509419424589125110740187;
-    uint256 constant DELTA_NEG_Y_0 = 11432830246305367590277540894794860588641953149336980701683372253417473334750;
-    uint256 constant DELTA_NEG_Y_1 = 4004758155600074163048436555321639796581387612468627300293241737049808612532;
+    uint256 constant DELTA_NEG_X_0 = 16243966861079634958125511652590761846958471358623040426599000904006426210032;
+    uint256 constant DELTA_NEG_X_1 = 13406811599156507528361773763681356312643537981039994686313383243831956396116;
+    uint256 constant DELTA_NEG_Y_0 = 6200159192601353057572886987075813506094457284081503951532640457043392212361;
+    uint256 constant DELTA_NEG_Y_1 = 10106646337257131644126001022517996571132285659724751907435065628753338091209;
 
     // Constant and public input points
-    uint256 constant CONSTANT_X = 7065344469851661926793643372215217621315658305837861579101548147761825653088;
-    uint256 constant CONSTANT_Y = 3816842911808951106840635623036133479452547290738636365883439290420360457712;
-    uint256 constant PUB_0_X = 3600420742132324519200509028486624821285996242068377631973021819080430036637;
-    uint256 constant PUB_0_Y = 372418442062690161950901896514875127229125198024957013636072554100336848194;
+    uint256 constant CONSTANT_X = 1964404930528116823793003656764176108669615750422202377358993070935069307720;
+    uint256 constant CONSTANT_Y = 2137714996673694828207437580381836490878070731768805974506391024595988817424;
+    uint256 constant PUB_0_X = 19568893707760843340848992184233194433177372925415116053368211122719346671126;
+    uint256 constant PUB_0_Y = 11639469568629189918046964192305250472192697612201524135560178632824282818614;
+    uint256 constant PUB_1_X = 5317268879687484957437879782519918549127939892210247573193613900261494313825;
+    uint256 constant PUB_1_Y = 528174394975085006443543773707702838726735933116136102590448357278717993744;
+    uint256 constant PUB_2_X = 14865918005176722116473730206622066845866539143554731094374354951675249722731;
+    uint256 constant PUB_2_Y = 3197770568483953664363740385883457803041685902965668289308665954510373380344;
+    uint256 constant PUB_3_X = 6863358721495494421022713667808247652425178970453300712435830652679038918987;
+    uint256 constant PUB_3_Y = 15025816433373311798308762709072064417001390853103872064614174594927359131281;
 
     /// Negation in Fp.
     /// @notice Returns a number x such that a + x = 0 in Fp.
@@ -118,7 +124,7 @@ contract Verifier is ITreeVerifier {
         } 
     }
 
-    /// Inversion in Fp.
+    /// Invertsion in Fp.
     /// @notice Returns a number x such that a * x = 1 in Fp.
     /// @notice The input does not need to be reduced.
     /// @notice Reverts with ProofInvalid() if the inverse does not exist
@@ -356,7 +362,7 @@ contract Verifier is ITreeVerifier {
     /// @param input The public inputs. These are elements of the scalar field Fr.
     /// @return x The X coordinate of the resulting G1 point.
     /// @return y The Y coordinate of the resulting G1 point.
-    function publicInputMSM(uint256[1] calldata input)
+    function publicInputMSM(uint256[4] calldata input)
     internal view returns (uint256 x, uint256 y) {
         // Note: The ECMUL precompile does not reject unreduced values, so we check this.
         // Note: Unrolling this loop does not cost much extra in code-size, the bulk of the
@@ -375,6 +381,27 @@ contract Verifier is ITreeVerifier {
             mstore(g, PUB_0_X)
             mstore(add(g, 0x20), PUB_0_Y)
             s :=  calldataload(input)
+            mstore(add(g, 0x40), s)
+            success := and(success, lt(s, R))
+            success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
+            success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+            mstore(g, PUB_1_X)
+            mstore(add(g, 0x20), PUB_1_Y)
+            s :=  calldataload(add(input, 32))
+            mstore(add(g, 0x40), s)
+            success := and(success, lt(s, R))
+            success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
+            success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+            mstore(g, PUB_2_X)
+            mstore(add(g, 0x20), PUB_2_Y)
+            s :=  calldataload(add(input, 64))
+            mstore(add(g, 0x40), s)
+            success := and(success, lt(s, R))
+            success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
+            success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+            mstore(g, PUB_3_X)
+            mstore(add(g, 0x20), PUB_3_Y)
+            s :=  calldataload(add(input, 96))
             mstore(add(g, 0x40), s)
             success := and(success, lt(s, R))
             success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
@@ -414,7 +441,7 @@ contract Verifier is ITreeVerifier {
     /// Elements must be reduced.
     function verifyCompressedProof(
         uint256[4] calldata compressedProof,
-        uint256[1] calldata input
+        uint256[4] calldata input
     ) public view {
         (uint256 Ax, uint256 Ay) = decompress_g1(compressedProof[0]);
         (uint256 Bx0, uint256 Bx1, uint256 By0, uint256 By1) = decompress_g2(
@@ -479,7 +506,7 @@ contract Verifier is ITreeVerifier {
     /// Elements must be reduced.
     function verifyProof(
         uint256[8] calldata proof,
-        uint256[1] calldata input
+        uint256[4] calldata input
     ) public view {
         (uint256 x, uint256 y) = publicInputMSM(input);
 

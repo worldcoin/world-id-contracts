@@ -8,7 +8,7 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
-import {Verifier as TreeVerifier} from "src/test/mock/InsertionTreeVerifier.sol";
+import {Verifier as TreeVerifier} from "src/InsertionTreeVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";

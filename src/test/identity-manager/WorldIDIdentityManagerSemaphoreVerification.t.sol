@@ -6,7 +6,7 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
 import {SemaphoreTreeDepthValidator} from "../../utils/SemaphoreTreeDepthValidator.sol";
 import {SimpleSemaphoreVerifier} from "../mock/SimpleSemaphoreVerifier.sol";
-import {Verifier} from "src/Verifier.sol";
+import {Verifier} from "src/test/SemaphoreVerifier16.sol";
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -16,7 +16,7 @@ import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdenti
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
-contract WorldIDIdentityManagerSemaphoreValidation is WorldIDIdentityManagerTest {
+contract WorldIDIdentityManagerSemaphoreVerification is WorldIDIdentityManagerTest {
     /// @notice Checks that the proof validates properly with the correct inputs.
     function testProofVerificationWithCorrectInputs(
         uint8 actualTreeDepth,
