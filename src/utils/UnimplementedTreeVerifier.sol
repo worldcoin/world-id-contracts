@@ -14,25 +14,18 @@ contract UnimplementedTreeVerifier is ITreeVerifier {
     /// @notice Thrown when an operation is not supported.
     error UnsupportedOperation();
 
-    /// @notice Verifies the provided proof data for the provided public inputs.
-    /// @dev Exists to satisfy the interface. Will always revert.
-    ///
-    /// @param a The first G1Point of the proof (ar).
-    /// @param b The G2Point for the proof (bs).
-    /// @param c The second G1Point of the proof (kr).
-    /// @param input The public inputs to the function, reduced such that it is a member of the
-    ///              field `Fr` where `r` is `SNARK_SCALAR_FIELD`.
-    ///
+    /// @notice Verify an uncompressed Groth16 proof.
+    /// @notice Reverts with InvalidProof if the proof is invalid or
+    /// with PublicInputNotInField the public input is not reduced.
+    /// @notice There is no return value. If the function does not revert, the
+    /// proof was succesfully verified.
+    /// @param proof the points (A, B, C) in EIP-197 format matching the output
+    /// of compressProof.
+    /// @param input the public input field elements in the scalar field Fr.
+    /// Elements must be reduced.
     /// @custom:reverts UnsupportedOperation When called.
-    function verifyProof(
-        uint256[2] memory a,
-        uint256[2][2] memory b,
-        uint256[2] memory c,
-        uint256[1] memory input
-    ) external pure returns (bool) {
-        delete a;
-        delete b;
-        delete c;
+    function verifyProof(uint256[8] memory proof, uint256[1] memory input) external pure {
+        delete proof;
         delete input;
         revert UnsupportedOperation();
     }

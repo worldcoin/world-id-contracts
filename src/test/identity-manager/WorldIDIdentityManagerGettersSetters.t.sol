@@ -4,7 +4,7 @@ pragma solidity ^0.8.21;
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
-import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
+import {SemaphoreVerifier} from "src/SemaphoreVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
@@ -163,75 +163,6 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
 
         // Test
         managerImpl.setDeleteIdentitiesVerifierLookupTable(deletionVerifiers);
-    }
-
-    /// @notice Checks that it is possible to get the address of the lookup table currently being
-    ///         used to verify identity update proofs.
-    function testCanGetIdentityUpdateVerifierLookupTableAddress() public {
-        // Setup
-        bytes memory callData =
-            abi.encodeCall(ManagerImplV1.getIdentityUpdateVerifierLookupTableAddress, ());
-        bytes memory expectedReturn = abi.encode(defaultUpdateVerifiers);
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData, expectedReturn);
-    }
-
-    /// @notice Ensures that it is not possible to get the address of the verifier lookup table for
-    ///         identity updates unless called via the proxy.
-    function testCannotGetIdentityUpdateVerifierLookupTableAddressUnlessViaProxy() public {
-        // Setup
-        vm.expectRevert("Function must be called through delegatecall");
-
-        // Test
-        managerImpl.getIdentityUpdateVerifierLookupTableAddress();
-    }
-
-    /// @notice Checks that it is possible to set the lookup table currently being used to verify
-    ///         identity update proofs.
-    function testCanSetIdentityUpdateVerifierLookupTable() public {
-        // Setup
-        (,, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([40]));
-        address newVerifierAddress = address(updateVerifiers);
-        bytes memory callData =
-            abi.encodeCall(ManagerImplV1.setIdentityUpdateVerifierLookupTable, (updateVerifiers));
-        bytes memory checkCallData =
-            abi.encodeCall(ManagerImplV1.getIdentityUpdateVerifierLookupTableAddress, ());
-        bytes memory expectedReturn = abi.encode(newVerifierAddress);
-        vm.expectEmit(true, false, true, true);
-        emit DependencyUpdated(
-            ManagerImplV1.Dependency.UpdateVerifierLookupTable, nullAddress, newVerifierAddress
-        );
-
-        // Test
-        assertCallSucceedsOn(identityManagerAddress, callData);
-        assertCallSucceedsOn(identityManagerAddress, checkCallData, expectedReturn);
-    }
-
-    /// @notice Checks that the identity update verifier lookup table cannot be set except by the
-    ///         owner.
-    function testCannotSetIdentityUpdateVerifierLookupTableUnlessOwner(address notOwner) public {
-        // Setup
-        vm.assume(notOwner != address(this) && notOwner != address(0x0));
-        (,, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([40]));
-        bytes memory callData =
-            abi.encodeCall(ManagerImplV1.setIdentityUpdateVerifierLookupTable, (updateVerifiers));
-        bytes memory errorData = encodeStringRevert("Ownable: caller is not the owner");
-        vm.prank(notOwner);
-
-        // Test
-        assertCallFailsOn(identityManagerAddress, callData, errorData);
-    }
-
-    /// @notice Ensures that it is not possible to set the address of the verifier lookup table for
-    ///         identity removal unless called via the proxy.
-    function testCannotSetIdentityUpdateVerifierLookupTableUnlessViaProxy() public {
-        // Setup
-        (,, VerifierLookupTable updateVerifiers) = makeVerifierLookupTables(TC.makeDynArray([40]));
-        vm.expectRevert("Function must be called through delegatecall");
-
-        // Test
-        managerImpl.setIdentityUpdateVerifierLookupTable(updateVerifiers);
     }
 
     /// @notice Ensures that we can get the address of the semaphore verifier.

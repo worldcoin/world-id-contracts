@@ -51,6 +51,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     VerifierLookupTable internal batchDeletionVerifiers;
 
     /// @notice Initializes the V2 implementation contract.
+    /// @param _batchUpdateVerifiers The table of verifiers for verifying batch identity deletions.
     /// @dev Must be called exactly once
     /// @dev This is marked `reinitializer()` to allow for updated initialisation steps when working
     ///      with upgrades based upon this contract. Be aware that there are only 256 (zero-indexed)
@@ -86,17 +87,11 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///        described by `preRoot`. Must be an element of the field `Kr`.
     ///
     /// @custom:reverts Unauthorized If the message sender is not authorised to add identities.
-    /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid.
     /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
     /// @custom:reverts ProofValidationFailure If `deletionProof` cannot be verified using the
     ///                 provided inputs.
-    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
-    ///                 `identityCommitments` is not an element of the field `Kr`. It describes the
-    ///                 type and value of the unreduced element.
     /// @custom:reverts VerifierLookupTable.NoSuchVerifier If the batch sizes doesn't match a known
     ///                 verifier.
-    /// @custom:reverts VerifierLookupTable.BatchTooLarge If the batch size exceeds the maximum
-    ///                 batch size.
     function deleteIdentities(
         uint256[8] calldata deletionProof,
         uint32 batchSize,
@@ -114,24 +109,14 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
 
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
-        // verifier. All other elements are reduced in the circuit.
+        // verifier. All other elements that are passed as calldata are reduced in the circuit.
         uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
         // We need to look up the correct verifier before we can verify.
         ITreeVerifier deletionVerifier = batchDeletionVerifiers.getVerifierFor(batchSize);
 
         // With that, we can properly try and verify.
-        try deletionVerifier.verifyProof(
-            [deletionProof[0], deletionProof[1]],
-            [[deletionProof[2], deletionProof[3]], [deletionProof[4], deletionProof[5]]],
-            [deletionProof[6], deletionProof[7]],
-            [reducedElement]
-        ) returns (bool verifierResult) {
-            // If the proof did not verify, we revert with a failure.
-            if (!verifierResult) {
-                revert ProofValidationFailure();
-            }
-
+        try deletionVerifier.verifyProof(deletionProof, [reducedElement]) {
             // If it did verify, we need to update the contract's state. We set the currently valid
             // root to the root after the insertions.
             _latestRoot = postRoot;
