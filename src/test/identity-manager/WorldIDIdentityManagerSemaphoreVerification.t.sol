@@ -78,19 +78,12 @@ contract WorldIDIdentityManagerSemaphoreVerification is WorldIDIdentityManagerTe
     }
 
     /// @notice Checks that the proof validates properly with the correct inputs.
-    function testOptimizedProofVerificationWithCorrectInputs(
-        uint8 actualTreeDepth,
-        uint256 nullifierHash,
-        uint256 signalHash,
-        uint256 externalNullifierHash,
-        uint256[8] memory prf
-    ) public {
+    function testOptimizedProofVerificationWithCorrectInputs(uint256[8] memory prf) public {
         // Setup
         ISemaphoreVerifier actualSemaphoreVerifier = new SemaphoreVerifier();
-        vm.assume(SemaphoreTreeDepthValidator.validate(actualTreeDepth));
         vm.assume(prf[0] != 0);
         makeNewIdentityManager(
-            actualTreeDepth,
+            treeDepth,
             inclusionRoot,
             defaultInsertVerifiers,
             defaultDeletionVerifiers,
@@ -99,7 +92,13 @@ contract WorldIDIdentityManagerSemaphoreVerification is WorldIDIdentityManagerTe
         );
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImplV1.verifyProof,
-            (inclusionRoot, nullifierHash, signalHash, externalNullifierHash, inclusionProof)
+            (
+                inclusionRoot,
+                inclusionSignalHash,
+                inclusionNullifierHash,
+                inclusionExternalNullifierHash,
+                inclusionProof
+            )
         );
 
         // Test

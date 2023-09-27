@@ -92,6 +92,12 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// 2. cargo run --release prove-inclusion --identities out/random_identities.json --tree-depth 16 --identity-index 3
     uint256 internal constant inclusionRoot =
         0xdf9f0cb5a3afe2129e349c1435bfbe9e6f091832fdfa7b739b61c5db2cbdde9;
+    uint256 internal constant inclusionSignalHash =
+        0xbc6bb462e38af7da48e0ae7b5cbae860141c04e5af2cf92328cd6548df111f;
+    uint256 internal constant inclusionNullifierHash =
+        0x2887375654a2f83868b277f3836678aa55475fd5c840b117913ea4a7c9ded6fc;
+    uint256 internal constant inclusionExternalNullifierHash =
+        0xfd3a1e9736c12a5d4a31f26362b577ccafbd523d358daf40cdc04d90e17f77;
 
     uint256[8] inclusionProof;
 
