@@ -8,7 +8,7 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
-import {Verifier as TreeVerifier} from "../mock/InsertionTreeVerifier.sol";
+import {Verifier as TreeVerifier} from "src/InsertionTreeVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
@@ -213,17 +213,17 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         uint128[8] memory prf,
         uint32 newStartIndex,
         uint128 newPreRoot,
-        uint128 newPostRoot,
-        uint128[] memory identities
+        uint128 newPostRoot
     ) public {
         // Setup
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
-        vm.assume(newPreRoot != newPostRoot);
+        ITreeVerifier actualVerifier = new TreeVerifier();
         (
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
             VerifierLookupTable updateVerifiers
-        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
+        ) = makeVerifierLookupTables(TC.makeDynArray([70]));
+        insertVerifiers.addVerifier(identityCommitments.length, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
@@ -232,11 +232,9 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier
         );
-        (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
-            prepareInsertIdentitiesTestCase(identities, prf);
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.registerIdentities,
-            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+            (insertionProof, newPreRoot, newStartIndex, identityCommitments, newPostRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImplV1.ProofValidationFailure.selector);
