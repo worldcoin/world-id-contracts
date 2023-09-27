@@ -3,12 +3,9 @@ pragma solidity ^0.8.21;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
-
 import {CheckInitialized} from "../../utils/CheckInitialized.sol";
 import {SemaphoreVerifier} from "src/SemaphoreVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
-import {Verifier as TreeVerifier} from "src/InsertionTreeVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";

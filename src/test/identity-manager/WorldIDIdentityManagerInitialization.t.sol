@@ -25,9 +25,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         delete managerImpl;
         delete managerImplV1;
 
-        managerImplV1 = new ManagerImplV1();
-        managerImplAddress = address(managerImpl);
-        bytes memory callData = abi.encodeCall(
+        bytes memory V1CallData = abi.encodeCall(
             ManagerImplV1.initialize,
             (
                 treeDepth,
@@ -38,10 +36,13 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
             )
         );
 
+        managerImplV1 = new ManagerImplV1();
+        managerImplAddress = address(managerImpl);
+
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
 
-        identityManager = new IdentityManager(managerImplV1Address, callData);
+        identityManager = new IdentityManager(managerImplV1Address, V1CallData);
         identityManagerAddress = address(identityManager);
 
         // creates Manager Impl V2, which will be used for tests
@@ -58,6 +59,41 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         emit Initialized(2);
         // Test
         assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
+    }
+
+    /// @notice Checks that it is possible to initialise the contract.
+    function testInitialisation2() public {
+        // Setup
+        delete identityManager;
+        delete managerImpl;
+        delete managerImplV1;
+
+        bytes memory V1CallData = abi.encodeCall(
+            ManagerImplV1.initialize,
+            (
+                treeDepth,
+                initialRoot,
+                defaultInsertVerifiers,
+                defaultUpdateVerifiers,
+                semaphoreVerifier
+            )
+        );
+
+        // creates Manager Impl V2, which will be used for tests
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+
+        vm.expectEmit(true, true, true, true);
+        emit Initialized(1);
+        identityManager = new IdentityManager(managerImplAddress, V1CallData);
+        identityManagerAddress = address(identityManager);
+
+        bytes memory initCallV2 =
+            abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+
+        // can't expectEmit Initialized 2 due to the low-level call wrapper, but the trace
+        // shows Initialized(2) is emitted
+        assertCallSucceedsOn(identityManagerAddress, initCallV2, new bytes(0x0));
     }
 
     /// @notice Checks that it is not possible to initialise the contract more than once.
