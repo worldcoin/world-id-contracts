@@ -51,6 +51,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     VerifierLookupTable internal batchDeletionVerifiers;
 
     /// @notice Initializes the V2 implementation contract.
+    /// @param _batchUpdateVerifiers The table of verifiers for verifying batch identity deletions.
     /// @dev Must be called exactly once
     /// @dev This is marked `reinitializer()` to allow for updated initialisation steps when working
     ///      with upgrades based upon this contract. Be aware that there are only 256 (zero-indexed)
@@ -91,8 +92,6 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///                 provided inputs.
     /// @custom:reverts VerifierLookupTable.NoSuchVerifier If the batch sizes doesn't match a known
     ///                 verifier.
-    /// @custom:reverts VerifierLookupTable.BatchTooLarge If the batch size exceeds the maximum
-    ///                 batch size.
     function deleteIdentities(
         uint256[8] calldata deletionProof,
         uint32 batchSize,
