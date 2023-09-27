@@ -82,18 +82,15 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     VerifierLookupTable internal batchInsertionVerifiers;
 
     /// @notice The table of verifiers for verifying identity updates.
-    /// @dev preserved for storage reasons, no longer used
     VerifierLookupTable internal identityUpdateVerifiers;
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
     ISemaphoreVerifier internal semaphoreVerifier;
 
     /// @notice The interface of the bridge contract from L1 to supported target chains.
-    /// @dev preserved for storage reasons, no longer used
     IBridge internal _stateBridge;
 
     /// @notice Boolean flag to enable/disable the state bridge.
-    /// @dev preserved for storage reasons, no longer used
     bool internal _isStateBridgeEnabled;
 
     /// @notice The depth of the Semaphore merkle tree.
@@ -116,10 +113,18 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         bool isValid;
     }
 
+    /// @notice Represents the kind of element that has not been provided in reduced form.
+    enum UnreducedElementType {
+        PreRoot,
+        IdentityCommitment,
+        PostRoot
+    }
+
     /// @notice Represents the kind of change that is made to the root of the tree.
     enum TreeChange {
         Insertion,
-        Deletion
+        Deletion,
+        Update
     }
 
     /// @notice Represents the kinds of dependencies that can be updated.
@@ -127,6 +132,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         StateBridge,
         InsertionVerifierLookupTable,
         DeletionVerifierLookupTable,
+        UpdateVerifierLookupTable,
         SemaphoreVerifier
     }
 
@@ -144,11 +150,27 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///                                  ERRORS                                 ///
     ///////////////////////////////////////////////////////////////////////////////
 
+    /// @notice Thrown when encountering an element that should be reduced as a member of `Fr` but
+    ///         is not.
+    /// @dev `r` in this case is given by `SNARK_SCALAR_FIELD`.
+    ///
+    /// @param elementType The kind of element that was encountered unreduced.
+    /// @param element The value of that element.
+    error UnreducedElement(UnreducedElementType elementType, uint256 element);
+
     /// @notice Thrown when trying to execute a privileged action without being the contract
     ///         manager.
     ///
     /// @param user The user that attempted the action that they were not authorised for.
     error Unauthorized(address user);
+
+    /// @notice Thrown when one or more of the identity commitments to be inserted is invalid.
+    ///
+    /// @param index The index in the array of identity commitments where the invalid commitment was
+    ///        found.
+    /// @dev This error is no longer in use as we now verify the commitments off-chain within the circuit
+    /// no need to check for reduced elements or invalid commitments.
+    error InvalidCommitment(uint256 index);
 
     /// @notice Thrown when the provided proof cannot be verified for the accompanying inputs.
     error ProofValidationFailure();
@@ -159,10 +181,23 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param latestRoot The actual latest root at the time of the transaction.
     error NotLatestRoot(uint256 providedRoot, uint256 latestRoot);
 
+    /// @notice Thrown when attempting to enable the bridge when it is already enabled.
+    error StateBridgeAlreadyEnabled();
+
+    /// @notice Thrown when attempting to disable the bridge when it is already disabled.
+    error StateBridgeAlreadyDisabled();
+
+    /// @notice Thrown when attempting to set the state bridge address to the zero address.
+    error InvalidStateBridgeAddress();
+
     /// @notice Thrown when Semaphore tree depth is not supported.
     ///
     /// @param depth Passed tree depth.
     error UnsupportedTreeDepth(uint8 depth);
+
+    /// @notice Thrown when the inputs to `removeIdentities` do not match in
+    ///         length.
+    error MismatchedInputLengths();
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  EVENTS                                 ///
@@ -184,6 +219,12 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     event DependencyUpdated(
         Dependency indexed kind, address indexed oldAddress, address indexed newAddress
     );
+
+    /// @notice Emitted when the state bridge is enabled or disabled.
+    ///
+    /// @param isEnabled Set to `true` if the event comes from the state bridge being enabled,
+    ///        `false` otherwise.
+    event StateBridgeStateChange(bool indexed isEnabled);
 
     /// @notice Emitted when the root history expiry time is changed.
     ///
@@ -302,6 +343,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///                 provided inputs.
     /// @custom:reverts VerifierLookupTable.NoSuchVerifier If the batch sizes doesn't match a known
     ///                 verifier.
+    /// @custom:reverts VerifierLookupTable.BatchTooLarge If the batch size exceeds the maximum
+    ///                 batch size.
     function registerIdentities(
         uint256[8] calldata insertionProof,
         uint256 preRoot,
