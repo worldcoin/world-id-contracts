@@ -6,7 +6,7 @@ import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 
 import {CheckInitialized} from "../../utils/CheckInitialized.sol";
-import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
+import {SemaphoreVerifier} from "src/SemaphoreVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {Verifier as TreeVerifier} from "src/InsertionTreeVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";

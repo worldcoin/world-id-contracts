@@ -61,5 +61,4 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
             packedDeletionIndices, deletionPreRoot, deletionPostRoot, deletionBatchSize
         );
     }
-
 }

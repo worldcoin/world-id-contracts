@@ -6,13 +6,13 @@ import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable
 import {WorldIDTest} from "../WorldIDTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
-import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
+import {ISemaphoreVerifier} from "src/interfaces/ISemaphoreVerifier.sol";
 import {IBridge} from "../../interfaces/IBridge.sol";
 
 import {SimpleStateBridge} from "../mock/SimpleStateBridge.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {UnimplementedTreeVerifier} from "../../utils/UnimplementedTreeVerifier.sol";
-import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
+import {SemaphoreVerifier} from "src/SemaphoreVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
@@ -87,7 +87,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///                          INCLUSION                          ///
     ///////////////////////////////////////////////////////////////////
     /// @dev generated using https://github.com/worldcoin/semaphore-mock
-    /// steps: 
+    /// steps:
     /// 1. cargo run --release generate-identities --identities 10
     /// 2. cargo run --release prove-inclusion --identities out/random_identities.json --tree-depth 16 --identity-index 3
     uint256 internal constant inclusionRoot =
@@ -125,7 +125,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         // output from semaphore-mtb prove in src/test/data/InsertionProof.json
         /// @dev test_insertion.ps is generated using semaphore-mtb: `./gnark-mbu setup --mode insertion --batch-size 3 --tree-depth 16 --output test_insertion.ps`
         /// @dev generated using semaphore-mtb: `./gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3 | ./gnark-mbu prove --mode insertion --keys-file test_insertion.ps`
-                insertionProof = [
+        insertionProof = [
             0x18491e665bc7128f0113b3cf187502311cf5a82b0304e02464099782483b14ba,
             0x1dace8033bc22eda25b483b2a260195b67ee5bef07990bf0e2c5f7923423fe,
             0x1d4489b99a91a972e878bef7a147251c8d4941b415bb7b36a9740e714f995b7e,
@@ -153,9 +153,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
         // Create the inclusion proof term.
         // output from semaphore-mtb prove in src/test/data/InclusionProof.json
-        // 
+        //
         /// @dev generated using https://github.com/worldcoin/semaphore-mock
-        /// steps: 
+        /// steps:
         /// 1. cargo run --release generate-identities --identities 10
         /// 2. cargo run --release prove-inclusion --identities out/random_identities.json --tree-depth 16 --identity-index 3
         inclusionProof = [

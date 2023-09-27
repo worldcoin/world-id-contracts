@@ -5,7 +5,7 @@ import {WorldIDImpl} from "./abstract/WorldIDImpl.sol";
 
 import {IWorldID} from "./interfaces/IWorldID.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
-import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
+import {ISemaphoreVerifier} from "src/interfaces/ISemaphoreVerifier.sol";
 import {IBridge} from "./interfaces/IBridge.sol";
 
 import {SemaphoreTreeDepthValidator} from "./utils/SemaphoreTreeDepthValidator.sol";
@@ -647,11 +647,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.
     ///
+    /// @param proof The zero-knowledge proof
     /// @param root The of the Merkle tree
     /// @param signalHash A keccak256 hash of the Semaphore signal
     /// @param nullifierHash The nullifier hash
     /// @param externalNullifierHash A keccak256 hash of the external nullifier
-    /// @param proof The zero-knowledge proof
     ///
     /// @custom:reverts string If the zero-knowledge proof cannot be verified for the public inputs.
     function verifyProof(
@@ -666,7 +666,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
         // With that done we can now verify the proof.
         semaphoreVerifier.verifyProof(
-            root, nullifierHash, signalHash, externalNullifierHash, proof, treeDepth
+            proof, [root, nullifierHash, signalHash, externalNullifierHash]
         );
     }
 

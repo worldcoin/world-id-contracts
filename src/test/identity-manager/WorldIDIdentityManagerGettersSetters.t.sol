@@ -4,7 +4,7 @@ pragma solidity ^0.8.21;
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
-import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
+import {SemaphoreVerifier} from "src/SemaphoreVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";

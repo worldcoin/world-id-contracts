@@ -3,10 +3,10 @@ pragma solidity ^0.8.21;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
+import {ISemaphoreVerifier} from "src/interfaces/ISemaphoreVerifier.sol";
 import {SemaphoreTreeDepthValidator} from "../../utils/SemaphoreTreeDepthValidator.sol";
 import {SimpleSemaphoreVerifier} from "../mock/SimpleSemaphoreVerifier.sol";
-import {Verifier} from "src/test/SemaphoreVerifier16.sol";
+import {SemaphoreVerifier} from "src/test/SemaphoreVerifier16.sol";
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -29,9 +29,10 @@ contract WorldIDIdentityManagerSemaphoreVerification is WorldIDIdentityManagerTe
         ISemaphoreVerifier actualSemaphoreVerifier = new SimpleSemaphoreVerifier();
         vm.assume(SemaphoreTreeDepthValidator.validate(actualTreeDepth));
         vm.assume(prf[0] != 0);
+        vm.assume(prf[0] % 2 != 0);
         makeNewIdentityManager(
             actualTreeDepth,
-            inclusionRoot,
+            insertionPreRoot,
             defaultInsertVerifiers,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
@@ -39,7 +40,7 @@ contract WorldIDIdentityManagerSemaphoreVerification is WorldIDIdentityManagerTe
         );
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImplV1.verifyProof,
-            (inclusionRoot, nullifierHash, signalHash, externalNullifierHash, inclusionProof)
+            (insertionPreRoot, nullifierHash, signalHash, externalNullifierHash, prf)
         );
 
         // Test
@@ -85,7 +86,7 @@ contract WorldIDIdentityManagerSemaphoreVerification is WorldIDIdentityManagerTe
         uint256[8] memory prf
     ) public {
         // Setup
-        ISemaphoreVerifier actualSemaphoreVerifier = ISemaphoreVerifier(address(new Verifier()));
+        ISemaphoreVerifier actualSemaphoreVerifier = new SemaphoreVerifier();
         vm.assume(SemaphoreTreeDepthValidator.validate(actualTreeDepth));
         vm.assume(prf[0] != 0);
         makeNewIdentityManager(
