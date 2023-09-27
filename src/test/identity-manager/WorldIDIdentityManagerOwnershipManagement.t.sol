@@ -11,7 +11,7 @@ import {Ownable2StepUpgradeable} from "contracts-upgradeable/access/Ownable2Step
 import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import {Verifier as TreeVerifier} from "src/InsertionTreeVerifier.sol";
+import {Verifier as TreeVerifier} from "src/test/InsertionTreeVerifier16.sol";
 import {WorldIDIdentityManagerImplMock} from "../mock/WorldIDIdentityManagerImplMock.sol";
 import {WorldIDImpl} from "../../abstract/WorldIDImpl.sol";
 

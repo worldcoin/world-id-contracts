@@ -18,7 +18,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     /// @notice Taken from Initializable.sol
     event Initialized(uint8 version);
 
-   /// @notice Checks that it is possible to initialise the contract.
+    /// @notice Checks that it is possible to initialise the contract.
     function testInitialisation() public {
         // Setup
         delete identityManager;
@@ -59,7 +59,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         emit Initialized(2);
         // Test
         assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
-    } 
+    }
 
     /// @notice Checks that it is possible to initialise the contract.
     function testInitialisation2() public {
@@ -88,7 +88,8 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         identityManager = new IdentityManager(managerImplAddress, V1CallData);
         identityManagerAddress = address(identityManager);
 
-        bytes memory initCallV2 = abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+        bytes memory initCallV2 =
+            abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
 
         // can't expectEmit Initialized 2 due to the low-level call wrapper, but the trace
         // shows Initialized(2) is emitted
