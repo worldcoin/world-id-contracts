@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import {WorldIDImpl} from "./abstract/WorldIDImpl.sol";
 
 import {IWorldID} from "./interfaces/IWorldID.sol";
 import {ITreeVerifier} from "./interfaces/ITreeVerifier.sol";
-import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
+import {ISemaphoreVerifier} from "src/interfaces/ISemaphoreVerifier.sol";
 import {IBridge} from "./interfaces/IBridge.sol";
 
 import {SemaphoreTreeDepthValidator} from "./utils/SemaphoreTreeDepthValidator.sol";
@@ -71,10 +71,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///      group.
     uint256 internal rootHistoryExpiry;
 
-    /// @notice Represents the initial leaf in an empty merkle tree.
-    /// @dev Prevents the empty leaf from being inserted into the root history.
-    uint256 internal constant EMPTY_LEAF = uint256(0);
-
     /// @notice The `r` for the finite field `Fr` under which arithmetic is done on the proof input.
     /// @dev Used internally to ensure that the proof input is scaled to within the field `Fr`.
     uint256 internal constant SNARK_SCALAR_FIELD =
@@ -85,13 +81,15 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @notice The table of verifiers for verifying batch identity insertions.
     VerifierLookupTable internal batchInsertionVerifiers;
 
-    /// @notice The table of verifiers for verifying batch identity insertions.
+    /// @notice The table of verifiers for verifying identity updates.
+    /// @dev preserved for storage reasons, no longer used
     VerifierLookupTable internal identityUpdateVerifiers;
 
     /// @notice The verifier instance needed for operating within the semaphore protocol.
     ISemaphoreVerifier internal semaphoreVerifier;
 
     /// @notice The interface of the bridge contract from L1 to supported target chains.
+    /// @dev preserved for storage reasons, no longer used
     IBridge internal _stateBridge;
 
     /// @notice Boolean flag to enable/disable the state bridge.
@@ -118,6 +116,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     }
 
     /// @notice Represents the kind of element that has not been provided in reduced form.
+    /// @dev preserved for ABI backwards compatibility with V1, no longer used
+    /// all elements come out reduced from the circuit
     enum UnreducedElementType {
         PreRoot,
         IdentityCommitment,
@@ -125,16 +125,17 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     }
 
     /// @notice Represents the kind of change that is made to the root of the tree.
+    /// @dev TreeChange.Update preserved for ABI backwards compatibility with V1, no longer used
     enum TreeChange {
         Insertion,
-        Update
+        Deletion
     }
 
     /// @notice Represents the kinds of dependencies that can be updated.
     enum Dependency {
         StateBridge,
         InsertionVerifierLookupTable,
-        UpdateVerifierLookupTable,
+        DeletionVerifierLookupTable,
         SemaphoreVerifier
     }
 
@@ -158,6 +159,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @param elementType The kind of element that was encountered unreduced.
     /// @param element The value of that element.
+    /// @dev preserved for ABI backwards compatibility with V1, no longer used,
+    /// all elements come out reduced from the circuit
     error UnreducedElement(UnreducedElementType elementType, uint256 element);
 
     /// @notice Thrown when trying to execute a privileged action without being the contract
@@ -170,6 +173,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @param index The index in the array of identity commitments where the invalid commitment was
     ///        found.
+    /// @dev This error is no longer in use as we now verify the commitments off-chain within the circuit
+    /// no need to check for reduced elements or invalid commitments.
+    /// @dev preserved for ABI backwards compatibility with V1, no longer used,
+    /// all elements are validated by the circuit
     error InvalidCommitment(uint256 index);
 
     /// @notice Thrown when the provided proof cannot be verified for the accompanying inputs.
@@ -182,12 +189,15 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     error NotLatestRoot(uint256 providedRoot, uint256 latestRoot);
 
     /// @notice Thrown when attempting to enable the bridge when it is already enabled.
+    /// @dev preserved for ABI backwards compatibility with V1, no longer used
     error StateBridgeAlreadyEnabled();
 
     /// @notice Thrown when attempting to disable the bridge when it is already disabled.
+    /// @dev preserved for ABI backwards compatibility with V1, no longer used
     error StateBridgeAlreadyDisabled();
 
     /// @notice Thrown when attempting to set the state bridge address to the zero address.
+    /// @dev preserved for ABI backwards compatibility with V1, no longer used
     error InvalidStateBridgeAddress();
 
     /// @notice Thrown when Semaphore tree depth is not supported.
@@ -195,8 +205,9 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param depth Passed tree depth.
     error UnsupportedTreeDepth(uint8 depth);
 
-    /// @notice Thrown when the inputs to `removeIdentities` or `updateIdentities` do not match in
+    /// @notice Thrown when the inputs to `removeIdentities` do not match in
     ///         length.
+    /// @dev preserved for ABI backwards compatibility with V1, no longer used
     error MismatchedInputLengths();
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -224,6 +235,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @param isEnabled Set to `true` if the event comes from the state bridge being enabled,
     ///        `false` otherwise.
+    /// @dev preserved for ABI backwards compatibility with V1, no longer used
     event StateBridgeStateChange(bool indexed isEnabled);
 
     /// @notice Emitted when the root history expiry time is changed.
@@ -243,12 +255,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param _treeDepth The depth of the MerkeTree
     /// @param initialRoot The initial value for the `latestRoot` in the contract. When deploying
     ///        this should be set to the root of the empty tree.
-    /// @param _enableStateBridge Whether or not the state bridge should be enabled when
-    ///        initialising the identity manager.
-    /// @param __stateBridge The initial state bridge contract to use.
-    event WorldIDIdentityManagerImplInitialized(
-        uint8 _treeDepth, uint256 initialRoot, bool _enableStateBridge, IBridge __stateBridge
-    );
+    event WorldIDIdentityManagerImplInitialized(uint8 _treeDepth, uint256 initialRoot);
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                             INITIALIZATION                              ///
@@ -277,9 +284,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param _batchInsertionVerifiers The verifier lookup table for batch insertions.
     /// @param _batchUpdateVerifiers The verifier lookup table for batch updates.
     /// @param _semaphoreVerifier The verifier to use for semaphore protocol proofs.
-    /// @param _enableStateBridge Whether or not the state bridge should be enabled when
-    ///        initialising the identity manager.
-    /// @param __stateBridge The initial state bridge contract to use.
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
     /// @custom:reverts UnsupportedTreeDepth If passed tree depth is not among defined values.
@@ -288,9 +292,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 initialRoot,
         VerifierLookupTable _batchInsertionVerifiers,
         VerifierLookupTable _batchUpdateVerifiers,
-        ISemaphoreVerifier _semaphoreVerifier,
-        bool _enableStateBridge,
-        IBridge __stateBridge
+        ISemaphoreVerifier _semaphoreVerifier
     ) public reinitializer(1) {
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
@@ -306,16 +308,12 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         batchInsertionVerifiers = _batchInsertionVerifiers;
         identityUpdateVerifiers = _batchUpdateVerifiers;
         semaphoreVerifier = _semaphoreVerifier;
-        _stateBridge = __stateBridge;
-        _isStateBridgeEnabled = _enableStateBridge;
         _identityOperator = owner();
 
         // Say that the contract is initialized.
         __setInitialized();
 
-        emit WorldIDIdentityManagerImplInitialized(
-            _treeDepth, initialRoot, _enableStateBridge, __stateBridge
-        );
+        emit WorldIDIdentityManagerImplInitialized(_treeDepth, initialRoot);
     }
 
     /// @notice Responsible for initialising all of the supertypes of this contract.
@@ -333,7 +331,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///////////////////////////////////////////////////////////////////////////////
 
     /// @notice Registers identities into the WorldID system.
-    /// @dev Can only be called by the owner.
+    /// @dev Can only be called by the identity operator.
     /// @dev Registration is performed off-chain and verified on-chain via the `insertionProof`.
     ///      This saves gas and time over inserting identities one at a time.
     ///
@@ -343,26 +341,20 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
     ///        and 7 are the `x` and `y` coordinates for `krs`.
     /// @param preRoot The value for the root of the tree before the `identityCommitments` have been
-    ////       inserted. Must be an element of the field `Kr`.
+    ////       inserted. Must be an element of the field `Kr`. (already in reduced form)
     /// @param startIndex The position in the tree at which the insertions were made.
     /// @param identityCommitments The identities that were inserted into the tree starting at
     ///        `startIndex` and `preRoot` to give `postRoot`. All of the commitments must be
     ///        elements of the field `Kr`.
     /// @param postRoot The root obtained after inserting all of `identityCommitments` into the tree
-    ///        described by `preRoot`. Must be an element of the field `Kr`.
+    ///        described by `preRoot`. Must be an element of the field `Kr`. (alread in reduced form)
     ///
     /// @custom:reverts Unauthorized If the message sender is not authorised to add identities.
-    /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid.
     /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
     /// @custom:reverts ProofValidationFailure If `insertionProof` cannot be verified using the
     ///                 provided inputs.
-    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
-    ///                 `identityCommitments` is not an element of the field `Kr`. It describes the
-    ///                 type and value of the unreduced element.
     /// @custom:reverts VerifierLookupTable.NoSuchVerifier If the batch sizes doesn't match a known
     ///                 verifier.
-    /// @custom:reverts VerifierLookupTable.BatchTooLarge If the batch size exceeds the maximum
-    ///                 batch size.
     function registerIdentities(
         uint256[8] calldata insertionProof,
         uint256 preRoot,
@@ -370,27 +362,9 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256[] calldata identityCommitments,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
-        // We can only operate on the latest root in reduced form.
-        if (preRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
-        }
         if (preRoot != _latestRoot) {
             revert NotLatestRoot(preRoot, _latestRoot);
         }
-
-        // As the `startIndex` is restricted to a uint32, where
-        // `type(uint32).max <<< SNARK_SCALAR_FIELD`, we are safe not to check this. As verified in
-        // the tests, a revert happens if you pass a value larger than `type(uint32).max` when
-        // calling outside the type-checker's protection.
-
-        // We need the post root to be in reduced form.
-        if (postRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
-        }
-
-        // We can only operate on identities that are valid and in reduced form.
-        validateIdentityCommitmentsForRegistration(identityCommitments);
-
         // Having validated the preconditions we can now check the proof itself.
         bytes32 inputHash = calculateIdentityRegistrationInputHash(
             startIndex, preRoot, postRoot, identityCommitments
@@ -398,7 +372,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
-        // verifier.
+        // verifier. All other elements that are passed as calldata are reduced in the circuit.
         uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
         // We need to look up the correct verifier before we can verify.
@@ -406,17 +380,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             batchInsertionVerifiers.getVerifierFor(identityCommitments.length);
 
         // With that, we can properly try and verify.
-        try insertionVerifier.verifyProof(
-            [insertionProof[0], insertionProof[1]],
-            [[insertionProof[2], insertionProof[3]], [insertionProof[4], insertionProof[5]]],
-            [insertionProof[6], insertionProof[7]],
-            [reducedElement]
-        ) returns (bool verifierResult) {
-            // If the proof did not verify, we revert with a failure.
-            if (!verifierResult) {
-                revert ProofValidationFailure();
-            }
-
+        try insertionVerifier.verifyProof(insertionProof, [reducedElement]) {
             // If it did verify, we need to update the contract's state. We set the currently valid
             // root to the root after the insertions.
             _latestRoot = postRoot;
@@ -425,160 +389,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             // which it was expired.
             rootHistory[preRoot] = uint128(block.timestamp);
 
-            // With the update confirmed, we send the root across multiple chains to ensure sync.
-            sendRootToStateBridge();
-
             emit TreeChanged(preRoot, TreeChange.Insertion, postRoot);
-        } catch Error(string memory errString) {
-            /// This is not the revert we're looking for.
-            revert(errString);
-        } catch {
-            // If we reach here we know it's the internal error, as the tree verifier only uses
-            // `require`s otherwise, which will be re-thrown above.
-            revert ProofValidationFailure();
-        }
-    }
-
-    /// @notice Updates identities in the WorldID system.
-    /// @dev Can only be called by the owner.
-    /// @dev The update is performed off-chain and verified on-chain via the `updateProof`. This
-    ///      saves gas and time over removing identities one at a time.
-    /// @dev This function can perform arbitrary identity alterations and does not require any
-    ///      preconditions on the inputs other than that the identities are in reduced form.
-    ///
-    /// @param updateProof The proof that, given the conditions (`preRoot`, `startIndex` and
-    ///        `removedIdentities`), updates in the tree results in `postRoot`. Elements 0 and 1 are
-    ///        the `x` and `y` coordinates for `ar` respectively. Elements 2 and 3 are the `x`
-    ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
-    ///        and 7 are the `x` and `y` coordinates for `krs`.
-    /// @param preRoot The value for the root of the tree before the `updatedIdentities` have been
-    ////       altered. Must be an element of the field `Kr`.
-    /// @param leafIndices The array of leaf indices at which the update operations take place in
-    ///        the tree. Elements in this array are extended to 256 bits when encoding.
-    /// @param oldIdentities The array of old values for the identities. Length must match that of
-    ///        `leafIndices`.
-    /// @param newIdentities The array of new values for the identities. Length must match that of
-    ///        `leafIndices`.
-    /// @param postRoot The root obtained after removing all of `removedIdentities` from the tree
-    ///        described by `preRoot`. Must be an element of the field `Kr`.
-    ///
-    /// The arrays `leafIndices`, `oldIdentities` and `newIdentities` are arranged such that the
-    /// triple at an element `i` in those arrays corresponds to one update operation.
-    ///
-    /// @custom:reverts Unauthorized If the message sender is not authorised to update identities.
-    /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
-    /// @custom:reverts MismatchedInputLengths If the provided arrays for `leafIndices`,
-    ///                 `oldIdentities` and `newIdentities` do not match in length.
-    /// @custom:reverts ProofValidationFailure If `removalProof` cannot be verified using the
-    ///                 provided inputs.
-    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and `identities` is not
-    ///                 an element of the field `Kr`. It describes the type and value of the
-    ///                 unreduced element.
-    /// @custom:reverts NoSuchVerifier If the batch sizes doesn't match a known verifier.
-    function updateIdentities(
-        uint256[8] calldata updateProof,
-        uint256 preRoot,
-        uint32[] calldata leafIndices,
-        uint256[] calldata oldIdentities,
-        uint256[] calldata newIdentities,
-        uint256 postRoot
-    ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
-        // We can only operate on the latest root in reduced form.
-        if (preRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
-        }
-        if (preRoot != _latestRoot) {
-            revert NotLatestRoot(preRoot, _latestRoot);
-        }
-
-        // We also need the post root to be in reduced form.
-        if (postRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
-        }
-
-        // We also need the arrays to be of the same length.
-        if (
-            leafIndices.length != oldIdentities.length || leafIndices.length != newIdentities.length
-        ) {
-            revert MismatchedInputLengths();
-        }
-
-        // We only operate on identities that are in reduced form.
-        validateIdentitiesForUpdate(oldIdentities, newIdentities);
-
-        // With valid preconditions we can calculate the input to the proof.
-        bytes32 inputHash = calculateIdentityUpdateInputHash(
-            preRoot, postRoot, leafIndices, oldIdentities, newIdentities
-        );
-
-        // No matter what, the input hashing process can result in a hash that is not an element of
-        // the field Fr. We reduce it into the field to give it safely to the verifier.
-        uint256 reducedInputHash = uint256(inputHash) % SNARK_SCALAR_FIELD;
-
-        // We have to look up the correct verifier before we can verify.
-        ITreeVerifier updateVerifier = identityUpdateVerifiers.getVerifierFor(leafIndices.length);
-
-        // Now we delegate to another function in order to avoid the limit on stack variables.
-        performIdentityUpdate(updateVerifier, updateProof, reducedInputHash, preRoot, postRoot);
-    }
-
-    /// @notice Performs the verification of the identity update proof.
-    /// @dev This function only exists because `updateIdentities` ended up with more than 16 local
-    ///      variables, and hence ran into the limit on the EVM. It will be called as a direct call
-    ///      and is hence relatively cheap.
-    /// @dev Can only be called by the owner.
-    /// @dev The update is performed off-chain and verified on-chain via the `updateProof`. This
-    ///      saves gas and time over removing identities one at a time.
-    /// @dev This function can perform arbitrary identity alterations and does not require any
-    ///      preconditions on the inputs other than that the identities are in reduced form.
-    ///
-    /// @param updateVerifier The merkle tree verifier to use for updates of the correct batch size.
-    /// @param updateProof The proof that, given the conditions (`preRoot`, `startIndex` and
-    ///        `removedIdentities`), updates in the tree results in `postRoot`. Elements 0 and 1 are
-    ///        the `x` and `y` coordinates for `ar` respectively. Elements 2 and 3 are the `x`
-    ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
-    ///        and 7 are the `x` and `y` coordinates for `krs`.
-    /// @param inputHash The input hash for the update operation.
-    /// @param preRoot The value for the root of the tree before the `updatedIdentities` have been
-    ////       altered. Must be an element of the field `Kr`.
-    /// @param postRoot The root obtained after removing all of `removedIdentities` from the tree
-    ///        described by `preRoot`. Must be an element of the field `Kr`.
-    ///
-    /// @custom:reverts ProofValidationFailure If `removalProof` cannot be verified using the
-    ///                 provided inputs.
-    function performIdentityUpdate(
-        ITreeVerifier updateVerifier,
-        uint256[8] calldata updateProof,
-        uint256 inputHash,
-        uint256 preRoot,
-        uint256 postRoot
-    ) internal virtual onlyProxy onlyInitialized onlyIdentityOperator {
-        // Pull out the proof terms and verifier input.
-        uint256[2] memory ar = [updateProof[0], updateProof[1]];
-        uint256[2][2] memory bs =
-            [[updateProof[2], updateProof[3]], [updateProof[4], updateProof[5]]];
-        uint256[2] memory krs = [updateProof[6], updateProof[7]];
-        uint256[1] memory proofInput = [inputHash];
-
-        // Now it's possible to verify the proof.
-        try updateVerifier.verifyProof(ar, bs, krs, proofInput) returns (bool verifierResult) {
-            // If the proof did not verify, we revert with a failure.
-            if (!verifierResult) {
-                revert ProofValidationFailure();
-            }
-
-            // If it did verify, we need to update the contract's state. We set the currently valid
-            // root to the root after the insertions.
-            _latestRoot = postRoot;
-
-            // We also need to add the previous root to the history, and set the timestamp at which
-            // it was expired.
-            rootHistory[preRoot] = uint128(block.timestamp);
-
-            // With the update confirmed, we send the root across multiple chains to ensure sync.
-            sendRootToStateBridge();
-
-            emit TreeChanged(preRoot, TreeChange.Update, postRoot);
         } catch Error(string memory errString) {
             /// This is not the revert we're looking for.
             revert(errString);
@@ -619,124 +430,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         hash = keccak256(bytesToHash);
     }
 
-    /// @notice Calculates the input hash for the identity update verifier.
-    /// @dev Implements the computation described below.
-    ///
-    /// @param preRoot The root value of the tree before the updates were made.
-    /// @param postRoot The root value of the tree after the updates were made.
-    /// @param leafIndices The array of leaf indices at which the update operations take place in
-    ///        the tree. Elements in this array are extended to 256 bits when encoding.
-    /// @param oldIdentities The array of old values for the identities. Length must match that of
-    ///        `leafIndices`.
-    /// @param newIdentities The array of new values for the identities. Length must match that of
-    ///        `leafIndices`.
-    ///
-    /// @return hash The input hash calculated as described below.
-    ///
-    /// The arrays `leafIndices`, `oldIdentities` and `newIdentities` are arranged such that the
-    /// triple at an element `i` in those arrays corresponds to one update operation.
-    ///
-    /// We keccak hash all input to save verification gas. The inputs are arranged as follows:
-    ///
-    /// preRoot || postRoot || ix[0] || ... || ix[n] || oi[0] || ... || oi[n] || ni[0] || ... || ni[n] ||
-    ///   256   ||    256   ||  256  || ... ||  256  ||  256  || ... ||  256  ||  256  || ... ||  256  ||
-    ///
-    /// where:
-    /// - `ix[i] == leafIndices[i]`
-    /// - `oi[i] == oldIdentities[i]`
-    /// - `ni[i] == newIdentities[i]`
-    /// - `id[i] == identities[i]`
-    /// - `n == batchSize - 1`
-    function calculateIdentityUpdateInputHash(
-        uint256 preRoot,
-        uint256 postRoot,
-        uint32[] calldata leafIndices,
-        uint256[] calldata oldIdentities,
-        uint256[] calldata newIdentities
-    ) public view virtual onlyProxy onlyInitialized returns (bytes32 hash) {
-        bytes memory bytesToHash =
-            abi.encodePacked(preRoot, postRoot, leafIndices, oldIdentities, newIdentities);
-
-        hash = keccak256(bytesToHash);
-    }
-
     /// @notice Allows a caller to query the latest root.
     ///
     /// @return root The value of the latest tree root.
     function latestRoot() public view virtual onlyProxy onlyInitialized returns (uint256) {
         return _latestRoot;
-    }
-
-    /// @notice Sends the latest root to the state bridge.
-    /// @dev Only sends if the state bridge address is not the zero address.
-    ///
-    function sendRootToStateBridge() internal virtual onlyProxy onlyInitialized {
-        if (_isStateBridgeEnabled && address(_stateBridge) != address(0)) {
-            _stateBridge.sendRootMultichain(_latestRoot);
-        }
-    }
-
-    /// @notice Allows a caller to query the address of the current stateBridge.
-    ///
-    /// @return stateBridgeContract The address of the currently used stateBridge
-    function stateBridge()
-        public
-        view
-        virtual
-        onlyProxy
-        onlyInitialized
-        returns (IBridge stateBridgeContract)
-    {
-        return _stateBridge;
-    }
-
-    /// @notice Allows a caller to upgrade the stateBridge.
-    /// @dev Only the owner of the contract can call this function.
-    ///
-    /// @param newStateBridge The new stateBridge contract
-    function setStateBridge(IBridge newStateBridge)
-        public
-        virtual
-        onlyProxy
-        onlyInitialized
-        onlyOwner
-    {
-        if (address(newStateBridge) == address(0)) {
-            revert InvalidStateBridgeAddress();
-        }
-
-        if (!_isStateBridgeEnabled) {
-            enableStateBridge();
-        }
-
-        IBridge oldStateBridge = _stateBridge;
-        _stateBridge = newStateBridge;
-
-        emit DependencyUpdated(
-            Dependency.StateBridge, address(oldStateBridge), address(newStateBridge)
-        );
-    }
-
-    /// @notice Enables the state bridge.
-    /// @dev Only the owner of the contract can call this function.
-    function enableStateBridge() public virtual onlyProxy onlyInitialized onlyOwner {
-        if (!_isStateBridgeEnabled) {
-            _isStateBridgeEnabled = true;
-            emit StateBridgeStateChange(true);
-        } else {
-            revert StateBridgeAlreadyEnabled();
-        }
-    }
-
-    /// @notice Disables the state bridge.
-    /// @dev Only the owner of the contract can call this function.
-    function disableStateBridge() public virtual onlyProxy onlyInitialized onlyOwner {
-        if (_isStateBridgeEnabled) {
-            _isStateBridgeEnabled = false;
-            emit StateBridgeStateChange(false);
-        } else {
-            revert StateBridgeAlreadyDisabled();
-        }
     }
 
     /// @notice Allows a caller to query the root history for information about a given root.
@@ -766,130 +464,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
             bool isValid = !(block.timestamp - rootTimestamp > rootHistoryExpiry);
             return RootInfo(root, rootTimestamp, isValid);
         }
-    }
-
-    /// @notice Validates an array of identity commitments, reverting if it finds one that is
-    ///         invalid or has not been reduced.
-    /// @dev Identities are not valid if an identity is a non-zero element that occurs after a zero
-    ///      element in the array.
-    ///
-    /// @param identityCommitments The array of identity commitments to be validated.
-    ///
-    /// @custom:reverts Reverts with `InvalidCommitment` if one or more of the provided commitments
-    ///                 is invalid.
-    /// @custom:reverts Reverts with `UnreducedElement` if one or more of the provided commitments
-    ///                 is not in reduced form.
-    function validateIdentityCommitmentsForRegistration(uint256[] calldata identityCommitments)
-        internal
-        view
-        virtual
-    {
-        uint256 offset;
-        uint256 max;
-        assembly ("memory-safe") {
-            // offset of the first element in the array
-            offset := identityCommitments.offset
-            // offset one byte after the end of argument section
-            max := add(offset, shl(5, identityCommitments.length))
-
-            // increment offset until either of the following happens:
-            // - offset is equal to max, meaning we've reached the end of the array
-            // - the element at offset is zero
-            // - the element at offset is greater than or equal to SNARK_SCALAR_FIELD
-            // The latter two conditions are combined into a single check of the form
-            // `element - 1 < SNARK_SCALAR_FIELD - 1`. This abuses unsigned comparisons:
-            // if `element` is zero, it will underflow and be greater than SNARK_SCALAR_FIELD - 1.
-            // If `element` is non-zero, we can cancel the -1 terms and the comparison becomes what
-            // we want: `element < SNARK_SCALAR_FIELD`.
-            for
-                { }
-                and(lt(offset, max), lt(sub(calldataload(offset), 1), SNARK_SCALAR_FIELD_MIN_ONE))
-                { offset := add(offset, 32) }
-                { }
-        }
-
-        // check if the loop terminated before end of array and handle the remaining elements
-        if (offset < max) {
-            uint256 index = identityCommitments.length - ((max - offset) >> 5);
-            uint256 element = identityCommitments[index];
-
-            // Check if the loop terminated because it found a zero
-            // this means we need to finish looping and make sure all remaining elements are zero.
-            if (element == 0) {
-                assembly ("memory-safe") {
-                  // we just confirmed this element is zero
-                  offset := add(offset, 32)
-
-                  // increment offset until either of the following happens:
-                  // - offset is equal to max, meaning we've reached the end of the array
-                  // - the element at offset is non-zero
-                  for
-                      { }
-                      and(lt(offset, max), iszero(calldataload(offset)))
-                      { offset := add(offset, 32) }
-                      { }
-                }
-
-                // check if the loop terminated because it found a non-zero element
-                // if yes, revert.
-                if (offset < max) {
-                    index = identityCommitments.length - ((max - offset) >> 5);
-                    revert InvalidCommitment(index);
-                }
-            }
-            // otherwise check if the loop terminated because it found an unreduced element
-            // if so, revert
-            else if (element >= SNARK_SCALAR_FIELD) {
-              revert UnreducedElement(UnreducedElementType.IdentityCommitment, element);
-            }
-        }
-    }
-
-    function validateArrayIsInReducedForm(uint256[] calldata identityCommitments)
-        internal
-        view
-        virtual
-    {
-        uint256 offset;
-        uint256 max;
-        assembly ("memory-safe") {
-            // offset of the first element in the array
-            offset := identityCommitments.offset
-            // offset one byte after the end of argument section
-            max := add(offset, shl(5, identityCommitments.length))
-
-            // increment offset until either of the following happens:
-            // - offset is equal to max, meaning we've reached the end of the array
-            // - the element at offset is greater than or equal to SNARK_SCALAR_FIELD
-            for
-                { }
-                and(lt(offset, max), lt(calldataload(offset), SNARK_SCALAR_FIELD))
-                { offset := add(offset, 32) }
-                { }
-        }
-          // check if the loop terminated before end of array and revert if so
-        if (offset < max) {
-            uint256 index = identityCommitments.length - ((max - offset) >> 5);
-            uint256 element = identityCommitments[index];
-            revert UnreducedElement(UnreducedElementType.IdentityCommitment, element);
-        }
-    }
-
-    /// @notice Validates the array of identities for each of the old and new commitments being in
-    ///         reduced form.
-    /// @dev Must be called with arrays of the same length.
-    ///
-    /// @param oldIdentities The array of old values for the identities.
-    /// @param newIdentities The array of new values for the identities.
-    ///
-    /// @custom:reverts UnreducedElement If one or more of the provided commitments is not in
-    ////                reduced form.
-    function validateIdentitiesForUpdate(
-        uint256[] calldata oldIdentities,
-        uint256[] calldata newIdentities
-    ) internal view virtual {
-        validateArrayIsInReducedForm(oldIdentities);
-        validateArrayIsInReducedForm(newIdentities);
     }
 
     /// @notice Reverts if the provided root value is not valid.
@@ -952,42 +526,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         batchInsertionVerifiers = newTable;
         emit DependencyUpdated(
             Dependency.InsertionVerifierLookupTable, address(oldTable), address(newTable)
-        );
-    }
-
-    /// @notice Gets the address for the lookup table of merkle tree verifiers used for identity
-    ///         updates.
-    /// @dev The update verifier is also used for member removals.
-    ///
-    /// @return addr The address of the contract being used as the verifier lookup table.
-    function getIdentityUpdateVerifierLookupTableAddress()
-        public
-        view
-        virtual
-        onlyProxy
-        onlyInitialized
-        returns (address)
-    {
-        return address(identityUpdateVerifiers);
-    }
-
-    /// @notice Sets the address for the lookup table of merkle tree verifiers to be used for
-    ///         verification of identity updates.
-    /// @dev Only the owner of the contract can call this function.
-    /// @dev The update verifier is also used for member removals.
-    ///
-    /// @param newTable The new lookup table instance to be used for verifying identity updates.
-    function setIdentityUpdateVerifierLookupTable(VerifierLookupTable newTable)
-        public
-        virtual
-        onlyProxy
-        onlyInitialized
-        onlyOwner
-    {
-        VerifierLookupTable oldTable = identityUpdateVerifiers;
-        identityUpdateVerifiers = newTable;
-        emit DependencyUpdated(
-            Dependency.UpdateVerifierLookupTable, address(oldTable), address(newTable)
         );
     }
 
@@ -1055,8 +593,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256 oldExpiry = rootHistoryExpiry;
         rootHistoryExpiry = newExpiryTime;
 
-        _stateBridge.setRootHistoryExpiry(newExpiryTime);
-
         emit RootHistoryExpirySet(oldExpiry, newExpiryTime);
     }
 
@@ -1103,11 +639,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.
     ///
+    /// @param proof The zero-knowledge proof
     /// @param root The of the Merkle tree
     /// @param signalHash A keccak256 hash of the Semaphore signal
     /// @param nullifierHash The nullifier hash
     /// @param externalNullifierHash A keccak256 hash of the external nullifier
-    /// @param proof The zero-knowledge proof
     ///
     /// @custom:reverts string If the zero-knowledge proof cannot be verified for the public inputs.
     function verifyProof(
@@ -1122,7 +658,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
         // With that done we can now verify the proof.
         semaphoreVerifier.verifyProof(
-            root, nullifierHash, signalHash, externalNullifierHash, proof, treeDepth
+            proof, [root, nullifierHash, signalHash, externalNullifierHash]
         );
     }
 

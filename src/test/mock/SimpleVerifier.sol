@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 
@@ -15,17 +15,10 @@ contract SimpleVerifier is ITreeVerifier {
         batchSize = _batchSize;
     }
 
-    function verifyProof(
-        uint256[2] memory a,
-        uint256[2][2] memory b,
-        uint256[2] memory c,
-        uint256[1] memory input
-    ) external override returns (bool result) {
-        delete b;
-        delete c;
-        delete input;
-        result = a[0] % 2 == 0;
+    function verifyProof(uint256[8] memory proof, uint256[1] memory input) external {
+        bool result = proof[0] % 2 == 0;
 
+        input[0] = 0;
         if (result) {
             emit VerifiedProof(batchSize);
         }

@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Calculation Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -16,10 +17,10 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
     function testCalculateIdentityRegistrationInputHashFromParametersOnKnownInput() public {
         // Setup
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.calculateIdentityRegistrationInputHash,
-            (startIndex, preRoot, postRoot, identityCommitments)
+            ManagerImplV1.calculateIdentityRegistrationInputHash,
+            (startIndex, insertionPreRoot, insertionPostRoot, identityCommitments)
         );
-        bytes memory returnData = abi.encode(inputHash);
+        bytes memory returnData = abi.encode(insertionInputHash);
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, returnData);
@@ -32,71 +33,32 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
 
         // Test
         managerImpl.calculateIdentityRegistrationInputHash(
-            startIndex, preRoot, postRoot, identityCommitments
+            startIndex, insertionPreRoot, insertionPostRoot, identityCommitments
         );
     }
 
-    /// @notice Check whether it's possible to caculate the identity update input hash.
-    function testCanCalculateIdentityUpdateInputHash(
-        uint256 preRoot,
-        uint256 postRoot,
-        uint32 startIndex1,
-        uint32 startIndex2,
-        uint256 oldIdent1,
-        uint256 oldIdent2,
-        uint256 newIdent1,
-        uint256 newIdent2
-    ) public {
+    /// @notice Tests whether it is possible to correctly calculate the `inputHash` to the merkle
+    ///         tree verifier.
+    function testCalculateIdentityDeletionInputHashFromParametersOnKnownInput() public {
         // Setup
-        uint32[] memory leafIndices = new uint32[](2);
-        leafIndices[0] = startIndex1;
-        leafIndices[1] = startIndex2;
-
-        uint256[] memory oldIdents = new uint256[](2);
-        oldIdents[0] = oldIdent1;
-        oldIdents[1] = oldIdent2;
-
-        uint256[] memory newIdents = new uint256[](2);
-        newIdents[0] = newIdent1;
-        newIdents[1] = newIdent2;
-
-        bytes32 expectedResult = keccak256(
-            abi.encodePacked(
-                preRoot,
-                postRoot,
-                uint256(startIndex1),
-                uint256(startIndex2),
-                oldIdent1,
-                oldIdent2,
-                newIdent1,
-                newIdent2
-            )
-        );
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.calculateIdentityUpdateInputHash,
-            (preRoot, postRoot, leafIndices, oldIdents, newIdents)
+            ManagerImpl.calculateIdentityDeletionInputHash,
+            (packedDeletionIndices, deletionPreRoot, deletionPostRoot, deletionBatchSize)
         );
-        bytes memory expectedReturn = abi.encode(expectedResult);
+        bytes memory returnData = abi.encode(deletionInputHash);
 
         // Test
-        assertCallSucceedsOn(identityManagerAddress, callData, expectedReturn);
+        assertCallSucceedsOn(identityManagerAddress, callData, returnData);
     }
 
-    /// @notice Ensures that the identity update hash can only be calculated when called via the
-    ///         proxy.
-    function testCannotCalculateIdentityUpdateHashIfNotViaProxy(
-        uint256 preRoot,
-        uint256 postRoot,
-        uint32[] memory leafIndices,
-        uint256[] memory oldIdents,
-        uint256[] memory newIdents
-    ) public {
+    /// @notice Checks that the input hash can only be calculated if behind the proxy.
+    function testCannotCalculateIdentityDeletionInputHashIfNotViaProxy() public {
         // Setup
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.calculateIdentityUpdateInputHash(
-            preRoot, postRoot, leafIndices, oldIdents, newIdents
+        managerImpl.calculateIdentityDeletionInputHash(
+            packedDeletionIndices, deletionPreRoot, deletionPostRoot, deletionBatchSize
         );
     }
 }

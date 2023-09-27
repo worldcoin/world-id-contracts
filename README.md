@@ -11,9 +11,10 @@
 > [Hardhat](https://github.com/worldcoin/world-id-starter-hardhat) starter kits.
 
 This repository contains the underlying contracts that make World ID work, powered by the
-[Semaphore library](http://semaphore.appliedzkp.org/). These contracts are responsible for
-performing identity operations on chain, and attestation of identities for the purposes of semaphore
-proofs.
+[Semaphore library](https://semaphore.pse.dev/). These contracts are responsible for performing
+identity operations on chain, and attestation of identities for the purposes of semaphore proofs.
+Check out [user-flows.md](./docs/user-flows.md) for more information on how these contracts relate
+to the rest of the World ID system.
 
 ## <img align="left" width="28" height="28" src="https://raw.githubusercontent.com/worldcoin/world-id-docs/main/public/images/shared-readme/readme-world-id.png" alt="World ID Logo" style="margin-right: 5;" /> About World ID
 
@@ -23,8 +24,9 @@ any personal data**. Stop bots, stop abuse.
 World ID uses a device called the [Orb](https://worldcoin.org/how-the-launch-works) which takes a
 picture of a person's iris to verify they are a unique and alive human. The protocol only requires a
 hash-equivalent (i.e. irreversible) of the iris to be stored (which happens on a blockchain). The
-protocol uses [Zero-knowledge proofs](https://id.worldcoin.org/zkp) so no traceable information is
-ever public.
+protocol uses
+[Zero-knowledge proofs](https://docs.worldcoin.org/further-reading/zero-knowledge-proofs) so no
+traceable information is ever public.
 
 World ID is meant for on-chain web3 apps, traditional Cloud applications, and even IRL
 verifications. Go to the [World ID app](https://worldcoin.org/download-app) to get started.
@@ -86,7 +88,7 @@ dependencies and build the smart contracts.
 ### Testing
 
 The prover service comes with a way to generate test parameters—a mock insertion of a batch of
-consecutive commitments into the tree. Assuming you've already run `make deploy`, the prover serivce
+consecutive commitments into the tree. Assuming you've already run `make deploy`, the prover service
 binary should have been downloaded. To generate a test batch, run
 
 ```

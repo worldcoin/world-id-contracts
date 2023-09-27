@@ -1,20 +1,23 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.21;
+
+import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import {WorldIDTest} from "../WorldIDTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
-import {ISemaphoreVerifier} from "semaphore/interfaces/ISemaphoreVerifier.sol";
+import {ISemaphoreVerifier} from "src/interfaces/ISemaphoreVerifier.sol";
 import {IBridge} from "../../interfaces/IBridge.sol";
 
 import {SimpleStateBridge} from "../mock/SimpleStateBridge.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {UnimplementedTreeVerifier} from "../../utils/UnimplementedTreeVerifier.sol";
-import {SemaphoreVerifier} from "semaphore/base/SemaphoreVerifier.sol";
+import {SemaphoreVerifier} from "src/SemaphoreVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV1 as ManagerImpl} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 
 /// @title World ID Identity Manager Test.
 /// @notice Contains tests for the WorldID identity manager.
@@ -27,39 +30,81 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///////////////////////////////////////////////////////////////////////////////
 
     IdentityManager internal identityManager;
+    // V2
     ManagerImpl internal managerImpl;
+    // V1
+    ManagerImplV1 internal managerImplV1;
 
     ITreeVerifier internal treeVerifier;
     uint256 internal initialRoot = 0x0;
     uint8 internal treeDepth = 16;
 
     address internal identityManagerAddress;
+    // V2
     address internal managerImplAddress;
+    // V1
+    address internal managerImplV1Address;
 
     uint256 internal slotCounter = 0;
 
-    // All hardcoded test data taken from `src/test/data/TestParams.json`. This will be dynamically
+    ///////////////////////////////////////////////////////////////////
+    ///                          INSERTION                          ///
+    ///////////////////////////////////////////////////////////////////
+    // All hardcoded test data taken from `src/test/data/TestInsertionParams.json`. This will be dynamically
     // generated at some point in the future.
-    bytes32 internal constant inputHash =
-        0x7d7f77c56064e1f8577de14bba99eff85599ab0e76d0caeadd1ad61674b8a9c3;
+    /// @dev generated using `./semaphore-mtb/gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3`
+    bytes32 internal constant insertionInputHash =
+        0x66f12f84870ce040647fb5f207b08f69676c8a7f6063dbe6b20de111183f2688;
     uint32 internal constant startIndex = 0;
-    uint256 internal constant preRoot =
-        0x18f43331537ee2af2e3d758d50f72106467c6eea50371dd528d57eb2b856d238;
-    uint256 internal constant postRoot =
-        0x5c1e52b41a571293b30efacd2afdb7173b20cfaf1f646c4ac9f96eb75848270;
+    uint256 internal constant insertionPreRoot =
+        0x2a7c7c9b6ce5880b9f6f228d72bf6a575a526f29c66ecceef8b753d38bba7323;
+    uint256 internal constant insertionPostRoot =
+        0x193289951bec3e4a099d9f1b0fb22cf20fe9dc4ea75c253352f22848b08c888b;
+
     uint256[] identityCommitments;
     uint256 identityCommitmentsSize = 3;
-    uint256[8] proof;
+    uint256[8] insertionProof;
+
+    ///////////////////////////////////////////////////////////////////
+    ///                           DELETION                          ///
+    ///////////////////////////////////////////////////////////////////
+    // All hardcoded test data taken from `src/test/data/TestDeletionParams.json`. This will be dynamically
+    // generated at some point in the future.
+    /// @dev generated using semaphore-mtb: ./gnark-mbu gen-test-params --mode deletion --tree-depth 16 --batch-size 8
+    bytes32 internal constant deletionInputHash =
+        0x227590f99431e20f2f95fdfb1b7dfb648c04242c950c31263ba165647c96501a;
+    uint256 internal constant deletionPreRoot =
+        0x18cb13df3e79b9f847a1494d0a2e6f3cc0041d9cae7e5ccb8cd1852ecdc4af58;
+    uint256 internal constant deletionPostRoot =
+        0x82fcf94594d7363636338e2c29242cc77e3d04f36c8ad64d294d2ab4d251708;
+    bytes packedDeletionIndices = abi.encodePacked(
+        uint32(0), uint32(2), uint32(4), uint32(6), uint32(8), uint32(10), uint32(12), uint32(14)
+    );
+    uint32 deletionBatchSize = 8;
+    uint256[8] deletionProof;
+
+    ///////////////////////////////////////////////////////////////////
+    ///                          INCLUSION                          ///
+    ///////////////////////////////////////////////////////////////////
+    /// @dev generated using https://github.com/worldcoin/semaphore-mock
+    /// steps:
+    /// 1. cargo run --release generate-identities --identities 10
+    /// 2. cargo run --release prove-inclusion --identities out/random_identities.json --tree-depth 16 --identity-index 3
+    /// @dev params from `src/test/data/InclusionProof.json` (output of step 2.)
+    uint256 internal constant inclusionRoot =
+        0xdf9f0cb5a3afe2129e349c1435bfbe9e6f091832fdfa7b739b61c5db2cbdde9;
+    uint256 internal constant inclusionSignalHash =
+        0xbc6bb462e38af7da48e0ae7b5cbae860141c04e5af2cf92328cd6548df111f;
+    uint256 internal constant inclusionNullifierHash =
+        0x2887375654a2f83868b277f3836678aa55475fd5c840b117913ea4a7c9ded6fc;
+    uint256 internal constant inclusionExternalNullifierHash =
+        0xfd3a1e9736c12a5d4a31f26362b577ccafbd523d358daf40cdc04d90e17f77;
+
+    uint256[8] inclusionProof;
 
     // Needed for testing things.
     uint256 internal constant SNARK_SCALAR_FIELD =
         21888242871839275222246405745257275088548364400416034343698204186575808495617;
-
-    // State bridge mock
-    IBridge internal stateBridge;
-    bool internal isStateBridgeEnabled = true;
-
-    event StateRootSentMultichain(uint256 indexed root);
 
     // Mock Verifiers
     ITreeVerifier unimplementedVerifier = new UnimplementedTreeVerifier();
@@ -68,6 +113,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     // Verifiers
     uint256 initialBatchSize = 30;
     VerifierLookupTable internal defaultInsertVerifiers;
+    VerifierLookupTable internal defaultDeletionVerifiers;
     VerifierLookupTable internal defaultUpdateVerifiers;
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -75,22 +121,59 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///////////////////////////////////////////////////////////////////////////////
 
     constructor() {
-        // Make the identity commitments.
+        // Make the identity commitments to be inserted.
+        // needs to match the params in src/test/data/TestInsertionParams.json
         identityCommitments = new uint256[](identityCommitmentsSize);
         identityCommitments[0] = 0x1;
         identityCommitments[1] = 0x2;
         identityCommitments[2] = 0x3;
 
-        // Create the proof term.
-        proof = [
-            0x2a45bf326884bbf13c821a5e4f30690a391156cccf80a2922fb24250111dd7eb,
-            0x23a7376a159513e6d0e22d43fcdca9d0c8a5c54a73b59fce6962a41e71355894,
-            0x21b9fc7c2d1f76c2e1a972b00f18728a57a34d7e4ae040811bf1626132ff3658,
-            0x2a7c3c660190a33ab92cd84e4b2540e49ea80bdc766eb3aeec49806a78071c75,
-            0x2fc9a52a7f4bcc29faab28a8d8ec126b4fe604a7b41e7d2b3efe92422951d706,
-            0x110740f0b21fb329de682dffc95a5ede11c11c6328606fe254b6ba469b15f68,
-            0x23115ff1573808639f19724479b195b7894a45c9868242ad2a416767359c6c78,
-            0x23f3fa30273c7f38e360496e7f9790450096d4a9592e1fe6e0a996cb05b8fb28
+        // Create the insertion proof term.
+        // output from semaphore-mtb prove in src/test/data/InsertionProof.json
+        /// @dev test_insertion.ps is generated using semaphore-mtb: `./gnark-mbu setup --mode insertion --batch-size 3 --tree-depth 16 --output test_insertion.ps`
+        /// @dev generated using semaphore-mtb: `./gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3 | ./gnark-mbu prove --mode insertion --keys-file test_insertion.ps`
+        insertionProof = [
+            0x18491e665bc7128f0113b3cf187502311cf5a82b0304e02464099782483b14ba,
+            0x1dace8033bc22eda25b483b2a260195b67ee5bef07990bf0e2c5f7923423fe,
+            0x1d4489b99a91a972e878bef7a147251c8d4941b415bb7b36a9740e714f995b7e,
+            0x772049285800265c330a0850d30d32c1ece88a0aa6adbd6a6197d0a1c2e2de2,
+            0x27afc608a28bd2f8743bc2b423dbc34829b374cf702789f9549d4b730fcc7ec8,
+            0x1011cfd2347e8db6cd489a8090331a73db380b6774ec3bc14c77a2dabe0e83dd,
+            0x2f5f37e84d6acff8cfd7988d33aaea072dbe5071093b2df022d23047f134ac45,
+            0x24830332559eada283d4473b17091b239443e75e9e09f0ebce8e72c235ee665d
+        ];
+
+        // Create the deletion proof term.
+        // output from semaphore-mtb prove in src/test/data/DeletionProof.json
+        /// @dev test_deletion.ps is generated using semaphore-mtb: `./gnark-mbu setup --mode deletion --batch-size 8 --tree-depth 16 --output test_deletion.ps`
+        /// @dev generated using semaphore-mtb: `./gnark-mbu gen-test-params --mode deletion --tree-depth 16 --batch-size 8 | ./gnark-mbu prove --mode deletion --keys-file test_deletion.ps`
+        deletionProof = [
+            0x19233cf0c60aa740585125dd5936462b1795bc2c8da7b9d0b7e92392cf91e1fd,
+            0x244096da06de365f3bd8e7f428c2de4214096c4cd0feeba579642435ab15e90a,
+            0x107395cd3aa9bfe3bcaada7f171d43a1ffffd576325598e2b9c8fbe1cfd6d032,
+            0xac23f21fb0376055adeee2a78491ca13afc288c63c6450d0ce6ded6fda14344,
+            0x29022f4cf64701ff88807430b9e333d87c670a4bdfe7d495d76271044a2d3711,
+            0x134e41bef89e02289885852b368395b1b679dd243e5cf9e2f36b04ba990ab6a2,
+            0x280894db66e6a9f9bf8aa48ffa1de98b755adadcf5962fb308cd1802a1101a0c,
+            0x1484814b74243a07930c6af61079f94eefd843efe95e2388d9d49956cfacf3ab
+        ];
+
+        // Create the inclusion proof term.
+        // output from semaphore-mtb prove in src/test/data/InclusionProof.json
+        //
+        /// @dev generated using https://github.com/worldcoin/semaphore-mock
+        /// steps:
+        /// 1. cargo run --release generate-identities --identities 10
+        /// 2. cargo run --release prove-inclusion --identities out/random_identities.json --tree-depth 16 --identity-index 3
+        inclusionProof = [
+            0x27d70bdecb420a7322a0e44ef68345fc67e9903a3980762c23dfda5cf4d65715,
+            0x1aba064ef272dd53b498d856c711890249a63a46825fe6d332fc5868ad854ef4,
+            0x23a76f9777710f268d2092d859344cdc8d7f77abef35695f89d1ebf771d8a520,
+            0x295ab87eb7c0ad9470ec2b56b35309f5e4576679ef6180ed78124e3f549f125d,
+            0x1da63a007225659d3a70a2dfe807df5c3e8423bfd8e059d72909a1def161573f,
+            0x2578db76ee9f64ff4eb0b532cb796dfa27d86ae8cd29e2d6b32f9428c71acb8b,
+            0xd00d49d5db4c5b11a13aca379f5c3c627a6e8fc1c4470e7a56017307aca51a2,
+            0xf6ee8db704ecb5c149e5a046a03e8767ba5a818c08320f6245070e4c0e99b77
         ];
     }
 
@@ -100,24 +183,19 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         treeVerifier = new SimpleVerifier(initialBatchSize);
         defaultInsertVerifiers = new VerifierLookupTable();
         defaultInsertVerifiers.addVerifier(initialBatchSize, treeVerifier);
-        defaultUpdateVerifiers = new VerifierLookupTable();
-        defaultUpdateVerifiers.addVerifier(initialBatchSize, treeVerifier);
-        stateBridge = new SimpleStateBridge();
-        stateBridge = IBridge(stateBridge);
         makeNewIdentityManager(
             treeDepth,
             initialRoot,
             defaultInsertVerifiers,
+            defaultDeletionVerifiers,
             defaultUpdateVerifiers,
-            semaphoreVerifier,
-            isStateBridgeEnabled,
-            stateBridge
+            semaphoreVerifier
         );
 
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
         hevm.label(managerImplAddress, "ManagerImplementation");
-        hevm.label(address(stateBridge), "StateBridge");
+        hevm.label(managerImplV1Address, "ManagerImplementationV1");
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -131,59 +209,61 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @param insertVerifiers The insertion verifier lookup table.
     /// @param updateVerifiers The udpate verifier lookup table.
     /// @param actualSemaphoreVerifier The Semaphore verifier instance to use.
-    /// @param enableStateBridge Whether or not the new identity manager should have the state
-    ///        bridge enabled.
-    /// @param actualStateBridge The current state bridge.
     function makeNewIdentityManager(
         uint8 actualTreeDepth,
         uint256 actualPreRoot,
         VerifierLookupTable insertVerifiers,
+        VerifierLookupTable deletionVerifiers,
         VerifierLookupTable updateVerifiers,
-        ISemaphoreVerifier actualSemaphoreVerifier,
-        bool enableStateBridge,
-        IBridge actualStateBridge
+        ISemaphoreVerifier actualSemaphoreVerifier
     ) public {
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
+        managerImplV1 = new ManagerImplV1();
+        managerImplV1Address = address(managerImplV1);
 
         bytes memory initCallData = abi.encodeCall(
-            ManagerImpl.initialize,
+            ManagerImplV1.initialize,
             (
                 actualTreeDepth,
                 actualPreRoot,
                 insertVerifiers,
                 updateVerifiers,
-                actualSemaphoreVerifier,
-                enableStateBridge,
-                actualStateBridge
+                actualSemaphoreVerifier
             )
         );
 
-        identityManager = new IdentityManager(managerImplAddress, initCallData);
+        identityManager = new IdentityManager(managerImplV1Address, initCallData);
         identityManagerAddress = address(identityManager);
+
+        // creates Manager Impl V2, which will be used for tests
+        managerImpl = new ManagerImpl();
+        managerImplAddress = address(managerImpl);
+
+        bytes memory initCallV2 = abi.encodeCall(ManagerImpl.initializeV2, (deletionVerifiers));
+        bytes memory upgradeCall = abi.encodeCall(
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+        );
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
     }
 
     /// @notice Initialises a new identity manager using the provided information.
     /// @dev It is initialised in the globals.
     ///
     /// @param actualPreRoot The pre-root to use.
-    /// @param enableStateBridge Whether or not the new identity manager should have the state
-    ///        bridge enabled.
-    /// @param actualStateBridge The current state bridge.
     /// @param batchSizes The batch sizes to create verifiers for. Verifiers will be created for
     ///        both insertions and updates. Must be non-empty.
     ///
     /// @custom:reverts string If any batch size exceeds 1000.
     /// @custom:reverts string If `batchSizes` is empty.
-    function makeNewIdentityManager(
-        uint256 actualPreRoot,
-        bool enableStateBridge,
-        IBridge actualStateBridge,
-        uint256[] calldata batchSizes
-    ) public {
-        (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers) =
-            makeVerifierLookupTables(batchSizes);
+    function makeNewIdentityManager(uint256 actualPreRoot, uint256[] calldata batchSizes) public {
+        (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        ) = makeVerifierLookupTables(batchSizes);
         defaultInsertVerifiers = insertVerifiers;
+        defaultDeletionVerifiers = deletionVerifiers;
         defaultUpdateVerifiers = updateVerifiers;
 
         // Now we can build the identity manager as usual.
@@ -191,10 +271,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             treeDepth,
             actualPreRoot,
             insertVerifiers,
+            deletionVerifiers,
             updateVerifiers,
-            semaphoreVerifier,
-            enableStateBridge,
-            actualStateBridge
+            semaphoreVerifier
         );
     }
 
@@ -204,6 +283,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///        both insertions and updates. Must be non-empty and contain no duplicates.
     ///
     /// @return insertVerifiers The insertion verifier lookup table.
+    /// @return deletionVerifiers The deletion verifier lookup table.
     /// @return updateVerifiers The update verifier lookup table.
     ///
     /// @custom:reverts VerifierExists If `batchSizes` contains a duplicate.
@@ -211,7 +291,11 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @custom:reverts string If `batchSizes` is empty.
     function makeVerifierLookupTables(uint256[] memory batchSizes)
         public
-        returns (VerifierLookupTable insertVerifiers, VerifierLookupTable updateVerifiers)
+        returns (
+            VerifierLookupTable insertVerifiers,
+            VerifierLookupTable deletionVerifiers,
+            VerifierLookupTable updateVerifiers
+        )
     {
         // Construct the verifier LUTs from the provided `batchSizes` info.
         if (batchSizes.length == 0) {
@@ -221,6 +305,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             revert("batch size greater than 1000.");
         }
         insertVerifiers = new VerifierLookupTable();
+        deletionVerifiers = new VerifierLookupTable();
         updateVerifiers = new VerifierLookupTable();
         for (uint256 i = 0; i < batchSizes.length; ++i) {
             uint256 batchSize = batchSizes[i];
@@ -230,6 +315,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
             ITreeVerifier batchVerifier = new SimpleVerifier(batchSize);
             insertVerifiers.addVerifier(batchSize, batchVerifier);
+            deletionVerifiers.addVerifier(batchSize, batchVerifier);
             updateVerifiers.addVerifier(batchSize, batchVerifier);
         }
     }
@@ -293,38 +379,14 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @dev This is useful to make property-based fuzz testing work better by requiring less
     ///      constraints on the generated input.
     ///
-    /// @param idents The generated identity commitments to convert.
-    /// @param prf The generate proof terms to convert.
+    /// @param prf The generated proof terms to convert.
     ///
-    /// @return leafIndices The leaf indices for the updates.
-    /// @return oldIdents The conversion of `idents` to the proper type.
-    /// @return newIdents The conversion of `idents` to the proper type.
     /// @return actualProof The conversion of `prf` to the proper type.
-    function prepareUpdateIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
+    function prepareDeleteIdentitiesTestCase(uint128[8] memory prf)
         public
         pure
-        returns (
-            uint32[] memory leafIndices,
-            uint256[] memory oldIdents,
-            uint256[] memory newIdents,
-            uint256[8] memory actualProof
-        )
+        returns (uint256[8] memory actualProof)
     {
-        uint256 length = idents.length;
-        leafIndices = new uint32[](length);
-        oldIdents = new uint256[](length);
-        newIdents = new uint256[](length);
-        for (uint256 i = 0; i < idents.length; ++i) {
-            leafIndices[i] = uint32(idents[i] % 1024);
-            oldIdents[i] = idents[i];
-
-            if (idents[i] != type(uint256).min) {
-                newIdents[i] = idents[i] - 1;
-            } else {
-                newIdents[i] = idents[i] + 1;
-            }
-        }
-
         actualProof = [uint256(prf[0]), prf[1], prf[2], prf[3], prf[4], prf[5], prf[6], prf[7]];
     }
 }
