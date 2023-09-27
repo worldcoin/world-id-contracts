@@ -10,6 +10,8 @@ pragma solidity ^0.8.0;
 /// (256 bytes) and compressed (128 bytes) format. A view function is provided
 /// to compress proofs.
 /// @notice See <https://2π.com/23/bn254-compression> for further explanation.
+/// @dev test insertion verifier for tree depth 16 batch size 3
+/// This isn't meant for production use, but for testing purposes only.
 contract Verifier is ITreeVerifier {
     /// Some of the provided public input values are larger than the field modulus.
     /// @dev Public input elements are not automatically reduced, as this is can be
