@@ -195,7 +195,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @param depth Passed tree depth.
     error UnsupportedTreeDepth(uint8 depth);
 
-    /// @notice Thrown when the inputs to `removeIdentities` or `updateIdentities` do not match in
+    /// @notice Thrown when the inputs to `removeIdentities` do not match in
     ///         length.
     error MismatchedInputLengths();
 
@@ -329,21 +329,18 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///        coordinate for `bs`, and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6
     ///        and 7 are the `x` and `y` coordinates for `krs`.
     /// @param preRoot The value for the root of the tree before the `identityCommitments` have been
-    ////       inserted. Must be an element of the field `Kr`.
+    ////       inserted. Must be an element of the field `Kr`. (already in reduced form)
     /// @param startIndex The position in the tree at which the insertions were made.
     /// @param identityCommitments The identities that were inserted into the tree starting at
     ///        `startIndex` and `preRoot` to give `postRoot`. All of the commitments must be
     ///        elements of the field `Kr`.
     /// @param postRoot The root obtained after inserting all of `identityCommitments` into the tree
-    ///        described by `preRoot`. Must be an element of the field `Kr`.
+    ///        described by `preRoot`. Must be an element of the field `Kr`. (alread in reduced form)
     ///
     /// @custom:reverts Unauthorized If the message sender is not authorised to add identities.
     /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
     /// @custom:reverts ProofValidationFailure If `insertionProof` cannot be verified using the
     ///                 provided inputs.
-    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
-    ///                 `identityCommitments` is not an element of the field `Kr`. It describes the
-    ///                 type and value of the unreduced element.
     /// @custom:reverts VerifierLookupTable.NoSuchVerifier If the batch sizes doesn't match a known
     ///                 verifier.
     /// @custom:reverts VerifierLookupTable.BatchTooLarge If the batch size exceeds the maximum
@@ -355,24 +352,9 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         uint256[] calldata identityCommitments,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
-        // We can only operate on the latest root in reduced form.
-        if (preRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
-        }
         if (preRoot != _latestRoot) {
             revert NotLatestRoot(preRoot, _latestRoot);
         }
-
-        // As the `startIndex` is restricted to a uint32, where
-        // `type(uint32).max <<< SNARK_SCALAR_FIELD`, we are safe not to check this. As verified in
-        // the tests, a revert happens if you pass a value larger than `type(uint32).max` when
-        // calling outside the type-checker's protection.
-
-        // We need the post root to be in reduced form.
-        if (postRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
-        }
-
         // Having validated the preconditions we can now check the proof itself.
         bytes32 inputHash = calculateIdentityRegistrationInputHash(
             startIndex, preRoot, postRoot, identityCommitments
@@ -380,7 +362,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
 
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
-        // verifier.
+        // verifier. All other elements that are passed as calldata are reduced in the circuit.
         uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
         // We need to look up the correct verifier before we can verify.

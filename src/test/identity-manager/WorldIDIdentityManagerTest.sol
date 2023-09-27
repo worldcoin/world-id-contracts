@@ -389,43 +389,4 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     {
         actualProof = [uint256(prf[0]), prf[1], prf[2], prf[3], prf[4], prf[5], prf[6], prf[7]];
     }
-
-    /// @notice Prepares a verifier test case.
-    /// @dev This is useful to make property-based fuzz testing work better by requiring less
-    ///      constraints on the generated input.
-    ///
-    /// @param idents The generated identity commitments to convert.
-    /// @param prf The generate proof terms to convert.
-    ///
-    /// @return leafIndices The leaf indices for the updates.
-    /// @return oldIdents The conversion of `idents` to the proper type.
-    /// @return newIdents The conversion of `idents` to the proper type.
-    /// @return actualProof The conversion of `prf` to the proper type.
-    function prepareUpdateIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
-        public
-        pure
-        returns (
-            uint32[] memory leafIndices,
-            uint256[] memory oldIdents,
-            uint256[] memory newIdents,
-            uint256[8] memory actualProof
-        )
-    {
-        uint256 length = idents.length;
-        leafIndices = new uint32[](length);
-        oldIdents = new uint256[](length);
-        newIdents = new uint256[](length);
-        for (uint256 i = 0; i < idents.length; ++i) {
-            leafIndices[i] = uint32(idents[i] % 1024);
-            oldIdents[i] = idents[i];
-
-            if (idents[i] != type(uint256).min) {
-                newIdents[i] = idents[i] - 1;
-            } else {
-                newIdents[i] = idents[i] + 1;
-            }
-        }
-
-        actualProof = [uint256(prf[0]), prf[1], prf[2], prf[3], prf[4], prf[5], prf[6], prf[7]];
-    }
 }

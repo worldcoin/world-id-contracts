@@ -86,13 +86,9 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///        described by `preRoot`. Must be an element of the field `Kr`.
     ///
     /// @custom:reverts Unauthorized If the message sender is not authorised to add identities.
-    /// @custom:reverts InvalidCommitment If one or more of the provided commitments is invalid.
     /// @custom:reverts NotLatestRoot If the provided `preRoot` is not the latest root.
     /// @custom:reverts ProofValidationFailure If `deletionProof` cannot be verified using the
     ///                 provided inputs.
-    /// @custom:reverts UnreducedElement If any of the `preRoot`, `postRoot` and
-    ///                 `identityCommitments` is not an element of the field `Kr`. It describes the
-    ///                 type and value of the unreduced element.
     /// @custom:reverts VerifierLookupTable.NoSuchVerifier If the batch sizes doesn't match a known
     ///                 verifier.
     /// @custom:reverts VerifierLookupTable.BatchTooLarge If the batch size exceeds the maximum
@@ -104,17 +100,8 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
         uint256 preRoot,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
-        // We can only operate on the latest root in reduced form.
-        if (preRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PreRoot, preRoot);
-        }
         if (preRoot != _latestRoot) {
             revert NotLatestRoot(preRoot, _latestRoot);
-        }
-
-        // We need the post root to be in reduced form.
-        if (postRoot >= SNARK_SCALAR_FIELD) {
-            revert UnreducedElement(UnreducedElementType.PostRoot, postRoot);
         }
 
         // Having validated the preconditions we can now check the proof itself.
@@ -123,7 +110,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
 
         // No matter what, the inputs can result in a hash that is not an element of the scalar
         // field in which we're operating. We reduce it into the field before handing it to the
-        // verifier.
+        // verifier. All other elements that are passed as calldata are reduced in the circuit.
         uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
         // We need to look up the correct verifier before we can verify.
