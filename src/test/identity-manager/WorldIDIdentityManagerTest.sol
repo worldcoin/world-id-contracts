@@ -90,6 +90,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// steps:
     /// 1. cargo run --release generate-identities --identities 10
     /// 2. cargo run --release prove-inclusion --identities out/random_identities.json --tree-depth 16 --identity-index 3
+    /// @dev params from `src/test/data/InclusionProof.json` (output of step 2.)
     uint256 internal constant inclusionRoot =
         0xdf9f0cb5a3afe2129e349c1435bfbe9e6f091832fdfa7b739b61c5db2cbdde9;
     uint256 internal constant inclusionSignalHash =
