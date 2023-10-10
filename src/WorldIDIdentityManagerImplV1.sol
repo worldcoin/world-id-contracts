@@ -125,7 +125,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     }
 
     /// @notice Represents the kind of change that is made to the root of the tree.
-    /// @dev TreeChange.Update preserved for ABI backwards compatibility with V1, no longer used
     enum TreeChange {
         Insertion,
         Deletion
