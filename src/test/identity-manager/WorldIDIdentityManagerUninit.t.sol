@@ -40,13 +40,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
         makeUninitIdentityManager();
         bytes memory callData = abi.encodeCall(
             ManagerImpl.deleteIdentities,
-            (
-                deletionProof,
-                deletionBatchSize,
-                packedDeletionIndices,
-                deletionPreRoot,
-                deletionPostRoot
-            )
+            (deletionProof, packedDeletionIndices, deletionPreRoot, deletionPostRoot)
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);
