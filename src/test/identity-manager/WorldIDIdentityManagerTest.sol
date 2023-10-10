@@ -185,6 +185,8 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         defaultInsertVerifiers.addVerifier(initialBatchSize, treeVerifier);
         defaultUpdateVerifiers = new VerifierLookupTable();
         defaultUpdateVerifiers.addVerifier(initialBatchSize, treeVerifier);
+        defaultDeletionVerifiers = new VerifierLookupTable();
+        defaultDeletionVerifiers.addVerifier(initialBatchSize, treeVerifier);
         makeNewIdentityManager(
             treeDepth,
             initialRoot,
