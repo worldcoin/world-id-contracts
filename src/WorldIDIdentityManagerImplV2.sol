@@ -6,7 +6,7 @@ import "./WorldIDIdentityManagerImplV1.sol";
 /// @author Worldcoin
 /// @notice An implementation of a batch-based identity manager for the WorldID protocol.
 /// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs
-///      to perform the insertions.
+///      to perform the deletions.
 /// @dev This is the implementation delegated to by a proxy.
 contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///////////////////////////////////////////////////////////////////////////////
@@ -70,7 +70,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///////////////////////////////////////////////////////////////////
 
     /// @notice Deletes identities from the WorldID system.
-    /// @dev Can only be called by the owner.
+    /// @dev Can only be called by the identity operator.
     /// @dev Deletion is performed off-chain and verified on-chain via the `deletionProof`.
     ///      This saves gas and time over deleting identities one at a time.
     ///
@@ -81,8 +81,8 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///         and `y` coordinates for `krs`.
     /// @param packedDeletionIndices The indices of the identities that were deleted from the tree. The batch size is inferred from the length of this
     //// array: batchSize = packedDeletionIndices / 4
-    /// @param preRoot The value for the root of the tree before the `identityCommitments` have been
-    ///       inserted. Must be an element of the field `Kr`.
+    /// @param preRoot The value for the root of the tree before the corresponding identity commitments have
+    /// been deleted. Must be an element of the field `Kr`.
     /// @param postRoot The root obtained after deleting all of `identityCommitments` into the tree
     ///        described by `preRoot`. Must be an element of the field `Kr`.
     ///
@@ -119,7 +119,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
         // With that, we can properly try and verify.
         try deletionVerifier.verifyProof(deletionProof, [reducedElement]) {
             // If it did verify, we need to update the contract's state. We set the currently valid
-            // root to the root after the insertions.
+            // root to the root after the deletions.
             _latestRoot = postRoot;
 
             // We also need to add the previous root to the history, and set the timestamp at
@@ -181,8 +181,8 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     /// @dev Implements the computation described below.
     ///
     /// @param packedDeletionIndices The indices of the identities that were deleted from the tree.
-    /// @param preRoot The root value of the tree before these insertions were made.
-    /// @param postRoot The root value of the tree after these insertions were made.
+    /// @param preRoot The root value of the tree before these deletions were made.
+    /// @param postRoot The root value of the tree after these deletions were made.
     /// @param batchSize The number of identities that were deleted in this batch
     ///
     /// @return hash The input hash calculated as described below.
