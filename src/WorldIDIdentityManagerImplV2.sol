@@ -50,8 +50,11 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     /// @notice The table of verifiers for verifying batch identity deletions.
     VerifierLookupTable internal batchDeletionVerifiers;
 
+    /// @notice Thrown when the WorldIDIdentityManagerImplV2 contract is initalized
+    event WorldIDIdentityManagerImplV2Initialized();
+
     /// @notice Initializes the V2 implementation contract.
-    /// @param _batchUpdateVerifiers The table of verifiers for verifying batch identity deletions.
+    /// @param _batchDeletionVerifiers The table of verifiers for verifying batch identity deletions.
     /// @dev Must be called exactly once
     /// @dev This is marked `reinitializer()` to allow for updated initialisation steps when working
     ///      with upgrades based upon this contract. Be aware that there are only 256 (zero-indexed)
@@ -61,8 +64,14 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///      upgrading. Create a separate initializer function instead.
     ///
     ///
-    function initializeV2(VerifierLookupTable _batchUpdateVerifiers) public reinitializer(2) {
-        batchDeletionVerifiers = _batchUpdateVerifiers;
+    function initializeV2(VerifierLookupTable _batchDeletionVerifiers) public reinitializer(2) {
+        if (address(_batchDeletionVerifiers) == address(0)) {
+            revert InvalidVerifierLUT();
+        }
+
+        batchDeletionVerifiers = _batchDeletionVerifiers;
+
+        emit WorldIDIdentityManagerImplV2Initialized();
     }
 
     ///////////////////////////////////////////////////////////////////
@@ -166,6 +175,10 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
         onlyInitialized
         onlyOwner
     {
+        if (address(newTable) == address(0)) {
+            revert InvalidVerifierLUT();
+        }
+
         VerifierLookupTable oldTable = batchDeletionVerifiers;
         batchDeletionVerifiers = newTable;
         emit DependencyUpdated(
