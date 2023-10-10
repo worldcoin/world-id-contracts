@@ -209,6 +209,12 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @dev preserved for ABI backwards compatibility with V1, no longer used
     error MismatchedInputLengths();
 
+    /// @notice Thrown when a verifier is initialized to be the zero address
+    error InvalidVerifier();
+
+    /// @notice Thrown when a verifier lookup table is initialized to be the zero address
+    error InvalidVerifierLUT();
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  EVENTS                                 ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -293,6 +299,17 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         VerifierLookupTable _batchUpdateVerifiers,
         ISemaphoreVerifier _semaphoreVerifier
     ) public reinitializer(1) {
+        if (address(_batchInsertionVerifiers) == address(0)) {
+            revert InvalidVerifierLUT();
+        }
+
+        if (address(_batchUpdateVerifiers) == address(0)) {
+            revert InvalidVerifierLUT();
+        }
+
+        if (address(_semaphoreVerifier) == address(0)) {
+            revert InvalidVerifier();
+        }
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
@@ -521,6 +538,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         onlyInitialized
         onlyOwner
     {
+        if (address(newTable) == address(0)) {
+            revert InvalidVerifierLUT();
+        }
+
         VerifierLookupTable oldTable = batchInsertionVerifiers;
         batchInsertionVerifiers = newTable;
         emit DependencyUpdated(
@@ -554,6 +575,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         onlyInitialized
         onlyOwner
     {
+        if (address(newVerifier) == address(0)) {
+            revert InvalidVerifier();
+        }
+
         ISemaphoreVerifier oldVerifier = semaphoreVerifier;
         semaphoreVerifier = newVerifier;
         emit DependencyUpdated(
