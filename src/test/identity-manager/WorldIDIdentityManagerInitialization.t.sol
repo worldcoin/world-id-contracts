@@ -18,6 +18,8 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     /// @notice Taken from Initializable.sol
     event Initialized(uint8 version);
 
+    event WorldIDIdentityManagerImplV2Initialized();
+
     /// @notice Checks that it is possible to initialise the contract.
     function testInitialisation() public {
         // Setup
@@ -54,6 +56,9 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         bytes memory upgradeCall = abi.encodeCall(
             UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
         );
+
+        vm.expectEmit(true, true, true, true);
+        emit WorldIDIdentityManagerImplV2Initialized();
 
         vm.expectEmit(true, true, true, true);
         emit Initialized(2);

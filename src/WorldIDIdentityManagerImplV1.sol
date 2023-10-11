@@ -125,7 +125,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     }
 
     /// @notice Represents the kind of change that is made to the root of the tree.
-    /// @dev TreeChange.Update preserved for ABI backwards compatibility with V1, no longer used
     enum TreeChange {
         Insertion,
         Deletion
@@ -210,6 +209,12 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @dev preserved for ABI backwards compatibility with V1, no longer used
     error MismatchedInputLengths();
 
+    /// @notice Thrown when a verifier is initialized to be the zero address
+    error InvalidVerifier();
+
+    /// @notice Thrown when a verifier lookup table is initialized to be the zero address
+    error InvalidVerifierLUT();
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                                  EVENTS                                 ///
     ///////////////////////////////////////////////////////////////////////////////
@@ -287,6 +292,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @custom:reverts string If called more than once at the same initialisation number.
     /// @custom:reverts UnsupportedTreeDepth If passed tree depth is not among defined values.
+    /// @custom:reverts InvalidVerifierLUT if `_batchInsertionVerifiers` or `_batchUpdateVerifiers` is set to the zero address
+    /// @custom:reverts InvalidVerifier if `_semaphoreVerifier` is set to the zero address
     function initialize(
         uint8 _treeDepth,
         uint256 initialRoot,
@@ -294,6 +301,17 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         VerifierLookupTable _batchUpdateVerifiers,
         ISemaphoreVerifier _semaphoreVerifier
     ) public reinitializer(1) {
+        if (address(_batchInsertionVerifiers) == address(0)) {
+            revert InvalidVerifierLUT();
+        }
+
+        if (address(_batchUpdateVerifiers) == address(0)) {
+            revert InvalidVerifierLUT();
+        }
+
+        if (address(_semaphoreVerifier) == address(0)) {
+            revert InvalidVerifier();
+        }
         // First, ensure that all of the parent contracts are initialised.
         __delegateInit();
 
@@ -515,6 +533,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///
     /// @param newTable The new verifier lookup table to be used for verifying identity
     ///        registrations.
+    /// @custom:reverts InvalidVerifierLUT if `newTable` is set to the zero address
     function setRegisterIdentitiesVerifierLookupTable(VerifierLookupTable newTable)
         public
         virtual
@@ -522,6 +541,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         onlyInitialized
         onlyOwner
     {
+        if (address(newTable) == address(0)) {
+            revert InvalidVerifierLUT();
+        }
+
         VerifierLookupTable oldTable = batchInsertionVerifiers;
         batchInsertionVerifiers = newTable;
         emit DependencyUpdated(
@@ -548,6 +571,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @dev Only the owner of the contract can call this function.
     ///
     /// @param newVerifier The new verifier instance to be used for verifying semaphore proofs.
+    /// @custom:reverts InvalidVerifier if `newVerifier` is set to the zero address
     function setSemaphoreVerifier(ISemaphoreVerifier newVerifier)
         public
         virtual
@@ -555,6 +579,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         onlyInitialized
         onlyOwner
     {
+        if (address(newVerifier) == address(0)) {
+            revert InvalidVerifier();
+        }
+
         ISemaphoreVerifier oldVerifier = semaphoreVerifier;
         semaphoreVerifier = newVerifier;
         emit DependencyUpdated(

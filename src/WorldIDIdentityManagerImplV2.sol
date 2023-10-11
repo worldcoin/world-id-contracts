@@ -6,7 +6,7 @@ import "./WorldIDIdentityManagerImplV1.sol";
 /// @author Worldcoin
 /// @notice An implementation of a batch-based identity manager for the WorldID protocol.
 /// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs
-///      to perform the insertions.
+///      to perform the deletions.
 /// @dev This is the implementation delegated to by a proxy.
 contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///////////////////////////////////////////////////////////////////////////////
@@ -50,8 +50,15 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     /// @notice The table of verifiers for verifying batch identity deletions.
     VerifierLookupTable internal batchDeletionVerifiers;
 
+    /// @notice Thrown when the WorldIDIdentityManagerImplV2 contract is initalized
+    event WorldIDIdentityManagerImplV2Initialized();
+
+    /// @notice Thrown when the bytes calldata packedDeletionIndices array
+    /// is not a multiple of 4 (to make up 32 bit indices)
+    error InvalidDeletionIndices();
+
     /// @notice Initializes the V2 implementation contract.
-    /// @param _batchUpdateVerifiers The table of verifiers for verifying batch identity deletions.
+    /// @param _batchDeletionVerifiers The table of verifiers for verifying batch identity deletions.
     /// @dev Must be called exactly once
     /// @dev This is marked `reinitializer()` to allow for updated initialisation steps when working
     ///      with upgrades based upon this contract. Be aware that there are only 256 (zero-indexed)
@@ -61,8 +68,15 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///      upgrading. Create a separate initializer function instead.
     ///
     ///
-    function initializeV2(VerifierLookupTable _batchUpdateVerifiers) public reinitializer(2) {
-        batchDeletionVerifiers = _batchUpdateVerifiers;
+    /// @custom:reverts InvalidVerifierLUT if `_batchDeletionVerifiers` is set to the zero address
+    function initializeV2(VerifierLookupTable _batchDeletionVerifiers) public reinitializer(2) {
+        if (address(_batchDeletionVerifiers) == address(0)) {
+            revert InvalidVerifierLUT();
+        }
+
+        batchDeletionVerifiers = _batchDeletionVerifiers;
+
+        emit WorldIDIdentityManagerImplV2Initialized();
     }
 
     ///////////////////////////////////////////////////////////////////
@@ -70,7 +84,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///////////////////////////////////////////////////////////////////
 
     /// @notice Deletes identities from the WorldID system.
-    /// @dev Can only be called by the owner.
+    /// @dev Can only be called by the identity operator.
     /// @dev Deletion is performed off-chain and verified on-chain via the `deletionProof`.
     ///      This saves gas and time over deleting identities one at a time.
     ///
@@ -79,10 +93,10 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///        coordinates for `ar` respectively. Elements 2 and 3 are the `x` coordinate for `bs`,
     ///         and elements 4 and 5 are the `y` coordinate for `bs`. Elements 6 and 7 are the `x`
     ///         and `y` coordinates for `krs`.
-    /// @param batchSize The number of identities that are to be deleted in the current batch.
-    /// @param packedDeletionIndices The indices of the identities that were deleted from the tree.
-    /// @param preRoot The value for the root of the tree before the `identityCommitments` have been
-    ///       inserted. Must be an element of the field `Kr`.
+    /// @param packedDeletionIndices The indices of the identities that were deleted from the tree. The batch size is inferred from the length of this
+    //// array: batchSize = packedDeletionIndices / 4
+    /// @param preRoot The value for the root of the tree before the corresponding identity commitments have
+    /// been deleted. Must be an element of the field `Kr`.
     /// @param postRoot The root obtained after deleting all of `identityCommitments` into the tree
     ///        described by `preRoot`. Must be an element of the field `Kr`.
     ///
@@ -92,13 +106,20 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///                 provided inputs.
     /// @custom:reverts VerifierLookupTable.NoSuchVerifier If the batch sizes doesn't match a known
     ///                 verifier.
+    /// @custom:reverts InvalidDeletionIndices if the length of `packedDeletionIndices`
+    /// is not a multiple of 4 (8*4 = 32 bits per index)
     function deleteIdentities(
         uint256[8] calldata deletionProof,
-        uint32 batchSize,
         bytes calldata packedDeletionIndices,
         uint256 preRoot,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
+        if (packedDeletionIndices.length % 4 != 0) {
+            revert InvalidDeletionIndices();
+        }
+
+        uint32 batchSize = uint32(packedDeletionIndices.length / 4);
+
         if (preRoot != _latestRoot) {
             revert NotLatestRoot(preRoot, _latestRoot);
         }
@@ -118,7 +139,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
         // With that, we can properly try and verify.
         try deletionVerifier.verifyProof(deletionProof, [reducedElement]) {
             // If it did verify, we need to update the contract's state. We set the currently valid
-            // root to the root after the insertions.
+            // root to the root after the deletions.
             _latestRoot = postRoot;
 
             // We also need to add the previous root to the history, and set the timestamp at
@@ -158,6 +179,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///
     /// @param newTable The new verifier lookup table to be used for verifying identity
     ///        deletions.
+    /// @custom:reverts InvalidVerifierLUT if `newTable` is set to the zero address
     function setDeleteIdentitiesVerifierLookupTable(VerifierLookupTable newTable)
         public
         virtual
@@ -165,6 +187,10 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
         onlyInitialized
         onlyOwner
     {
+        if (address(newTable) == address(0)) {
+            revert InvalidVerifierLUT();
+        }
+
         VerifierLookupTable oldTable = batchDeletionVerifiers;
         batchDeletionVerifiers = newTable;
         emit DependencyUpdated(
@@ -180,8 +206,8 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     /// @dev Implements the computation described below.
     ///
     /// @param packedDeletionIndices The indices of the identities that were deleted from the tree.
-    /// @param preRoot The root value of the tree before these insertions were made.
-    /// @param postRoot The root value of the tree after these insertions were made.
+    /// @param preRoot The root value of the tree before these deletions were made.
+    /// @param postRoot The root value of the tree after these deletions were made.
     /// @param batchSize The number of identities that were deleted in this batch
     ///
     /// @return hash The input hash calculated as described below.
