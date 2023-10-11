@@ -172,7 +172,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(packedDeletionIndices.length > 4);
-		vm.assume(packedDeletionIndices.length % 4 == 0);
+        vm.assume(packedDeletionIndices.length % 4 == 0);
         (
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
