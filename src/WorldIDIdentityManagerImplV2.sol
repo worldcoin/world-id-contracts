@@ -53,6 +53,10 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     /// @notice Thrown when the WorldIDIdentityManagerImplV2 contract is initalized
     event WorldIDIdentityManagerImplV2Initialized();
 
+    /// @notice Thrown when the bytes calldata packedDeletionIndices array
+    /// is not a multiple of 4 (to make up 32 bit indices)
+    error InvalidDeletionIndices();
+
     /// @notice Initializes the V2 implementation contract.
     /// @param _batchDeletionVerifiers The table of verifiers for verifying batch identity deletions.
     /// @dev Must be called exactly once
@@ -64,6 +68,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///      upgrading. Create a separate initializer function instead.
     ///
     ///
+    /// @custom:reverts InvalidVerifierLUT if `_batchDeletionVerifiers` is set to the zero address
     function initializeV2(VerifierLookupTable _batchDeletionVerifiers) public reinitializer(2) {
         if (address(_batchDeletionVerifiers) == address(0)) {
             revert InvalidVerifierLUT();
@@ -101,12 +106,18 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///                 provided inputs.
     /// @custom:reverts VerifierLookupTable.NoSuchVerifier If the batch sizes doesn't match a known
     ///                 verifier.
+    /// @custom:reverts InvalidDeletionIndices if the length of `packedDeletionIndices`
+    /// is not a multiple of 4 (8*4 = 32 bits per index)
     function deleteIdentities(
         uint256[8] calldata deletionProof,
         bytes calldata packedDeletionIndices,
         uint256 preRoot,
         uint256 postRoot
     ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
+        if (packedDeletionIndices.length % 4 != 0) {
+            revert InvalidDeletionIndices();
+        }
+
         uint32 batchSize = uint32(packedDeletionIndices.length / 4);
 
         if (preRoot != _latestRoot) {
@@ -168,6 +179,7 @@ contract WorldIDIdentityManagerImplV2 is WorldIDIdentityManagerImplV1 {
     ///
     /// @param newTable The new verifier lookup table to be used for verifying identity
     ///        deletions.
+    /// @custom:reverts InvalidVerifierLUT if `newTable` is set to the zero address
     function setDeleteIdentitiesVerifierLookupTable(VerifierLookupTable newTable)
         public
         virtual
