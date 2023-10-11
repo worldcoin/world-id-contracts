@@ -54,24 +54,24 @@ which of the _owner_ and _identity operator_ has the permission to perform these
 | Operation                                  | Privileges        | Description                                                                                                                           |
 | :----------------------------------------- | :---------------- | :------------------------------------------------------------------------------------------------------------------------------------ |
 | `acceptOwnership`                          | New Owner         | Accepts the transfer of ownership.                                                                                                    |
+| `deleteIdentities`                         | Identity Operator | Removes identity commitments in the supported batch sizes                                                                             |
 | `disableStateBridge`                       | Owner             | Turns off the state bridge.                                                                                                           |
 | `enableStateBridge`                        | Owner             | Turns on the state bridge.                                                                                                            |
 | `registerIdentities`                       | Identity Operator | Registers new identity commitments into the World ID system.                                                                          |
-| `setIdentitiUpdateVerifierLookupTable`     | Owner             | Sets the table of verifiers used to verify proofs that correspond to identity updates.                                                |
+| `setDeleteIdentitiesVerifierLookupTable`   | Owner             | Sets the table of verifiers used to verify proofs that correspond to identity deletions.                                                |
 | `setIdentityOperator`                      | Owner             | Sets the address that has permission to act as the Identity Operator.                                                                 |
 | `setRegisterIdentitiesVerifierLookupTable` | Owner             | Sets the table of verifiers used to verify proofs that correspond to identity insertions.                                             |
 | `setRootHistoryExpiry`                     | Owner             | Sets the amount of time it takes for a non-current tree root to expire.                                                               |
 | `setSemaphoreVerifier`                     | Owner             | Sets the contract used to verify semaphore proofs.                                                                                    |
 | `setStateBridge`                           | Owner             | Sets the address of the state bridge. The state bridge is the contract responsible for sending identity tree updates to other chains. |
 | `transferOwnership`                        | Owner             | Transfers ownership from the current owner to a new owner using a two-step process.                                                   |
-| `updateIdentities`                         | Identity Operator | Updates existing identity commitments in the World ID system. Updates are able to remove identities as well.                          |
 | `upgradeTo`                                | Owner             | Upgrades the implementation of the identity manager to a new version.                                                                 |
 | `upgradeToAndCall`                         | Owner             | Upgrades the implementation of the identity manager to a new version and executes a function call while doing so.                     |
 
 While there have been some discussions pertaining to the implementation of _timelocks_ for sensitive
 actions, many of these actions are required for administrating the contracts in conjunction with
 external services (such as the [signup sequencer](https://github.com/worldcoin/signup-sequencer)).
-To this end, timelocks would cause problems due to delays that could risk desynchronisation between
+To this end, timelocks would cause problems due to delays that could risk desynchronization between
 the contract and external services.
 
 ## Development
