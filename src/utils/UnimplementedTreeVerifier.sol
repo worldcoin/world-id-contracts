@@ -19,14 +19,8 @@ contract UnimplementedTreeVerifier is ITreeVerifier {
     /// with PublicInputNotInField the public input is not reduced.
     /// @notice There is no return value. If the function does not revert, the
     /// proof was succesfully verified.
-    /// @param proof the points (A, B, C) in EIP-197 format matching the output
-    /// of compressProof.
-    /// @param input the public input field elements in the scalar field Fr.
-    /// Elements must be reduced.
     /// @custom:reverts UnsupportedOperation When called.
-    function verifyProof(uint256[8] memory proof, uint256[1] memory input) external pure {
-        delete proof;
-        delete input;
+    function verifyProof(uint256[8] calldata /*proof*/, uint256[1] calldata /*input*/) external pure {
         revert UnsupportedOperation();
     }
 }
