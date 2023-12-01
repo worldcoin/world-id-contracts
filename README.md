@@ -57,14 +57,14 @@ which of the _owner_ and _identity operator_ has the permission to perform these
 | `disableStateBridge`                       | Owner             | Turns off the state bridge.                                                                                                           |
 | `enableStateBridge`                        | Owner             | Turns on the state bridge.                                                                                                            |
 | `registerIdentities`                       | Identity Operator | Registers new identity commitments into the World ID system.                                                                          |
-| `setIdentitiUpdateVerifierLookupTable`     | Owner             | Sets the table of verifiers used to verify proofs that correspond to identity updates.                                                |
+| `deleteIdentities`                       | Identity Operator | Registers new identity commitments into the World ID system.                                                                          |
 | `setIdentityOperator`                      | Owner             | Sets the address that has permission to act as the Identity Operator.                                                                 |
 | `setRegisterIdentitiesVerifierLookupTable` | Owner             | Sets the table of verifiers used to verify proofs that correspond to identity insertions.                                             |
+| `setDeleteIdentitiesVerifierLookupTable`   | Owner             | Sets the table of verifiers used to verify proofs that correspond to identity insertions.                                             |
 | `setRootHistoryExpiry`                     | Owner             | Sets the amount of time it takes for a non-current tree root to expire.                                                               |
 | `setSemaphoreVerifier`                     | Owner             | Sets the contract used to verify semaphore proofs.                                                                                    |
 | `setStateBridge`                           | Owner             | Sets the address of the state bridge. The state bridge is the contract responsible for sending identity tree updates to other chains. |
 | `transferOwnership`                        | Owner             | Transfers ownership from the current owner to a new owner using a two-step process.                                                   |
-| `updateIdentities`                         | Identity Operator | Updates existing identity commitments in the World ID system. Updates are able to remove identities as well.                          |
 | `upgradeTo`                                | Owner             | Upgrades the implementation of the identity manager to a new version.                                                                 |
 | `upgradeToAndCall`                         | Owner             | Upgrades the implementation of the identity manager to a new version and executes a function call while doing so.                     |
 
@@ -87,27 +87,55 @@ dependencies and build the smart contracts.
 
 ### Testing
 
-The prover service comes with a way to generate test parameters—a mock insertion of a batch of
-consecutive commitments into the tree. Assuming you've already run `make deploy`, the prover service
-binary should have been downloaded. To generate a test batch, run
+In order to generate valid proofs you need to first download [`semaphore-mtb`](https://github.com/worldcoin/semaphore-mtb) and build it. Then you can run the tests with:
 
-```
-./mtb/bin/mtb gen-test-params --tree-depth=... --batch-size=...
+
+```bash
+./gnark-mbu gen-test-param --mode insertion/deletion --tree-depth=... --batch-size=...
 ```
 
 where the parameters MUST match the parameters passed for contract deployment. To transform these
 into a proof, run the `prove` command, passing the params on stdin:
 
-```
-./mtb/bin/mtb prove --keys-file=mtb/keys < GENERATED_PARAMS
+> [!NOTE]
+> In order to generate a valid keys file, you need to run `gnark-mbu setup` with the correct parameters. > The `gnark-mbu setup` command will output a `keys` file that you can use for the `prove` command.
+
+```bash
+./gnark-mbu prove --mode insertion/deletion --keys-file= ${keys_file} < GENERATED_PARAMS
 ```
 
 The output of this, together with the relevant parts of the generated test params, should constitute
-a correct input to the `registerIdentities` method of the `Semaphore` contract, as long as it was
+a correct input to the `registerIdentities` or `deleteIdentities` methods respectively of the `WorldIDIdentityManagerImplV1/V2` contracts, as long as it was
 deployed using the same keys file.
+
+Alternatively, you can take a look at pre-made tests with pre-generated valid proofs in [`WorldIDIdentityManagerTest.sol`](./src/test/identity-manager/WorldIDIdentityManagerTest.sol), [`WorldIDIdentityManagerIdentityRegistration.sol`](./src/test/identity-manager/WorldIDIdentityManagerIdentityRegistration.t.sol) and [`WorldIDIdentityManagerIdentityDeletion.sol`](./src/test/identity-manager/WorldIDIdentityManagerIdentityDeletion.t.sol).
 
 ### Deployment
 
-Deploying the Semaphore contract will require generating a verifier contract for our batch insertion
-service. Calling `make deploy` will guide you through the process of downloading the relevant tools,
-initializing and creating the required contracts.
+In order to deploy `world-id-contracts` you need to download [`contract-deployer`](https://github.com/worldcoin/contract-deployer), build it and do the following:
+
+1. Download the repo
+
+```bash
+git clone https://github.com/worldcoin/contract-deployer.git
+cd contract-deployer
+git submodule update --init --recursive
+```
+
+2. Setup your environment variables ([link](https://github.com/worldcoin/contract-deployer?tab=readme-ov-file#%EF%B8%8F-configuration))
+
+3. Setup deployment config file ([link](https://github.com/worldcoin/contract-deployer?tab=readme-ov-file#configuration-file))
+
+4. Deploy
+
+> [!NOTE]
+> You need to have the rust toolchain installed in order to deploy the contracts. [link](https://www.rust-lang.org/tools/install)
+
+Run:
+
+```bash
+cargo run --release 
+```
+
+
+
