@@ -28,7 +28,7 @@
     "@zk-kit/identity": "^1.4.1",
     "@zk-kit/protocols": "^1.11.0",
     "axios": "^1.4.0",
-    "circomlibjs": "0.0.8",
+    "circomlibjs": "0.1.0",
     "commander": "^10.0.1",
     "dotenv": "^16.3.1",
     "ethers": "^5.7.2",
