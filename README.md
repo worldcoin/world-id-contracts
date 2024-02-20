@@ -38,7 +38,7 @@ verifications. Go to the [World ID app](https://worldcoin.org/download-app) to g
 The WorldID Identity Manager uses a bifurcated notion of privilege in production. This operates as
 follows:
 
-- **Owner:** The owner is responsible for administrating the contract. In production, the contract's
+- **Owner:** The owner is responsible for administering the contract. In production, the contract's
   owner will be a multi-signature wallet.
 - **Identity Operator:** The identity operator is responsible for performing identity operations
   using the contract. In production, the contract's identity operator will be a wallet associated
