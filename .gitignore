@@ -7,3 +7,5 @@ mtb/
 .deploy-config.json
 yarn.lock
 .DS_Store
+
+broadcast/
