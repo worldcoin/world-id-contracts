@@ -4,7 +4,7 @@ all: install build
 # ===== Basic Development Rules =======================================================================================
 
 # Install forge dependencies (not needed if submodules are already initialized).
-install:; forge install && npm install
+install:; forge install
 
 # Build contracts.
 build:; forge build
@@ -29,7 +29,8 @@ snapshot:; forge snapshot --no-match-test testCannotRegisterIfProofIncorrect
 # ===== Utility Rules =================================================================================================
 
 # Format the solidity code.
-format:; forge fmt; npx prettier --write .
+format:; forge fmt
+format-check:; forge fmt --check
 
 # Update forge dependencies.
 update:; forge update

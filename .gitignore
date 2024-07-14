@@ -8,5 +8,9 @@ mtb/
 yarn.lock
 .DS_Store
 
+# Forge script broadcast output directory
 broadcast/
+
+# State generated via anvil
+# TODO: Use a temporary directory?
 state.json

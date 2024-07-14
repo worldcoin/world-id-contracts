@@ -19,11 +19,6 @@ jobs:
       - name: Install Foundry
         uses: onbjerg/foundry-toolchain@v1
 
-      - uses: actions/setup-node@v2
-        with:
-          node-version: '17'
-          cache: 'npm'
-
       - name: Install Dependencies
         run: make install
 
@@ -32,6 +27,9 @@ jobs:
 
       - name: Run Tests
         run: make test
+
+      - name: Check formatting
+        run: make format-check
 
       - name: Run Benchmarks
         run: |

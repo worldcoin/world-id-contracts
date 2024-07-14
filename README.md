@@ -98,12 +98,6 @@ WorldIDIdentityManager (Phone): 0xCDfDF72065493bDDb2131478c89C1D5482BD1dF6
 
 All the contracts are deployed using the default anvil wallet `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`, with the private key `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`. This is also the default owner account for all contracts.
 
-### Setup
-Before testing/building/deploying you'll need to initialize submodules.
-```
-> git submodules update --init --recursive
-```
-
 ### Testing
 Tests can be run with `forge test`.
 
