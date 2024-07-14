@@ -1,36 +1,147 @@
-No files changed, compilation skipped
-| Contract                       | Size (kB) | Margin (kB) |
-|--------------------------------|-----------|-------------|
-| Address                        | 0.086     | 24.49       |
-| AddressUpgradeable             | 0.086     | 24.49       |
-| ByteHasher                     | 0.086     | 24.49       |
-| CheckInitialized               | 0.063     | 24.513      |
-| ERC1967Proxy                   | 0.177     | 24.399      |
-| ErrorUtils                     | 0.086     | 24.49       |
-| Pairing                        | 0.086     | 24.49       |
-| SemaphoreTreeDepthValidator    | 0.086     | 24.49       |
-| SemaphoreVerifier              | 4.211     | 20.365      |
-| SequencerVerifier              | 0.756     | 23.82       |
-| SimpleSemaphoreVerifier        | 0.301     | 24.275      |
-| SimpleStateBridge              | 0.186     | 24.39       |
-| SimpleVerifier                 | 0.804     | 23.772      |
-| SimpleVerify                   | 0.581     | 23.995      |
-| StorageSlot                    | 0.086     | 24.49       |
-| StorageSlotUpgradeable         | 0.086     | 24.49       |
-| TestERC20                      | 2.874     | 21.702      |
-| TypeConverter                  | 11.403    | 13.173      |
-| UnimplementedTreeVerifier      | 0.713     | 23.863      |
-| Verifier                       | 4.38      | 20.196      |
-| VerifierLookupTable            | 1.127     | 23.449      |
-| WorldIDIdentityManager         | 0.177     | 24.399      |
-| WorldIDIdentityManagerImplMock | 15.449    | 9.127       |
-| WorldIDIdentityManagerImplV1   | 15.133    | 9.443       |
-| WorldIDRouter                  | 0.177     | 24.399      |
-| WorldIDRouterImplMock          | 7.343     | 17.233      |
-| WorldIDRouterImplV1            | 7.03      | 17.546      |
-| console                        | 0.086     | 24.49       |
-| console2                       | 0.086     | 24.49       |
-| stdError                       | 0.624     | 23.952      |
-| stdMath                        | 0.086     | 24.49       |
-| stdStorage                     | 0.59      | 23.986      |
+Compiling 1 files with Solc 0.8.21
+Solc 0.8.21 finished in 1.61s
+Compiler run successful with warnings:
+Warning (2519): This declaration shadows an existing declaration.
+  --> script/Deploy.s.sol:33:9:
+   |
+33 |         WorldIDIdentityManager worldIDOrb = deployWorldID(INITIAL_ROOT);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+  --> script/Deploy.s.sol:30:54:
+   |
+30 |     function run() external returns (address router, address worldIDOrb, address worldIDPhone) {
+   |                                                      ^^^^^^^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+  --> script/Deploy.s.sol:35:9:
+   |
+35 |         WorldIDIdentityManager worldIDPhone = deployWorldID(INITIAL_ROOT);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+  --> script/Deploy.s.sol:30:74:
+   |
+30 |     function run() external returns (address router, address worldIDOrb, address worldIDPhone) {
+   |                                                                          ^^^^^^^^^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+  --> script/Deploy.s.sol:38:9:
+   |
+38 |         WorldIDRouter router = deployWorldIDRouter(IWorldID(address(worldIDPhone)));
+   |         ^^^^^^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+  --> script/Deploy.s.sol:30:38:
+   |
+30 |     function run() external returns (address router, address worldIDOrb, address worldIDPhone) {
+   |                                      ^^^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+  --> script/Deploy.s.sol:45:9:
+   |
+45 |         VerifierLookupTable batchInsertionVerifiers = deployInsertionVerifiers();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+  --> script/Deploy.s.sol:27:5:
+   |
+27 |     address batchInsertionVerifiers = address(0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+  --> script/Deploy.s.sol:47:9:
+   |
+47 |         VerifierLookupTable batchDeletionVerifiers = deployDeletionVerifiers();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+  --> script/Deploy.s.sol:28:5:
+   |
+28 |     address batchDeletionVerifiers = address(0);
+   |     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+  --> script/Deploy.s.sol:77:9:
+   |
+77 |         WorldIDIdentityManager worldID = new WorldIDIdentityManager(address(impl1), initializeCall);
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+  --> script/Deploy.s.sol:44:65:
+   |
+44 |     function deployWorldID(uint256 _initalRoot) public returns (WorldIDIdentityManager worldID) {
+   |                                                                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> script/Deploy.s.sol:100:9:
+    |
+100 |         WorldIDRouter router = new WorldIDRouter(address(impl), initializeCall);
+    |         ^^^^^^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+  --> script/Deploy.s.sol:90:18:
+   |
+90 |         returns (WorldIDRouter router)
+   |                  ^^^^^^^^^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> script/Deploy.s.sol:110:9:
+    |
+110 |         VerifierLookupTable lut = new VerifierLookupTable();
+    |         ^^^^^^^^^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> script/Deploy.s.sol:107:58:
+    |
+107 |     function deployVerifierLookupTable() public returns (VerifierLookupTable lut) {
+    |                                                          ^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> script/Deploy.s.sol:132:13:
+    |
+132 |             VerifierLookupTable lut = deployVerifierLookupTable();
+    |             ^^^^^^^^^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> script/Deploy.s.sol:130:57:
+    |
+130 |     function deployInsertionVerifiers() public returns (VerifierLookupTable lut) {
+    |                                                         ^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2519): This declaration shadows an existing declaration.
+   --> script/Deploy.s.sol:150:13:
+    |
+150 |             VerifierLookupTable lut = deployVerifierLookupTable();
+    |             ^^^^^^^^^^^^^^^^^^^^^^^
+Note: The shadowed declaration is here:
+   --> script/Deploy.s.sol:148:56:
+    |
+148 |     function deployDeletionVerifiers() public returns (VerifierLookupTable lut) {
+    |                                                        ^^^^^^^^^^^^^^^^^^^^^^^
+
+Warning (2072): Unused local variable.
+  --> script/Deploy.s.sol:49:9:
+   |
+49 |         SemaphoreVerifier _semaphoreVerifier = deploySemaphoreVerifier();
+   |         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+| Contract                       | Size (B) | Margin (B) |
+|--------------------------------|----------|------------|
+| Address                        |       86 |     24,490 |
+| AddressUpgradeable             |       86 |     24,490 |
+| CheckInitialized               |       63 |     24,513 |
+| ERC1967Proxy                   |      177 |     24,399 |
+| Pairing                        |    2,984 |     21,592 |
+| SemaphoreTreeDepthValidator    |       86 |     24,490 |
+| SemaphoreVerifier              |    5,219 |     19,357 |
+| SequencerVerifier              |      364 |     24,212 |
+| SimpleSemaphoreVerifier        |      420 |     24,156 |
+| SimpleStateBridge              |      524 |     24,052 |
+| SimpleVerifier                 |      530 |     24,046 |
+| SimpleVerify                   |      581 |     23,995 |
+| StorageSlot                    |       86 |     24,490 |
+| StorageSlotUpgradeable         |       86 |     24,490 |
+| TypeConverter                  |   11,403 |     13,173 |
+| UnimplementedTreeVerifier      |      207 |     24,369 |
+| Verifier                       |    4,813 |     19,763 |
+| VerifierLookupTable            |    1,382 |     23,194 |
+| WorldIDIdentityManager         |      177 |     24,399 |
+| WorldIDIdentityManagerImplMock |   11,003 |     13,573 |
+| WorldIDIdentityManagerImplV1   |   10,655 |     13,921 |
+| WorldIDIdentityManagerImplV2   |   12,942 |     11,634 |
+| WorldIDRouter                  |      177 |     24,399 |
+| WorldIDRouterImplMock          |    7,216 |     17,360 |
+| WorldIDRouterImplV1            |    6,917 |     17,659 |
 
