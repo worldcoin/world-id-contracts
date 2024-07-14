@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - dzejkop/repo-update
     tags:
       - 'v*.*.*'
   workflow_dispatch:
