@@ -1,187 +1,185 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.21;
 
-import 'forge-std/Script.sol';
-import '../src/WorldIDRouter.sol';
-import '../src/WorldIDRouterImplV1.sol';
-import '../src/WorldIDIdentityManager.sol';
-import '../src/WorldIDIdentityManagerImplV1.sol';
-import '../src/WorldIDIdentityManagerImplV2.sol';
-import '../src/SemaphoreVerifier.sol';
+import "forge-std/Script.sol";
+import "../src/WorldIDRouter.sol";
+import "../src/WorldIDRouterImplV1.sol";
+import "../src/WorldIDIdentityManager.sol";
+import "../src/WorldIDIdentityManagerImplV1.sol";
+import "../src/WorldIDIdentityManagerImplV2.sol";
+import "../src/SemaphoreVerifier.sol";
 
-import { Verifier as InsertionB10 } from '../src/verifiers/insertion/b10.sol';
-import { Verifier as InsertionB100 } from '../src/verifiers/insertion/b100.sol';
-import { Verifier as InsertionB600 } from '../src/verifiers/insertion/b600.sol';
-import { Verifier as InsertionB1200 } from '../src/verifiers/insertion/b1200.sol';
+import {Verifier as InsertionB10} from "../src/verifiers/insertion/b10.sol";
+import {Verifier as InsertionB100} from "../src/verifiers/insertion/b100.sol";
+import {Verifier as InsertionB600} from "../src/verifiers/insertion/b600.sol";
+import {Verifier as InsertionB1200} from "../src/verifiers/insertion/b1200.sol";
 
-import { Verifier as DeletionB10 } from '../src/verifiers/deletion/b10.sol';
-import { Verifier as DeletionB100 } from '../src/verifiers/deletion/b100.sol';
+import {Verifier as DeletionB10} from "../src/verifiers/deletion/b10.sol";
+import {Verifier as DeletionB100} from "../src/verifiers/deletion/b100.sol";
 
 contract Deploy is Script {
-  uint8 constant TREE_DEPTH = 30;
-  uint256 constant INITIAL_ROOT = 0x918D46BF52D98B034413F4A1A1C41594E7A7A3F6AE08CB43D1A2A230E1959EF;
+    uint8 constant TREE_DEPTH = 30;
+    uint256 constant INITIAL_ROOT =
+        0x918D46BF52D98B034413F4A1A1C41594E7A7A3F6AE08CB43D1A2A230E1959EF;
 
-  address semaphoreVerifier = address(0);
+    address semaphoreVerifier = address(0);
 
-  address batchInsertionVerifiers = address(0);
-  address batchDeletionVerifiers = address(0);
+    address batchInsertionVerifiers = address(0);
+    address batchDeletionVerifiers = address(0);
 
-  function run() external returns (address router, address worldIDOrb, address worldIDPhone) {
-    console.log('Deploying WorldIDRouter, WorldIDOrb, and WorldIDPhone');
+    function run() external returns (address router, address worldIDOrb, address worldIDPhone) {
+        console.log("Deploying WorldIDRouter, WorldIDOrb, and WorldIDPhone");
 
-    WorldIDIdentityManager worldIDOrb = deployWorldID(INITIAL_ROOT);
-    console.log('WorldIDOrb:', address(worldIDOrb));
-    WorldIDIdentityManager worldIDPhone = deployWorldID(INITIAL_ROOT);
-    console.log('WorldIDPhone:', address(worldIDPhone));
+        WorldIDIdentityManager worldIDOrb = deployWorldID(INITIAL_ROOT);
+        console.log("WorldIDOrb:", address(worldIDOrb));
+        WorldIDIdentityManager worldIDPhone = deployWorldID(INITIAL_ROOT);
+        console.log("WorldIDPhone:", address(worldIDPhone));
 
-    WorldIDRouter router = deployWorldIDRouter(IWorldID(address(worldIDPhone)));
-    updateGroup(address(router), 1, address(worldIDOrb));
+        WorldIDRouter router = deployWorldIDRouter(IWorldID(address(worldIDPhone)));
+        updateGroup(address(router), 1, address(worldIDOrb));
 
-    return (address(router), address(worldIDOrb), address(worldIDPhone));
-  }
-
-  function deployWorldID(uint256 _initalRoot) public returns (WorldIDIdentityManager worldID) {
-    VerifierLookupTable batchInsertionVerifiers = deployInsertionVerifiers();
-    VerifierLookupTable batchUpdateVerifiers = deployVerifierLookupTable();
-    VerifierLookupTable batchDeletionVerifiers = deployDeletionVerifiers();
-
-    SemaphoreVerifier _semaphoreVerifier = deploySemaphoreVerifier();
-
-    beginBroadcast();
-    // Encode:
-    // 'initialize(
-    //    uint8 _treeDepth,
-    //    uint256 initialRoot,
-    //    address _batchInsertionVerifiers,
-    //    address _batchUpdateVerifiers,
-    //    address _semaphoreVerifier
-    //  )'
-    bytes memory initializeCall = abi.encodeWithSignature(
-      'initialize(uint8,uint256,address,address,address)',
-      TREE_DEPTH,
-      _initalRoot,
-      batchInsertionVerifiers,
-      batchUpdateVerifiers,
-      semaphoreVerifier
-    );
-
-    // Encode:
-    // 'initializeV2(VerifierLookupTable _batchDeletionVerifiers)'
-    bytes memory initializeV2Call = abi.encodeWithSignature(
-      'initializeV2(address)',
-      batchDeletionVerifiers
-    );
-
-    WorldIDIdentityManagerImplV1 impl1 = new WorldIDIdentityManagerImplV1();
-    WorldIDIdentityManagerImplV2 impl2 = new WorldIDIdentityManagerImplV2();
-
-    WorldIDIdentityManager worldID = new WorldIDIdentityManager(address(impl1), initializeCall);
-
-    // Recast to access api
-    WorldIDIdentityManagerImplV1 worldIDImplV1 = WorldIDIdentityManagerImplV1(address(worldID));
-    worldIDImplV1.upgradeToAndCall(address(impl2), initializeV2Call);
-
-    vm.stopBroadcast();
-
-    return worldID;
-  }
-
-  function deployWorldIDRouter(
-    IWorldID initialGroupIdentityManager
-  ) public returns (WorldIDRouter router) {
-    beginBroadcast();
-
-    // Encode:
-    // 'initialize(IWorldID initialGroupIdentityManager)'
-    bytes memory initializeCall = abi.encodeWithSignature(
-      'initialize(address)',
-      address(initialGroupIdentityManager)
-    );
-
-    WorldIDRouterImplV1 impl = new WorldIDRouterImplV1();
-    WorldIDRouter router = new WorldIDRouter(address(impl), initializeCall);
-
-    vm.stopBroadcast();
-
-    return router;
-  }
-
-  function deployVerifierLookupTable() public returns (VerifierLookupTable lut) {
-    beginBroadcast();
-
-    VerifierLookupTable lut = new VerifierLookupTable();
-
-    vm.stopBroadcast();
-
-    return lut;
-  }
-
-  function deploySemaphoreVerifier() public returns (SemaphoreVerifier) {
-    if (semaphoreVerifier == address(0)) {
-      beginBroadcast();
-
-      SemaphoreVerifier verifier = new SemaphoreVerifier();
-      semaphoreVerifier = address(verifier);
-
-      vm.stopBroadcast();
+        return (address(router), address(worldIDOrb), address(worldIDPhone));
     }
 
-    return SemaphoreVerifier(semaphoreVerifier);
-  }
+    function deployWorldID(uint256 _initalRoot) public returns (WorldIDIdentityManager worldID) {
+        VerifierLookupTable batchInsertionVerifiers = deployInsertionVerifiers();
+        VerifierLookupTable batchUpdateVerifiers = deployVerifierLookupTable();
+        VerifierLookupTable batchDeletionVerifiers = deployDeletionVerifiers();
 
-  function deployInsertionVerifiers() public returns (VerifierLookupTable lut) {
-    if (batchInsertionVerifiers == address(0)) {
-      VerifierLookupTable lut = deployVerifierLookupTable();
-      batchInsertionVerifiers = address(lut);
+        SemaphoreVerifier _semaphoreVerifier = deploySemaphoreVerifier();
 
-      beginBroadcast();
+        beginBroadcast();
+        // Encode:
+        // 'initialize(
+        //    uint8 _treeDepth,
+        //    uint256 initialRoot,
+        //    address _batchInsertionVerifiers,
+        //    address _batchUpdateVerifiers,
+        //    address _semaphoreVerifier
+        //  )'
+        bytes memory initializeCall = abi.encodeWithSignature(
+            "initialize(uint8,uint256,address,address,address)",
+            TREE_DEPTH,
+            _initalRoot,
+            batchInsertionVerifiers,
+            batchUpdateVerifiers,
+            semaphoreVerifier
+        );
 
-      lut.addVerifier(10, ITreeVerifier(address(new InsertionB10())));
-      lut.addVerifier(100, ITreeVerifier(address(new InsertionB100())));
-      lut.addVerifier(600, ITreeVerifier(address(new InsertionB600())));
-      lut.addVerifier(1200, ITreeVerifier(address(new InsertionB1200())));
+        // Encode:
+        // 'initializeV2(VerifierLookupTable _batchDeletionVerifiers)'
+        bytes memory initializeV2Call =
+            abi.encodeWithSignature("initializeV2(address)", batchDeletionVerifiers);
 
-      vm.stopBroadcast();
+        WorldIDIdentityManagerImplV1 impl1 = new WorldIDIdentityManagerImplV1();
+        WorldIDIdentityManagerImplV2 impl2 = new WorldIDIdentityManagerImplV2();
+
+        WorldIDIdentityManager worldID = new WorldIDIdentityManager(address(impl1), initializeCall);
+
+        // Recast to access api
+        WorldIDIdentityManagerImplV1 worldIDImplV1 = WorldIDIdentityManagerImplV1(address(worldID));
+        worldIDImplV1.upgradeToAndCall(address(impl2), initializeV2Call);
+
+        vm.stopBroadcast();
+
+        return worldID;
     }
 
-    return VerifierLookupTable(batchInsertionVerifiers);
-  }
+    function deployWorldIDRouter(IWorldID initialGroupIdentityManager)
+        public
+        returns (WorldIDRouter router)
+    {
+        beginBroadcast();
 
-  function deployDeletionVerifiers() public returns (VerifierLookupTable lut) {
-    if (batchDeletionVerifiers == address(0)) {
-      VerifierLookupTable lut = deployVerifierLookupTable();
-      batchDeletionVerifiers = address(lut);
+        // Encode:
+        // 'initialize(IWorldID initialGroupIdentityManager)'
+        bytes memory initializeCall =
+            abi.encodeWithSignature("initialize(address)", address(initialGroupIdentityManager));
 
-      beginBroadcast();
+        WorldIDRouterImplV1 impl = new WorldIDRouterImplV1();
+        WorldIDRouter router = new WorldIDRouter(address(impl), initializeCall);
 
-      lut.addVerifier(10, ITreeVerifier(address(new DeletionB10())));
-      lut.addVerifier(100, ITreeVerifier(address(new DeletionB100())));
+        vm.stopBroadcast();
 
-      vm.stopBroadcast();
+        return router;
     }
 
-    return VerifierLookupTable(batchDeletionVerifiers);
-  }
+    function deployVerifierLookupTable() public returns (VerifierLookupTable lut) {
+        beginBroadcast();
 
-  function updateGroup(address router, uint256 groupNumber, address worldID) public {
-    WorldIDRouterImplV1 routerImpl = WorldIDRouterImplV1(router);
+        VerifierLookupTable lut = new VerifierLookupTable();
 
-    beginBroadcast();
+        vm.stopBroadcast();
 
-    uint256 groupCount = routerImpl.groupCount();
-    if (groupCount == groupNumber) {
-      routerImpl.addGroup(IWorldID(worldID));
-    } else if (groupCount < groupNumber) {
-      routerImpl.updateGroup(groupNumber, IWorldID(worldID));
-    } else {
-      revert('Cannot update group number - group must be added first');
+        return lut;
     }
 
-    vm.stopBroadcast();
-  }
+    function deploySemaphoreVerifier() public returns (SemaphoreVerifier) {
+        if (semaphoreVerifier == address(0)) {
+            beginBroadcast();
 
-  function beginBroadcast() internal {
-    uint256 deployerPrivateKey = vm.envUint('PRIVATE_KEY');
-    vm.startBroadcast(deployerPrivateKey);
-  }
+            SemaphoreVerifier verifier = new SemaphoreVerifier();
+            semaphoreVerifier = address(verifier);
+
+            vm.stopBroadcast();
+        }
+
+        return SemaphoreVerifier(semaphoreVerifier);
+    }
+
+    function deployInsertionVerifiers() public returns (VerifierLookupTable lut) {
+        if (batchInsertionVerifiers == address(0)) {
+            VerifierLookupTable lut = deployVerifierLookupTable();
+            batchInsertionVerifiers = address(lut);
+
+            beginBroadcast();
+
+            lut.addVerifier(10, ITreeVerifier(address(new InsertionB10())));
+            lut.addVerifier(100, ITreeVerifier(address(new InsertionB100())));
+            lut.addVerifier(600, ITreeVerifier(address(new InsertionB600())));
+            lut.addVerifier(1200, ITreeVerifier(address(new InsertionB1200())));
+
+            vm.stopBroadcast();
+        }
+
+        return VerifierLookupTable(batchInsertionVerifiers);
+    }
+
+    function deployDeletionVerifiers() public returns (VerifierLookupTable lut) {
+        if (batchDeletionVerifiers == address(0)) {
+            VerifierLookupTable lut = deployVerifierLookupTable();
+            batchDeletionVerifiers = address(lut);
+
+            beginBroadcast();
+
+            lut.addVerifier(10, ITreeVerifier(address(new DeletionB10())));
+            lut.addVerifier(100, ITreeVerifier(address(new DeletionB100())));
+
+            vm.stopBroadcast();
+        }
+
+        return VerifierLookupTable(batchDeletionVerifiers);
+    }
+
+    function updateGroup(address router, uint256 groupNumber, address worldID) public {
+        WorldIDRouterImplV1 routerImpl = WorldIDRouterImplV1(router);
+
+        beginBroadcast();
+
+        uint256 groupCount = routerImpl.groupCount();
+        if (groupCount == groupNumber) {
+            routerImpl.addGroup(IWorldID(worldID));
+        } else if (groupCount < groupNumber) {
+            routerImpl.updateGroup(groupNumber, IWorldID(worldID));
+        } else {
+            revert("Cannot update group number - group must be added first");
+        }
+
+        vm.stopBroadcast();
+    }
+
+    function beginBroadcast() internal {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        vm.startBroadcast(deployerPrivateKey);
+    }
 }
