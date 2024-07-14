@@ -7,3 +7,4 @@ lib/
 
 .deploy-config.json
 .env
+state.json
