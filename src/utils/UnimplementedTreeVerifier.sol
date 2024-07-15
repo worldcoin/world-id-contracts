@@ -20,7 +20,10 @@ contract UnimplementedTreeVerifier is ITreeVerifier {
     /// @notice There is no return value. If the function does not revert, the
     /// proof was succesfully verified.
     /// @custom:reverts UnsupportedOperation When called.
-    function verifyProof(uint256[8] calldata /*proof*/, uint256[1] calldata /*input*/) external pure {
+    function verifyProof(uint256[8] calldata, /*proof*/ uint256[1] calldata /*input*/ )
+        external
+        pure
+    {
         revert UnsupportedOperation();
     }
 }
