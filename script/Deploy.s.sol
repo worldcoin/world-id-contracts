@@ -27,18 +27,20 @@ contract Deploy is Script {
     address batchInsertionVerifiers = address(0);
     address batchDeletionVerifiers = address(0);
 
-    function run() external returns (address router, address worldIDOrb, address worldIDPhone) {
-        console.log("Deploying WorldIDRouter, WorldIDOrb, and WorldIDPhone");
+    function run() external returns (address router, address worldIDOrb) {
+        console.log("Deploying WorldIDRouter, WorldIDOrb");
 
         WorldIDIdentityManager worldIDOrb = deployWorldID(INITIAL_ROOT);
         console.log("WorldIDOrb:", address(worldIDOrb));
-        WorldIDIdentityManager worldIDPhone = deployWorldID(INITIAL_ROOT);
-        console.log("WorldIDPhone:", address(worldIDPhone));
 
-        WorldIDRouter router = deployWorldIDRouter(IWorldID(address(worldIDPhone)));
+        WorldIDRouter router = deployWorldIDRouter(IWorldID(address(worldIDOrb)));
+        console.log("WorldIDRouter:", address(router));
+
+        // Add WorldIDOrb to the router again for backwards compatibility
+        // a lot of services assume it's at group id 1
         updateGroup(address(router), 1, address(worldIDOrb));
 
-        return (address(router), address(worldIDOrb), address(worldIDPhone));
+        return (address(router), address(worldIDOrb));
     }
 
     function deployWorldID(uint256 _initalRoot) public returns (WorldIDIdentityManager worldID) {

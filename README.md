@@ -91,9 +91,8 @@ Simply run
 
 This docker image starts an anvil instance with contracts deployed at:
 ```
-WorldIDRouter: 0x7a2088a1bFc9d81c55368AE168C2C02570cB814F
-WorldIDIdentityManager (Orb): 0x68B1D87F95878fE05B998F19b66F4baba5De1aed
-WorldIDIdentityManager (Phone): 0x322813Fd9A801c5507c9de605d63CEA4f2CE6c44
+WorldIDRouter: 0x59b670e9fA9D0A427751Af201D676719a970857b
+WorldIDIdentityManager: 0x68B1D87F95878fE05B998F19b66F4baba5De1aed
 ```
 
 All the contracts are deployed using the default anvil wallet `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`, with the private key `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`. This is also the default owner account for all contracts.
