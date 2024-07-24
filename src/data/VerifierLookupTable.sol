@@ -100,6 +100,7 @@ contract VerifierLookupTable is Ownable2Step {
     ///
     /// @custom:reverts VerifierExists If `batchSize` already has an associated verifier.
     /// @custom:reverts string If the caller is not the owner.
+    // TODO I have a weird feeling that both verifiers are technically correct for a given batch size, so this may generate conflicts
     function addVerifier(uint256 batchSize, ITreeVerifier verifier) public onlyOwner {
         // Check that there is no entry for that batch size.
         if (verifier_lut[batchSize] != nullVerifier) {

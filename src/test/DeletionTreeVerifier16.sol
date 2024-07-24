@@ -24,6 +24,12 @@ contract Verifier is ITreeVerifier {
     /// provided public input.
     error ProofInvalid();
 
+    /// The commitment is invalid
+    /// @dev This can mean that provided commitment points and/or proof of knowledge are not on their
+    /// curves, that pairing equation fails, or that the commitment and/or proof of knowledge is not for the
+    /// commitment key.
+    error CommitmentInvalid();
+
     // Addresses of precompiles
     uint256 constant PRECOMPILE_MODEXP = 0x05;
     uint256 constant PRECOMPILE_ADD = 0x06;
@@ -563,5 +569,25 @@ contract Verifier is ITreeVerifier {
             // We assume the contract is correctly generated, so the verification key is valid.
             revert ProofInvalid();
         }
+    }
+
+    /// Verify an uncompressed Groth16 proof. TODO implement me.
+    /// @notice Reverts with InvalidProof if the proof is invalid or
+    /// with PublicInputNotInField the public input is not reduced.
+    /// @notice There is no return value. If the function does not revert, the
+    /// proof was successfully verified.
+    /// @param proof the points (A, B, C) in EIP-197 format matching the output
+    /// of compressProof.
+    /// @param commitments the Pedersen commitments from the proof.
+    /// @param commitmentPok the proof of knowledge for the Pedersen commitments.
+    /// @param input the public input field elements in the scalar field Fr.
+    /// Elements must be reduced.
+    function verifyProof(
+      uint256[8] calldata proof,
+      uint256[2] calldata commitments,
+      uint256[2] calldata commitmentPok,
+      uint256[6] calldata input
+    ) public view {
+      revert ProofInvalid();
     }
 }

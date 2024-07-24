@@ -24,6 +24,12 @@ contract Verifier is ITreeVerifier {
     /// provided public input.
     error ProofInvalid();
 
+    /// The commitment is invalid
+    /// @dev This can mean that provided commitment points and/or proof of knowledge are not on their
+    /// curves, that pairing equation fails, or that the commitment and/or proof of knowledge is not for the
+    /// commitment key.
+    error CommitmentInvalid();
+
     // Addresses of precompiles
     uint256 constant PRECOMPILE_MODEXP = 0x05;
     uint256 constant PRECOMPILE_ADD = 0x06;
@@ -94,7 +100,20 @@ contract Verifier is ITreeVerifier {
     uint256 constant DELTA_NEG_Y_1 =
         3434233964589686342320626243495267687470464612485221367834666549409219897059;
 
-    // Constant and public input points
+    // Pedersen G point in G2 in powers of i
+    uint256 constant PEDERSEN_G_X_0 = 21441294035622592134905133512873468362508702063974882590704693879474576737584;
+    uint256 constant PEDERSEN_G_X_1 = 6368635485409273537395213595556633660081515905550175437043173991681729748822;
+    uint256 constant PEDERSEN_G_Y_0 = 16978793597471012289369193783688382826706322398685348712533693083060456000988;
+    uint256 constant PEDERSEN_G_Y_1 = 1196770745998898722344855310925286135223066465471317916896863436621345447459;
+
+    // Pedersen GRootSigmaNeg point in G2 in powers of i
+    uint256 constant PEDERSEN_GROOTSIGMANEG_X_0 = 5373836401316481629943029499652983380352935561461061158264107447525889686612;
+    uint256 constant PEDERSEN_GROOTSIGMANEG_X_1 = 19960864770791061706540867302297225471936574506202568382636084099678319857826;
+    uint256 constant PEDERSEN_GROOTSIGMANEG_Y_0 = 5290864406197468950028270836695297260279976796714661849939488598007711136458;
+    uint256 constant PEDERSEN_GROOTSIGMANEG_Y_1 = 306342868373644160158373674279154748399131663094431226050446760274635868473;
+
+
+  // Constant and public input points
     uint256 constant CONSTANT_X =
         19016103526843875126395145525124455195546522337268670813255409672571795425684;
     uint256 constant CONSTANT_Y =
@@ -103,6 +122,18 @@ contract Verifier is ITreeVerifier {
         1379748789921737417066313098910363913169509602099243602246914882900464880825;
     uint256 constant PUB_0_Y =
         943304887426072701494501907600571048821602999217792043874057384381177139312;
+    uint256 constant PUB_1_X = 6183135713551419036816633543367645663247025609097216126911475648058974912022;
+    uint256 constant PUB_1_Y = 21102811602262648315293045599560745474727679404860459617187909283004986272507;
+    uint256 constant PUB_2_X = 19822164060372680516854360121432278866336262105689801750079877586637790798031;
+    uint256 constant PUB_2_Y = 10456740031339841155661093919042001016742082007202720979934418649803741714894;
+    uint256 constant PUB_3_X = 16290366311454763606059135248190976641215760835711815662326630015706201983163;
+    uint256 constant PUB_3_Y = 16907795152452261512771978086615733126795922269669002823569192142506163045294;
+    uint256 constant PUB_4_X = 15420505406649886225748280611997118928081957293264764047640637825413011713270;
+    uint256 constant PUB_4_Y = 2601631970218909009242994022829296965376032089378593524349752305501846347144;
+    uint256 constant PUB_5_X = 15886863993093572646129257877005782379703689525655802367587159237989232959936;
+    uint256 constant PUB_5_Y = 7838013810241581765983422434382650078957243616947373245266000637505286804774;
+    uint256 constant PUB_6_X = 9759844099208151711966937132341516890932941761982388064421351245705247910969;
+    uint256 constant PUB_6_Y = 16652240304241494912496158668973379274727263489653058467884011864143669378891;
 
     /// Negation in Fp.
     /// @notice Returns a number x such that a + x = 0 in Fp.
@@ -427,6 +458,98 @@ contract Verifier is ITreeVerifier {
         }
     }
 
+    /// Compute the public input linear combination.
+    /// @notice Reverts with PublicInputNotInField if the input is not in the field.
+    /// @notice Computes the multi-scalar-multiplication of the public input
+    /// elements and the verification key including the constant term.
+    /// @param input The public inputs. These are elements of the scalar field Fr.
+    /// @param publicCommitments public inputs generated from pedersen commitments.
+    /// @param commitments The Pedersen commitments from the proof.
+    /// @return x The X coordinate of the resulting G1 point.
+    /// @return y The Y coordinate of the resulting G1 point.
+    function publicInputMSM(
+      uint256[6] calldata input,
+      uint256[1] memory publicCommitments,
+      uint256[2] memory commitments
+    )
+    internal view returns (uint256 x, uint256 y) {
+      // Note: The ECMUL precompile does not reject unreduced values, so we check this.
+      // Note: Unrolling this loop does not cost much extra in code-size, the bulk of the
+      //       code-size is in the PUB_ constants.
+      // ECMUL has input (x, y, scalar) and output (x', y').
+      // ECADD has input (x1, y1, x2, y2) and output (x', y').
+      // We reduce commitments(if any) with constants as the first point argument to ECADD.
+      // We call them such that ecmul output is already in the second point
+      // argument to ECADD so we can have a tight loop.
+      bool success = true;
+      assembly ("memory-safe") {
+        let f := mload(0x40)
+        let g := add(f, 0x40)
+        let s
+        mstore(f, CONSTANT_X)
+        mstore(add(f, 0x20), CONSTANT_Y)
+        success := and(success,  staticcall(gas(), PRECOMPILE_ADD, commitments, 64, g, 0x40))
+        success := and(success,  staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+        mstore(g, PUB_0_X)
+        mstore(add(g, 0x20), PUB_0_Y)
+        s :=  calldataload(input)
+        mstore(add(g, 0x40), s)
+        success := and(success, lt(s, R))
+        success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
+        success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+        mstore(g, PUB_1_X)
+        mstore(add(g, 0x20), PUB_1_Y)
+        s :=  calldataload(add(input, 32))
+        mstore(add(g, 0x40), s)
+        success := and(success, lt(s, R))
+        success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
+        success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+        mstore(g, PUB_2_X)
+        mstore(add(g, 0x20), PUB_2_Y)
+        s :=  calldataload(add(input, 64))
+        mstore(add(g, 0x40), s)
+        success := and(success, lt(s, R))
+        success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
+        success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+        mstore(g, PUB_3_X)
+        mstore(add(g, 0x20), PUB_3_Y)
+        s :=  calldataload(add(input, 96))
+        mstore(add(g, 0x40), s)
+        success := and(success, lt(s, R))
+        success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
+        success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+        mstore(g, PUB_4_X)
+        mstore(add(g, 0x20), PUB_4_Y)
+        s :=  calldataload(add(input, 128))
+        mstore(add(g, 0x40), s)
+        success := and(success, lt(s, R))
+        success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
+        success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+        mstore(g, PUB_5_X)
+        mstore(add(g, 0x20), PUB_5_Y)
+        s :=  calldataload(add(input, 160))
+        mstore(add(g, 0x40), s)
+        success := and(success, lt(s, R))
+        success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
+        success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+        mstore(g, PUB_6_X)
+        mstore(add(g, 0x20), PUB_6_Y)
+        s := mload(publicCommitments)
+        mstore(add(g, 0x40), s)
+        success := and(success, lt(s, R))
+        success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
+        success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+
+        x := mload(f)
+        y := mload(add(f, 0x20))
+      }
+      if (!success) {
+        // Either Public input not in field, or verification key invalid.
+        // We assume the contract is correctly generated, so the verification key is valid.
+        revert PublicInputNotInField();
+      }
+    }
+
     /// Compress a proof.
     /// @notice Will revert with InvalidProof if the curve points are invalid,
     /// but does not verify the proof itself.
@@ -563,5 +686,107 @@ contract Verifier is ITreeVerifier {
             // We assume the contract is correctly generated, so the verification key is valid.
             revert ProofInvalid();
         }
+    }
+
+    /// Verify an uncompressed Groth16 proof.
+    /// @notice Reverts with InvalidProof if the proof is invalid or
+    /// with PublicInputNotInField the public input is not reduced.
+    /// @notice There is no return value. If the function does not revert, the
+    /// proof was successfully verified.
+    /// @param proof the points (A, B, C) in EIP-197 format matching the output
+    /// of compressProof.
+    /// @param commitments the Pedersen commitments from the proof.
+    /// @param commitmentPok the proof of knowledge for the Pedersen commitments.
+    /// @param input the public input field elements in the scalar field Fr.
+    /// Elements must be reduced.
+    function verifyProof(
+      uint256[8] calldata proof,
+      uint256[2] calldata commitments,
+      uint256[2] calldata commitmentPok,
+      uint256[6] calldata input
+    ) public view {
+      // HashToField
+      uint256[1] memory publicCommitments;
+      uint256[] memory publicAndCommitmentCommitted;
+
+      publicCommitments[0] = uint256(
+        sha256(
+          abi.encodePacked(
+            commitments[0],
+            commitments[1],
+            publicAndCommitmentCommitted
+          )
+        )
+      ) % R;
+
+      // Verify pedersen commitments
+      bool success;
+      assembly ("memory-safe") {
+        let f := mload(0x40)
+
+        calldatacopy(f, commitments, 0x40) // Copy Commitments
+        mstore(add(f, 0x40), PEDERSEN_G_X_1)
+        mstore(add(f, 0x60), PEDERSEN_G_X_0)
+        mstore(add(f, 0x80), PEDERSEN_G_Y_1)
+        mstore(add(f, 0xa0), PEDERSEN_G_Y_0)
+        calldatacopy(add(f, 0xc0), commitmentPok, 0x40)
+        mstore(add(f, 0x100), PEDERSEN_GROOTSIGMANEG_X_1)
+        mstore(add(f, 0x120), PEDERSEN_GROOTSIGMANEG_X_0)
+        mstore(add(f, 0x140), PEDERSEN_GROOTSIGMANEG_Y_1)
+        mstore(add(f, 0x160), PEDERSEN_GROOTSIGMANEG_Y_0)
+
+        success := staticcall(gas(), PRECOMPILE_VERIFY, f, 0x180, f, 0x20)
+        success := and(success, mload(f))
+      }
+      if (!success) {
+        revert CommitmentInvalid();
+      }
+
+      (uint256 x, uint256 y) = publicInputMSM(
+        input,
+        publicCommitments,
+        commitments
+      );
+
+      // Note: The precompile expects the F2 coefficients in big-endian order.
+      // Note: The pairing precompile rejects unreduced values, so we won't check that here.
+      assembly ("memory-safe") {
+        let f := mload(0x40) // Free memory pointer.
+
+      // Copy points (A, B, C) to memory. They are already in correct encoding.
+      // This is pairing e(A, B) and G1 of e(C, -δ).
+        calldatacopy(f, proof, 0x100)
+
+      // Complete e(C, -δ) and write e(α, -β), e(L_pub, -γ) to memory.
+      // OPT: This could be better done using a single codecopy, but
+      //      Solidity (unlike standalone Yul) doesn't provide a way to
+      //      to do this.
+        mstore(add(f, 0x100), DELTA_NEG_X_1)
+        mstore(add(f, 0x120), DELTA_NEG_X_0)
+        mstore(add(f, 0x140), DELTA_NEG_Y_1)
+        mstore(add(f, 0x160), DELTA_NEG_Y_0)
+        mstore(add(f, 0x180), ALPHA_X)
+        mstore(add(f, 0x1a0), ALPHA_Y)
+        mstore(add(f, 0x1c0), BETA_NEG_X_1)
+        mstore(add(f, 0x1e0), BETA_NEG_X_0)
+        mstore(add(f, 0x200), BETA_NEG_Y_1)
+        mstore(add(f, 0x220), BETA_NEG_Y_0)
+        mstore(add(f, 0x240), x)
+        mstore(add(f, 0x260), y)
+        mstore(add(f, 0x280), GAMMA_NEG_X_1)
+        mstore(add(f, 0x2a0), GAMMA_NEG_X_0)
+        mstore(add(f, 0x2c0), GAMMA_NEG_Y_1)
+        mstore(add(f, 0x2e0), GAMMA_NEG_Y_0)
+
+      // Check pairing equation.
+        success := staticcall(gas(), PRECOMPILE_VERIFY, f, 0x300, f, 0x20)
+      // Also check returned value (both are either 1 or 0).
+        success := and(success, mload(f))
+      }
+      if (!success) {
+        // Either proof or verification key invalid.
+        // We assume the contract is correctly generated, so the verification key is valid.
+        revert ProofInvalid();
+      }
     }
 }

@@ -418,6 +418,54 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         }
     }
 
+  /// @notice Registers identities into the WorldID system.
+  /// TODO update this comment
+  function registerIdentities(
+    uint256[8] calldata insertionProof,
+    uint256[2] calldata commitments,
+    uint256[2] calldata commitmentPok,
+    uint32 batchSize,
+    bytes32 inputHash,
+    uint256 expectedEvaluation,
+    uint256 commitment4844,
+    uint32 startIndex,
+    uint256 preRoot,
+    uint256 postRoot
+  ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
+    if (preRoot != _latestRoot) {
+      revert NotLatestRoot(preRoot, _latestRoot);
+    }
+
+    // No matter what, the inputs can result in a hash that is not an element of the scalar
+    // field in which we're operating. We reduce it into the field before handing it to the
+    // verifier. All other elements that are passed as calldata are reduced in the circuit.
+    uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
+
+    // We need to look up the correct verifier before we can verify.
+    ITreeVerifier insertionVerifier =
+              batchInsertionVerifiers.getVerifierFor(batchSize);
+
+    // With that, we can properly try and verify.
+    try insertionVerifier.verifyProof(insertionProof, commitments, commitmentPok, [reducedElement, expectedEvaluation, commitment4844, startIndex, preRoot, postRoot]) {
+      // If it did verify, we need to update the contract's state. We set the currently valid
+      // root to the root after the insertions.
+      _latestRoot = postRoot;
+
+      // We also need to add the previous root to the history, and set the timestamp at
+      // which it was expired.
+      rootHistory[preRoot] = uint128(block.timestamp);
+
+      emit TreeChanged(preRoot, TreeChange.Insertion, postRoot);
+    } catch Error(string memory errString) {
+      /// This is not the revert we're looking for.
+      revert(errString);
+    } catch {
+      // If we reach here we know it's the internal error, as the tree verifier only uses
+      // `require`s otherwise, which will be re-thrown above.
+      revert ProofValidationFailure();
+    }
+  }
+
     ///////////////////////////////////////////////////////////////////////////////
     ///                             UTILITY FUNCTIONS                           ///
     ///////////////////////////////////////////////////////////////////////////////

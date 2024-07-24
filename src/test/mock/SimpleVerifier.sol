@@ -15,7 +15,21 @@ contract SimpleVerifier is ITreeVerifier {
         batchSize = _batchSize;
     }
 
-    function verifyProof(uint256[8] memory proof, uint256[1] memory input) external {
+  function verifyProof(uint256[8] memory proof, uint256[1] memory input) external {
+    bool result = proof[0] % 2 == 0;
+
+    input[0] = 0;
+    if (result) {
+      emit VerifiedProof(batchSize);
+    }
+  }
+
+    function verifyProof(
+        uint256[8] memory proof,
+        uint256[2] memory commitments,
+        uint256[2] memory commitmentPok,
+        uint256[6] memory input)
+    external {
         bool result = proof[0] % 2 == 0;
 
         input[0] = 0;
@@ -30,6 +44,7 @@ library SimpleVerify {
         return a % 2 == 0;
     }
 
+    // TODO isnt this useless now?
     function calculateInputHash(
         uint32 startIndex,
         uint256 preRoot,

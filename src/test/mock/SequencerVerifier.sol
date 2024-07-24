@@ -14,4 +14,13 @@ contract SequencerVerifier is ITreeVerifier {
     function verifyProof(uint256[8] calldata proof, uint256[1] calldata input) external pure {
         require(proof[0] % 2 == 0 && proof[1] % SNARK_SCALAR_FIELD == input[0], "Invalid Proof");
     }
+
+    function verifyProof(
+      uint256[8] calldata proof,
+      uint256[2] calldata commitments,
+      uint256[2] calldata commitmentPok,
+      uint256[6] calldata input
+    ) external pure {
+      require(proof[0] % 2 == 0 && proof[1] % SNARK_SCALAR_FIELD == input[0], "Invalid Proof");
+    }
 }
