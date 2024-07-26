@@ -134,15 +134,15 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         // output from semaphore-mtb prove in src/test/data/InsertionProof.json
         /// @dev test_insertion.ps is generated using semaphore-mtb: `./gnark-mbu setup --mode insertion --batch-size 3 --tree-depth 16 --output test_insertion.ps`
         /// @dev generated using semaphore-mtb: `./gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3 | ./gnark-mbu prove --mode insertion --keys-file test_insertion.ps`
-        insertionProof = [
-              0x1fce00491febde1e66f0785d5dd479d7361507c1904b6b8f7eff753cede746d2,
-              0x1961056c6dd21e60fe23b65d35e5af24ef8effa42c54e06a959ed5e71addabbf,
-              0x273bfc0a1b85f8ff4100d931041dab9b9071a13c817886599e2a7a089d3d488f,
-              0xede9cb1c0850a2c194927acf9ab926166ded36d515d04f5e2769809971788f8,
-              0x1b35fa0d9058d89cdf4f71e6a9166f1ce3b8c72a97b00ddd1f14bcebc34b88f4,
-              0x131689d5b60bf85f53fdf96c178f120f627df7473c704670b30e35674507f12d,
-              0x2b93c89a1a4b705eaaabb87a615eed648391a6dd29b92f7f26deda51d28c9d08,
-              0x84e25b222f24a7d626f3e13524ead6f4d8b0aa46983eafc4c5744e974aa9ecf
+      insertionProof = [
+            0x18491e665bc7128f0113b3cf187502311cf5a82b0304e02464099782483b14ba,
+            0x1dace8033bc22eda25b483b2a260195b67ee5bef07990bf0e2c5f7923423fe,
+            0x1d4489b99a91a972e878bef7a147251c8d4941b415bb7b36a9740e714f995b7e,
+            0x772049285800265c330a0850d30d32c1ece88a0aa6adbd6a6197d0a1c2e2de2,
+            0x27afc608a28bd2f8743bc2b423dbc34829b374cf702789f9549d4b730fcc7ec8,
+            0x1011cfd2347e8db6cd489a8090331a73db380b6774ec3bc14c77a2dabe0e83dd,
+            0x2f5f37e84d6acff8cfd7988d33aaea072dbe5071093b2df022d23047f134ac45,
+            0x24830332559eada283d4473b17091b239443e75e9e09f0ebce8e72c235ee665d
         ];
         commitments = [
               0xef47b8f2ae8faf1367ff706c9907e41b294c93edf331c89ec5a12a6815ab617,

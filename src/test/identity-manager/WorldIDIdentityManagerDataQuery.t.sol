@@ -62,9 +62,9 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
-        bytes memory registerCallData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+        bytes memory registerCallData = abi.encodeWithSignature(
+          "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+          actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot
         );
 
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
@@ -104,10 +104,11 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
         uint256 originalTimestamp = block.timestamp;
-        bytes memory registerCallData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+        bytes memory registerCallData = abi.encodeWithSignature(
+          "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+          actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot
         );
+
 
         assertCallSucceedsOn(identityManagerAddress, registerCallData);
         bytes memory queryCallData = abi.encodeCall(ManagerImplV1.queryRoot, (newPreRoot));

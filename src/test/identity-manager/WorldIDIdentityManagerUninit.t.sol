@@ -22,9 +22,9 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallRegisterIdentitiesWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, insertionPreRoot, startIndex, identityCommitments, insertionPostRoot)
+        bytes memory callData = abi.encodeWithSignature(
+            "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+            insertionProof, insertionPreRoot, startIndex, identityCommitments, insertionPostRoot
         );
         bytes memory expectedError =
             abi.encodeWithSelector(CheckInitialized.ImplementationNotInitialized.selector);

@@ -49,10 +49,11 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier
         );
-        bytes memory registerCallData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, insertionPreRoot, startIndex, identityCommitments, insertionPostRoot)
+        bytes memory registerCallData = abi.encodeWithSignature(
+          "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+          insertionProof, insertionPreRoot, startIndex, identityCommitments, insertionPostRoot
         );
+
         bytes memory latestRootCallData = abi.encodeCall(ManagerImplV1.latestRoot, ());
         bytes memory queryRootCallData =
             abi.encodeCall(ManagerImplV1.queryRoot, (insertionPostRoot));
@@ -98,9 +99,9 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         );
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+        bytes memory callData = abi.encodeWithSignature(
+          "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+          actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot
         );
 
         bytes memory setupCallData =
@@ -149,14 +150,15 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         for (uint256 i = 0; i < secondIdentsLength; ++i) {
             secondIdents[i] = preparedIdents[i];
         }
-        bytes memory firstCallData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+        bytes memory firstCallData = abi.encodeWithSignature(
+          "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+          actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot
         );
+
         uint256 secondPostRoot = uint256(newPostRoot) + 1;
-        bytes memory secondCallData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (actualProof, newPostRoot, newStartIndex, secondIdents, secondPostRoot)
+        bytes memory secondCallData = abi.encodeWithSignature(
+          "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+          actualProof, newPostRoot, newStartIndex, secondIdents, secondPostRoot
         );
 
         vm.expectEmit(true, true, true, true);
@@ -198,9 +200,9 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         (uint256[] memory preparedIdents, uint256[8] memory actualProof) =
             prepareInsertIdentitiesTestCase(identities, prf);
 
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot)
+        bytes memory callData = abi.encodeWithSignature(
+          "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+          actualProof, newPreRoot, newStartIndex, preparedIdents, newPostRoot
         );
         bytes memory errorData = abi.encodeWithSelector(VerifierLookupTable.NoSuchVerifier.selector);
 
@@ -232,9 +234,9 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier
         );
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, newPreRoot, newStartIndex, identityCommitments, newPostRoot)
+        bytes memory callData = abi.encodeWithSignature(
+          "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+          insertionProof, newPreRoot, newStartIndex, identityCommitments, newPostRoot
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImplV1.ProofValidationFailure.selector);
@@ -262,15 +264,13 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier
         );
-        bytes memory registerCallData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (
-                insertionProof,
-                insertionPreRoot,
-                newStartIndex,
-                identityCommitments,
-                insertionPostRoot
-            )
+        bytes memory registerCallData = abi.encodeWithSignature(
+          "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+          insertionProof,
+          insertionPreRoot,
+          newStartIndex,
+          identityCommitments,
+          insertionPostRoot
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImplV1.ProofValidationFailure.selector);
@@ -304,9 +304,9 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             updateVerifiers,
             semaphoreVerifier
         );
-        bytes memory registerCallData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, insertionPreRoot, startIndex, identities, insertionPostRoot)
+        bytes memory registerCallData = abi.encodeWithSignature(
+            "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+            insertionProof, insertionPreRoot, startIndex, identities, insertionPostRoot
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImplV1.ProofValidationFailure.selector);
@@ -344,9 +344,9 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         );
         assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
 
-        bytes memory registerCallData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, insertionPreRoot, startIndex, identityCommitments, newPostRoot)
+        bytes memory registerCallData = abi.encodeWithSignature(
+            "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+            insertionProof, insertionPreRoot, startIndex, identityCommitments, newPostRoot
         );
         bytes memory expectedError =
             abi.encodeWithSelector(ManagerImplV1.ProofValidationFailure.selector);
@@ -360,9 +360,9 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
     function testCannotRegisterIdentitiesAsNonIdentityOperator(address nonOperator) public {
         // Setup
         vm.assume(nonOperator != address(this) && nonOperator != address(0x0));
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, insertionPreRoot, startIndex, identityCommitments, insertionPostRoot)
+        bytes memory callData = abi.encodeWithSignature(
+            "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+            insertionProof, insertionPreRoot, startIndex, identityCommitments, insertionPostRoot
         );
         bytes memory errorData =
             abi.encodeWithSelector(ManagerImplV1.Unauthorized.selector, nonOperator);
@@ -391,9 +391,9 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             defaultUpdateVerifiers,
             semaphoreVerifier
         );
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (insertionProof, actualRoot, startIndex, identityCommitments, insertionPostRoot)
+        bytes memory callData = abi.encodeWithSignature(
+            "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+            insertionProof, actualRoot, startIndex, identityCommitments, insertionPostRoot
         );
         bytes memory expectedError = abi.encodeWithSelector(
             ManagerImplV1.NotLatestRoot.selector, actualRoot, uint256(currentPreRoot)
@@ -433,15 +433,13 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             identities[i] = 0x0;
         }
 
-        bytes memory callData = abi.encodeCall(
-            ManagerImplV1.registerIdentities,
-            (
-                [uint256(2), 1, 3, 4, 5, 6, 7, 9],
-                initialRoot,
-                startIndex,
-                identities,
-                insertionPostRoot
-            )
+        bytes memory callData = abi.encodeWithSignature(
+              "registerIdentities(uint256[8],uint256,uint32,uint256[],uint256)",
+              [uint256(2), 1, 3, 4, 5, 6, 7, 9],
+              initialRoot,
+              startIndex,
+              identities,
+              insertionPostRoot
         );
 
         // Test
