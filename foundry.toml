@@ -1,8 +1,8 @@
 # === Default Profile =========================================================
 
 [profile.default]
-solc = "0.8.21"
-evm_version = "paris"
+solc = "0.8.24"
+evm_version = "cancun"
 src = 'src'
 out = 'out'
 libs = ['lib']

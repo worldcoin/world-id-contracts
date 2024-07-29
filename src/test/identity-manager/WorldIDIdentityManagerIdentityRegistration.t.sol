@@ -9,6 +9,7 @@ import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
 import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {Verifier as TreeVerifier} from "src/test/InsertionTreeVerifier16.sol";
+import {Verifier as TreeVerifier4844} from "src/test/InsertionTreeVerifier164844.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
@@ -69,6 +70,45 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             abi.encode(ManagerImplV1.RootInfo(insertionPostRoot, 0, true))
         );
     }
+
+  /// @notice Checks that the proof validates properly with the correct inputs.
+  function testRegisterIdentitiesWithCorrectInputsFromKnown4844() public {
+    // Setup
+    ITreeVerifier actualVerifier = new TreeVerifier4844();
+    (
+      VerifierLookupTable insertVerifiers,
+      VerifierLookupTable deletionVerifiers,
+      VerifierLookupTable updateVerifiers
+    ) = makeVerifierLookupTables(TC.makeDynArray([40]));
+    insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
+    makeNewIdentityManager(
+      treeDepth,
+      insertionPreRoot,
+      insertVerifiers,
+      deletionVerifiers,
+      updateVerifiers,
+      semaphoreVerifier
+    );
+    bytes memory registerCallData = abi.encodeWithSignature(
+      "registerIdentities(uint256[8],uint256[2],uint256[2],uint32,bytes32,uint256,uint32,uint256,uint256)",
+       insertionProof, commitments, commitmentsPok, identityCommitmentsSize, insertionInputHash, insertionExpectedEvaluation, startIndex, insertionPreRoot, insertionPostRoot
+    );
+
+    bytes memory latestRootCallData = abi.encodeCall(ManagerImplV1.latestRoot, ());
+    bytes memory queryRootCallData =
+              abi.encodeCall(ManagerImplV1.queryRoot, (insertionPostRoot));
+
+    // Test
+    assertCallSucceedsOn(identityManagerAddress, registerCallData);
+    assertCallSucceedsOn(
+      identityManagerAddress, latestRootCallData, abi.encode(insertionPostRoot)
+    );
+    assertCallSucceedsOn(
+      identityManagerAddress,
+      queryRootCallData,
+      abi.encode(ManagerImplV1.RootInfo(insertionPostRoot, 0, true))
+    );
+  }
 
     /// @notice Checks that the proof validates properly with correct inputs.
     function testRegisterIdentitiesWithCorrectInputs(

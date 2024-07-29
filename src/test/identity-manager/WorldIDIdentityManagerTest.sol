@@ -54,7 +54,10 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     // generated at some point in the future.
     /// @dev generated using `./semaphore-mtb/gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3`
     bytes32 internal constant insertionInputHash =
-        0x66f12f84870ce040647fb5f207b08f69676c8a7f6063dbe6b20de111183f2688;
+    0x2e7fa6e0106ec5f1f0d1f1cf2e88a83be4ccd41252e58a3c5d4d3e2a5732c823;
+  uint256 internal constant insertionExpectedEvaluation =
+      0x4595f784042cefd5b010543020216ea532c50266ed8f4206d6f2268d9c4936b9;
+
     uint32 internal constant startIndex = 0;
     uint256 internal constant insertionPreRoot =
         0x2a7c7c9b6ce5880b9f6f228d72bf6a575a526f29c66ecceef8b753d38bba7323;
@@ -135,14 +138,14 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         /// @dev test_insertion.ps is generated using semaphore-mtb: `./gnark-mbu setup --mode insertion --batch-size 3 --tree-depth 16 --output test_insertion.ps`
         /// @dev generated using semaphore-mtb: `./gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3 | ./gnark-mbu prove --mode insertion --keys-file test_insertion.ps`
       insertionProof = [
-            0x18491e665bc7128f0113b3cf187502311cf5a82b0304e02464099782483b14ba,
-            0x1dace8033bc22eda25b483b2a260195b67ee5bef07990bf0e2c5f7923423fe,
-            0x1d4489b99a91a972e878bef7a147251c8d4941b415bb7b36a9740e714f995b7e,
-            0x772049285800265c330a0850d30d32c1ece88a0aa6adbd6a6197d0a1c2e2de2,
-            0x27afc608a28bd2f8743bc2b423dbc34829b374cf702789f9549d4b730fcc7ec8,
-            0x1011cfd2347e8db6cd489a8090331a73db380b6774ec3bc14c77a2dabe0e83dd,
-            0x2f5f37e84d6acff8cfd7988d33aaea072dbe5071093b2df022d23047f134ac45,
-            0x24830332559eada283d4473b17091b239443e75e9e09f0ebce8e72c235ee665d
+            0x90c3dad172c8ce1e5671dfb6d89874020f620006e49779e1aafcd95304efe71,
+            0x2228b6bf0570fb47a19cfce63f5d91f6753506d7ed07097a4e9f60f1a6f38ca5,
+            0x2912af5056862daa3701a98d5f203a962fef8b9257524c2a484f7005f2ceadff,
+            0x98cfc1019ffb46618a808af2c8a7083f727fe9850e63f39dca12d3c96019863,
+            0x2f0483ff5595f83750b9e9338f0b6ce8166c6093d2f10c3d7791b0e1cb4c810,
+            0x2188cb4ed2d694258b163a7409c075780fd5267cbef0600b58b85d44c5827b61,
+            0x11610611d5098d1f73b3163555479dc9ac23dd64391a6fed2d85a60945518e24,
+            0x2031c5ff245ebc2fa80d260415bb418cdbf5733d0e02075042458dac185665fb
         ];
         commitments = [
               0xef47b8f2ae8faf1367ff706c9907e41b294c93edf331c89ec5a12a6815ab617,

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.4;
 
 import {WorldIDImpl} from "./abstract/WorldIDImpl.sol";
 
@@ -427,7 +427,6 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     uint32 batchSize,
     bytes32 inputHash,
     uint256 expectedEvaluation,
-    uint256 commitment4844,
     uint32 startIndex,
     uint256 preRoot,
     uint256 postRoot
@@ -441,12 +440,14 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     // verifier. All other elements that are passed as calldata are reduced in the circuit.
     uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
+    uint256 commitment4844 = uint256(blobhash(0));
+
     // We need to look up the correct verifier before we can verify.
     ITreeVerifier insertionVerifier =
               batchInsertionVerifiers.getVerifierFor(batchSize);
 
     // With that, we can properly try and verify.
-    try insertionVerifier.verifyProof(insertionProof, commitments, commitmentPok, [reducedElement, expectedEvaluation, commitment4844, startIndex, preRoot, postRoot]) {
+    try insertionVerifier.verifyProof(insertionProof, commitments, commitmentPok, [reducedElement, expectedEvaluation, commitment4844, uint256(startIndex), preRoot, postRoot]) {
       // If it did verify, we need to update the contract's state. We set the currently valid
       // root to the root after the insertions.
       _latestRoot = postRoot;
