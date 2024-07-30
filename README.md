@@ -80,37 +80,29 @@ This repository uses the [Foundry](https://github.com/gakonst/foundry) smart con
 can download the Foundry installer by running `curl -L https://foundry.paradigm.xyz | bash`, and
 then install the latest version by running `foundryup` on a new terminal window (additional
 instructions are available [on the Foundry repo](https://github.com/gakonst/foundry#installation)).
-You'll also need [Node.js](https://nodejs.org) if you're planning to run the automated tests.
 
-Once you have everything installed, you can run `make` from the base directory to install all
-dependencies and build the smart contracts.
+We provide a docker image running anvil internally which has all the contracts predeployed.
+This approach is the easiest way to get started interacting with the smart contracts.
+
+Simply run
+```
+> docker run -p 8545:8545 ghcr.io/worldcoin/world-id-contracts
+```
+
+This docker image starts an anvil instance with contracts deployed at:
+```
+WorldIDRouter: 0x59b670e9fA9D0A427751Af201D676719a970857b
+WorldIDIdentityManager: 0x68B1D87F95878fE05B998F19b66F4baba5De1aed
+```
+
+All the contracts are deployed using the default anvil wallet `0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266`, with the private key `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`. This is also the default owner account for all contracts.
 
 ### Testing
-
-In order to generate valid proofs you need to first download [`semaphore-mtb`](https://github.com/worldcoin/semaphore-mtb) and build it. Then you can run the tests with:
-
-
-```bash
-./gnark-mbu gen-test-param --mode insertion/deletion --tree-depth=... --batch-size=...
-```
-
-where the parameters MUST match the parameters passed for contract deployment. To transform these
-into a proof, run the `prove` command, passing the params on stdin:
-
-> [!NOTE]
-> In order to generate a valid keys file, you need to run `gnark-mbu setup` with the correct parameters. > The `gnark-mbu setup` command will output a `keys` file that you can use for the `prove` command.
-
-```bash
-./gnark-mbu prove --mode insertion/deletion --keys-file= ${keys_file} < GENERATED_PARAMS
-```
-
-The output of this, together with the relevant parts of the generated test params, should constitute
-a correct input to the `registerIdentities` or `deleteIdentities` methods respectively of the `WorldIDIdentityManagerImplV1/V2` contracts, as long as it was
-deployed using the same keys file.
-
-Alternatively, you can take a look at pre-made tests with pre-generated valid proofs in [`WorldIDIdentityManagerTest.sol`](./src/test/identity-manager/WorldIDIdentityManagerTest.sol), [`WorldIDIdentityManagerIdentityRegistration.sol`](./src/test/identity-manager/WorldIDIdentityManagerIdentityRegistration.t.sol) and [`WorldIDIdentityManagerIdentityDeletion.sol`](./src/test/identity-manager/WorldIDIdentityManagerIdentityDeletion.t.sol).
+Tests can be run with `forge test`.
 
 ### Deployment
+
+#### contract-deployer
 
 In order to deploy `world-id-contracts` you need to download [`contract-deployer`](https://github.com/worldcoin/contract-deployer), build it and do the following:
 
@@ -134,8 +126,15 @@ git submodule update --init --recursive
 Run:
 
 ```bash
-cargo run --release 
+cargo run --release
 ```
 
+#### forge script (new)
+A `Deploy.s.sol` deployment script is provided for easy deployment.
 
-
+To deploy the entire stack (router, orb WorldID, phone WorldID, all the verifiers, etc.) run
+```
+> export PRIVATE_KEY=<YOUR_PRIVATE_KEY>
+> export ETHERSCAN_API_KEY=<YOUR_ETHERSCAN_API_KEY>
+> forge script script/Deploy.s.sol --broadcast --rpc-url <YOUR_RPC_URL> --verify
+```
