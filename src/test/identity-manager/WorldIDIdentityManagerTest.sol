@@ -54,15 +54,15 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     // generated at some point in the future.
     /// @dev generated using `./semaphore-mtb/gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3`
     bytes32 internal constant insertionInputHash =
-    0x2e7fa6e0106ec5f1f0d1f1cf2e88a83be4ccd41252e58a3c5d4d3e2a5732c823;
+    0x14a24bedc17b5596c60da74552640bd130d41d96b8c587dcadcf23217399e17b;
   uint256 internal constant insertionExpectedEvaluation =
-      0x4595f784042cefd5b010543020216ea532c50266ed8f4206d6f2268d9c4936b9;
+  0x089a73624138a75a072efb2ae8a7252a76cedd43d32a218f969b85f5180e19ed;
 
     uint32 internal constant startIndex = 0;
     uint256 internal constant insertionPreRoot =
         0x2a7c7c9b6ce5880b9f6f228d72bf6a575a526f29c66ecceef8b753d38bba7323;
     uint256 internal constant insertionPostRoot =
-        0x193289951bec3e4a099d9f1b0fb22cf20fe9dc4ea75c253352f22848b08c888b;
+        0x0c3f30b0604dae9a378e2bf62826bf5a772e9ad745df6f8c8256dff351fecee8;
 
     uint256[] identityCommitments;
     uint256 identityCommitmentsSize = 3;
@@ -138,22 +138,22 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         /// @dev test_insertion.ps is generated using semaphore-mtb: `./gnark-mbu setup --mode insertion --batch-size 3 --tree-depth 16 --output test_insertion.ps`
         /// @dev generated using semaphore-mtb: `./gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3 | ./gnark-mbu prove --mode insertion --keys-file test_insertion.ps`
       insertionProof = [
-            0x90c3dad172c8ce1e5671dfb6d89874020f620006e49779e1aafcd95304efe71,
-            0x2228b6bf0570fb47a19cfce63f5d91f6753506d7ed07097a4e9f60f1a6f38ca5,
-            0x2912af5056862daa3701a98d5f203a962fef8b9257524c2a484f7005f2ceadff,
-            0x98cfc1019ffb46618a808af2c8a7083f727fe9850e63f39dca12d3c96019863,
-            0x2f0483ff5595f83750b9e9338f0b6ce8166c6093d2f10c3d7791b0e1cb4c810,
-            0x2188cb4ed2d694258b163a7409c075780fd5267cbef0600b58b85d44c5827b61,
-            0x11610611d5098d1f73b3163555479dc9ac23dd64391a6fed2d85a60945518e24,
-            0x2031c5ff245ebc2fa80d260415bb418cdbf5733d0e02075042458dac185665fb
+      0x114a48696484c06795dd6fe38911d709f630370c09a80c34e17b81a1a48391cf,
+      0x167abb69a7cfd8da218930aef5900782e99ceb027bf56606346f4dbf5c86e934,
+      0x1394c78fe9353d6a9c7c5f8e01319f870eb18cfd795db14e15642703733c621e,
+      0x05782527fde61c8631db1d0b691316460ca357e6b73af6abb75f846f9317abce,
+      0x22131ba5dc7f3241e08bf1b196b88526660bbdcef404e67fab2ee2314724a20f,
+      0x232e6ab5923c46c34e63be67234b9d9df99e8ee8a06c96b87c47e84c5e76b76f,
+      0x1bc5f30b2983bc34cf1a0482de179ed92ed104f793c8e8f03cece1e74c6de5b9,
+      0x2cd25e78135d9321259991bde7c6d7c102a0d9e6d46a54667a5d8d58f079c740
         ];
         commitments = [
-              0xef47b8f2ae8faf1367ff706c9907e41b294c93edf331c89ec5a12a6815ab617,
-              0x136975431ff05e249e81bd517a864a37035dc92131a51b6e183f93860880b8cc
+      0x0d8bda1cdea96425d118338f50a2681ab0c1678ceb1ef03bacdbc771661c7048,
+      0x2afae716e9aed192b5166763dfc1e56ebb14f0ca5ede28cb617f2c18d1cbcf88
         ];
         commitmentsPok = [
-              0x2ce5a6a460b269b52b3a484b2519cfe85655088beaf762e22e242bec7d4cb0df,
-              0xba500232a08592a7ff8be8f8dd93a70362b8d2964380ce2650a387fd2cdccbc
+      0x1a9cd7f16112c3c8311dd44a4e94ded8fd5d77f27220fa2dc7bf64b45e940be4,
+      0x122893762bd8c517858a7dc4514c6b30fdf840c37cdf33dc66b0c6ce91b05af0
        ];
 
         // Create the deletion proof term.
