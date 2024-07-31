@@ -395,7 +395,6 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @notice TODO write a comment
     function prepareBlobhash(uint256 value)
     public
-    pure
     {
         bytes32[] memory blobhashes = new bytes32[](1);
         blobhashes[0] = bytes32(value);

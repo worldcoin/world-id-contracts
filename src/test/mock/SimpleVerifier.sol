@@ -26,8 +26,8 @@ contract SimpleVerifier is ITreeVerifier {
 
     function verifyProof(
         uint256[8] memory proof,
-        uint256[2] memory commitments,
-        uint256[2] memory commitmentPok,
+        uint256[2] memory,
+        uint256[2] memory,
         uint256[6] memory input)
     external {
         bool result = proof[0] % 2 == 0;

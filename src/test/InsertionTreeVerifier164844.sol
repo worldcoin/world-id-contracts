@@ -717,7 +717,7 @@ contract Verifier is ITreeVerifier {
     }
   }
 
-  function verifyProof(uint256[8] calldata proof, uint256[1] calldata input) public view {
+  function verifyProof(uint256[8] calldata, uint256[1] calldata) public pure {
     revert ProofInvalid();
   }
 
