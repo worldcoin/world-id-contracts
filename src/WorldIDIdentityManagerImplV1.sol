@@ -440,8 +440,8 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     // verifier. All other elements that are passed as calldata are reduced in the circuit.
     uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
-    //uint256 commitment4844 = uint256(blobhash(0));
-    uint256 commitment4844 = 0x1fa5f9a88600cd1e54672243198eebb8228f96fb484f99ae5b448305b8ef33ca;
+     uint256 commitment4844 = uint256(blobhash(0));
+    // uint256 commitment4844 = 0x1fa5f9a88600cd1e54672243198eebb8228f96fb484f99ae5b448305b8ef33ca;
 
     // We need to look up the correct verifier before we can verify.
     ITreeVerifier insertionVerifier =

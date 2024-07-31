@@ -89,6 +89,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
       updateVerifiers,
       semaphoreVerifier
     );
+    prepareBlobhash(0x1fa5f9a88600cd1e54672243198eebb8228f96fb484f99ae5b448305b8ef33ca);
+
     bytes memory registerCallData = abi.encodeWithSignature(
       "registerIdentities(uint256[8],uint256[2],uint256[2],uint32,bytes32,uint256,uint32,uint256,uint256)",
        insertionProof, commitments, commitmentsPok, identityCommitmentsSize, insertionInputHash, insertionExpectedEvaluation, startIndex, insertionPreRoot, insertionPostRoot
