@@ -27,7 +27,7 @@ contract Deploy is Script {
     address batchInsertionVerifiers = address(0);
     address batchDeletionVerifiers = address(0);
 
-    function run() external returns (address router, address worldIDOrb) {
+    function run() external returns (address, address) {
         console.log("Deploying WorldIDRouter, WorldIDOrb");
 
         WorldIDIdentityManager worldIDOrb = deployWorldID(INITIAL_ROOT);
@@ -43,12 +43,12 @@ contract Deploy is Script {
         return (address(router), address(worldIDOrb));
     }
 
-    function deployWorldID(uint256 _initalRoot) public returns (WorldIDIdentityManager worldID) {
-        VerifierLookupTable batchInsertionVerifiers = deployInsertionVerifiers();
+    function deployWorldID(uint256 _initalRoot) public returns (WorldIDIdentityManager) {
+        VerifierLookupTable batchInsertionVerifiers_ = deployInsertionVerifiers();
         VerifierLookupTable batchUpdateVerifiers = deployVerifierLookupTable();
-        VerifierLookupTable batchDeletionVerifiers = deployDeletionVerifiers();
+        VerifierLookupTable batchDeletionVerifiers_ = deployDeletionVerifiers();
 
-        SemaphoreVerifier _semaphoreVerifier = deploySemaphoreVerifier();
+        SemaphoreVerifier semaphoreVerifier_ = deploySemaphoreVerifier();
 
         beginBroadcast();
         // Encode:
@@ -63,15 +63,15 @@ contract Deploy is Script {
             "initialize(uint8,uint256,address,address,address)",
             TREE_DEPTH,
             _initalRoot,
-            batchInsertionVerifiers,
+            batchInsertionVerifiers_,
             batchUpdateVerifiers,
-            semaphoreVerifier
+            semaphoreVerifier_
         );
 
         // Encode:
         // 'initializeV2(VerifierLookupTable _batchDeletionVerifiers)'
         bytes memory initializeV2Call =
-            abi.encodeWithSignature("initializeV2(address)", batchDeletionVerifiers);
+            abi.encodeWithSignature("initializeV2(address)", batchDeletionVerifiers_);
 
         WorldIDIdentityManagerImplV1 impl1 = new WorldIDIdentityManagerImplV1();
         WorldIDIdentityManagerImplV2 impl2 = new WorldIDIdentityManagerImplV2();
@@ -99,7 +99,7 @@ contract Deploy is Script {
             abi.encodeWithSignature("initialize(address)", address(initialGroupIdentityManager));
 
         WorldIDRouterImplV1 impl = new WorldIDRouterImplV1();
-        WorldIDRouter router = new WorldIDRouter(address(impl), initializeCall);
+        router = new WorldIDRouter(address(impl), initializeCall);
 
         vm.stopBroadcast();
 
@@ -109,7 +109,7 @@ contract Deploy is Script {
     function deployVerifierLookupTable() public returns (VerifierLookupTable lut) {
         beginBroadcast();
 
-        VerifierLookupTable lut = new VerifierLookupTable();
+        lut = new VerifierLookupTable();
 
         vm.stopBroadcast();
 
@@ -131,7 +131,7 @@ contract Deploy is Script {
 
     function deployInsertionVerifiers() public returns (VerifierLookupTable lut) {
         if (batchInsertionVerifiers == address(0)) {
-            VerifierLookupTable lut = deployVerifierLookupTable();
+            lut = deployVerifierLookupTable();
             batchInsertionVerifiers = address(lut);
 
             beginBroadcast();
@@ -149,7 +149,7 @@ contract Deploy is Script {
 
     function deployDeletionVerifiers() public returns (VerifierLookupTable lut) {
         if (batchDeletionVerifiers == address(0)) {
-            VerifierLookupTable lut = deployVerifierLookupTable();
+            lut = deployVerifierLookupTable();
             batchDeletionVerifiers = address(lut);
 
             beginBroadcast();
