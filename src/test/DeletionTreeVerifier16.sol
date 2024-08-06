@@ -23,13 +23,6 @@ contract Verifier is ITreeVerifier {
     /// curves, that pairing equation fails, or that the proof is not for the
     /// provided public input.
     error ProofInvalid();
-
-    /// The commitment is invalid
-    /// @dev This can mean that provided commitment points and/or proof of knowledge are not on their
-    /// curves, that pairing equation fails, or that the commitment and/or proof of knowledge is not for the
-    /// commitment key.
-    error CommitmentInvalid();
-
     // Addresses of precompiles
     uint256 constant PRECOMPILE_MODEXP = 0x05;
     uint256 constant PRECOMPILE_ADD = 0x06;
