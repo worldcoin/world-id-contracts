@@ -89,26 +89,26 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
       updateVerifiers,
       semaphoreVerifier
     );
-    prepareBlobhash(0x1fa5f9a88600cd1e54672243198eebb8228f96fb484f99ae5b448305b8ef33ca);
+    prepareBlobhash(commitment4844);
 
     bytes memory registerCallData = abi.encodeWithSignature(
       "registerIdentities(uint256[8],uint256[2],uint256[2],uint32,bytes32,uint256,uint32,uint256,uint256)",
-       insertionProof, commitments, commitmentsPok, identityCommitmentsSize, insertionInputHash, insertionExpectedEvaluation, startIndex, insertionPreRoot, insertionPostRoot
+       insertionProof4844, commitments, commitmentsPok, identityCommitmentsSize, insertionInputHash4844, insertionExpectedEvaluation, startIndex, insertionPreRoot, insertionPostRoot4844
     );
 
     bytes memory latestRootCallData = abi.encodeCall(ManagerImplV1.latestRoot, ());
     bytes memory queryRootCallData =
-              abi.encodeCall(ManagerImplV1.queryRoot, (insertionPostRoot));
+              abi.encodeCall(ManagerImplV1.queryRoot, (insertionPostRoot4844));
 
     // Test
     assertCallSucceedsOn(identityManagerAddress, registerCallData);
     assertCallSucceedsOn(
-      identityManagerAddress, latestRootCallData, abi.encode(insertionPostRoot)
+      identityManagerAddress, latestRootCallData, abi.encode(insertionPostRoot4844)
     );
     assertCallSucceedsOn(
       identityManagerAddress,
       queryRootCallData,
-      abi.encode(ManagerImplV1.RootInfo(insertionPostRoot, 0, true))
+      abi.encode(ManagerImplV1.RootInfo(insertionPostRoot4844, 0, true))
     );
   }
 
