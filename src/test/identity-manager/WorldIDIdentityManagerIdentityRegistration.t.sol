@@ -104,8 +104,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
     batchSize: uint32(identityCommitmentsSize),
     startIndex: startIndex
     });
-    bytes memory registerCallData = abi.encodeWithSignature(
-      "registerIdentities(ManagerImplV1.RegisterIdentities4844Params)",
+    bytes memory registerCallData = abi.encodeWithSelector(
+      bytes4(keccak256("registerIdentities((uint256[8],uint256[2],uint256[2],uint128[3],uint128[3],uint256,uint256,uint256,uint256,bytes32,uint32,uint32))")),
       params
     );
 
