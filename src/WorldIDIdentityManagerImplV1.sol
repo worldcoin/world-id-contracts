@@ -428,6 +428,7 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     uint256 preRoot;
     uint256 postRoot;
     uint256 kzgChallenge;
+    uint256 kzgCommitmentReduced;
     bytes32 inputHash;
     uint32 batchSize;
     uint32 startIndex;
@@ -447,17 +448,12 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     // verifier. All other elements that are passed as calldata are reduced in the circuit.
     uint256 reducedElement = uint256(params.inputHash) % SNARK_SCALAR_FIELD;
 
-    uint256 kzgCommitmentReduced = 0;
-    kzgCommitmentReduced = (kzgCommitmentReduced + uint256(params.kzgCommitment[0])) % SNARK_SCALAR_FIELD;
-    kzgCommitmentReduced = (kzgCommitmentReduced * (2**128) % SNARK_SCALAR_FIELD + uint256(params.kzgCommitment[1])) % SNARK_SCALAR_FIELD;
-    kzgCommitmentReduced = (kzgCommitmentReduced * (2**128) % SNARK_SCALAR_FIELD + uint256(params.kzgCommitment[2])) % SNARK_SCALAR_FIELD;
-
     // We need to look up the correct verifier before we can verify.
     ITreeVerifier insertionVerifier =
               batchInsertionVerifiers.getVerifierFor(params.batchSize);
 
     // With that, we can properly try and verify.
-    try insertionVerifier.verifyProof(params.insertionProof, params.commitments, params.commitmentPok, [reducedElement, params.expectedEvaluation, kzgCommitmentReduced, uint256(params.startIndex), params.preRoot, params.postRoot]) {
+    try insertionVerifier.verifyProof(params.insertionProof, params.commitments, params.commitmentPok, [reducedElement, params.expectedEvaluation, params.kzgCommitmentReduced, uint256(params.startIndex), params.preRoot, params.postRoot]) {
       // If it did verify, we need to update the contract's state. We set the currently valid
       // root to the root after the insertions.
       _latestRoot = params.postRoot;
