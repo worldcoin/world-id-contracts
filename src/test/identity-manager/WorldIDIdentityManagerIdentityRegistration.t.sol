@@ -90,9 +90,23 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
       semaphoreVerifier
     );
 
+    ManagerImplV1.RegisterIdentities4844Params memory params = ManagerImplV1.RegisterIdentities4844Params({
+    insertionProof: insertionProof4844,
+    commitments: commitments,
+    commitmentPok: commitmentsPok,
+    kzgCommitment: kzgCommitment,
+    kzgProof: kzgProof,
+    expectedEvaluation: insertionExpectedEvaluation,
+    preRoot: insertionPreRoot,
+    postRoot: insertionPostRoot4844,
+    kzgChallenge: kzgChallenge,
+    inputHash: insertionInputHash4844,
+    batchSize: uint32(identityCommitmentsSize),
+    startIndex: startIndex
+    });
     bytes memory registerCallData = abi.encodeWithSignature(
-      "registerIdentities(uint256[8],uint256[2],uint256[2],uint32,bytes32,uint256,uint32,uint256,uint256,uint256,uint128[3],uint128[3])",
-       insertionProof4844, commitments, commitmentsPok, identityCommitmentsSize, insertionInputHash4844, insertionExpectedEvaluation, startIndex, insertionPreRoot, insertionPostRoot4844, kzgChallenge ,kzgCommitment, kzgChallenge
+      "registerIdentities(ManagerImplV1.RegisterIdentities4844Params)",
+      params
     );
 
     bytes memory latestRootCallData = abi.encodeCall(ManagerImplV1.latestRoot, ());

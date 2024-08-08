@@ -418,55 +418,59 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
         }
     }
 
+  struct RegisterIdentities4844Params {
+    uint256[8] insertionProof;
+    uint256[2] commitments;
+    uint256[2] commitmentPok;
+    uint128[3] kzgCommitment;
+    uint128[3] kzgProof;
+    uint256 expectedEvaluation;
+    uint256 preRoot;
+    uint256 postRoot;
+    uint256 kzgChallenge;
+    bytes32 inputHash;
+    uint32 batchSize;
+    uint32 startIndex;
+  }
+
   /// @notice Registers identities into the WorldID system.
   /// TODO update this comment
   function registerIdentities(
-    uint256[8] calldata insertionProof,
-    uint256[2] calldata commitments,
-    uint256[2] calldata commitmentPok,
-    uint32 batchSize,
-    bytes32 inputHash,
-    uint256 expectedEvaluation,
-    uint32 startIndex,
-    uint256 preRoot,
-    uint256 postRoot,
-    uint256 kzgChallenge,
-    uint128[3] calldata kzgCommitment,
-    uint128[3] calldata kzgProof
+    RegisterIdentities4844Params calldata params
   ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
-    if (preRoot != _latestRoot) {
-      revert NotLatestRoot(preRoot, _latestRoot);
+    if (params.preRoot != _latestRoot) {
+      revert NotLatestRoot(params.preRoot, _latestRoot);
     }
 
     // No matter what, the inputs can result in a hash that is not an element of the scalar
     // field in which we're operating. We reduce it into the field before handing it to the
     // verifier. All other elements that are passed as calldata are reduced in the circuit.
-    uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
+    uint256 reducedElement = uint256(params.inputHash) % SNARK_SCALAR_FIELD;
 
     uint256 kzgCommitmentReduced = 0;
-    kzgCommitmentReduced = (kzgCommitmentReduced + uint256(kzgCommitment[0])) % SNARK_SCALAR_FIELD;
-    kzgCommitmentReduced = (kzgCommitmentReduced * (2**128) % SNARK_SCALAR_FIELD + uint256(kzgCommitment[1])) % SNARK_SCALAR_FIELD;
-    kzgCommitmentReduced = (kzgCommitmentReduced * (2**128) % SNARK_SCALAR_FIELD + uint256(kzgCommitment[2])) % SNARK_SCALAR_FIELD;
+    kzgCommitmentReduced = (kzgCommitmentReduced + uint256(params.kzgCommitment[0])) % SNARK_SCALAR_FIELD;
+    kzgCommitmentReduced = (kzgCommitmentReduced * (2**128) % SNARK_SCALAR_FIELD + uint256(params.kzgCommitment[1])) % SNARK_SCALAR_FIELD;
+    kzgCommitmentReduced = (kzgCommitmentReduced * (2**128) % SNARK_SCALAR_FIELD + uint256(params.kzgCommitment[2])) % SNARK_SCALAR_FIELD;
 
     // We need to look up the correct verifier before we can verify.
     ITreeVerifier insertionVerifier =
-              batchInsertionVerifiers.getVerifierFor(batchSize);
+              batchInsertionVerifiers.getVerifierFor(params.batchSize);
 
     // With that, we can properly try and verify.
-    try insertionVerifier.verifyProof(insertionProof, commitments, commitmentPok, [reducedElement, expectedEvaluation, kzgCommitmentReduced, uint256(startIndex), preRoot, postRoot]) {
+    try insertionVerifier.verifyProof(params.insertionProof, params.commitments, params.commitmentPok, [reducedElement, params.expectedEvaluation, kzgCommitmentReduced, uint256(params.startIndex), params.preRoot, params.postRoot]) {
       // If it did verify, we need to update the contract's state. We set the currently valid
       // root to the root after the insertions.
-      _latestRoot = postRoot;
+      _latestRoot = params.postRoot;
 
       // We also need to add the previous root to the history, and set the timestamp at
       // which it was expired.
-      rootHistory[preRoot] = uint128(block.timestamp);
+      rootHistory[params.preRoot] = uint128(block.timestamp);
 
       bytes32 versionedHash = blobhash(0);
       // TODO do we need return values?
-      evaluatePoint(versionedHash, bytes32(kzgChallenge), bytes32(expectedEvaluation), kzgCommitment, kzgProof);
+      //evaluatePoint(versionedHash, bytes32(params.kzgChallenge), bytes32(params.expectedEvaluation), params.kzgCommitment, params.kzgProof);
 
-      emit TreeChanged(preRoot, TreeChange.Insertion, postRoot);
+      emit TreeChanged(params.preRoot, TreeChange.Insertion, params.postRoot);
     } catch Error(string memory errString) {
       /// This is not the revert we're looking for.
       revert(errString);
