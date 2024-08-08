@@ -429,7 +429,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     uint256 expectedEvaluation,
     uint32 startIndex,
     uint256 preRoot,
-    uint256 postRoot
+    uint256 postRoot,
+    uint256 kzgChallenge,
+    uint128[3] calldata kzgCommitment,
+    uint128[3] calldata kzgProof
   ) public virtual onlyProxy onlyInitialized onlyIdentityOperator {
     if (preRoot != _latestRoot) {
       revert NotLatestRoot(preRoot, _latestRoot);
@@ -440,14 +443,17 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     // verifier. All other elements that are passed as calldata are reduced in the circuit.
     uint256 reducedElement = uint256(inputHash) % SNARK_SCALAR_FIELD;
 
-     uint256 commitment4844 = uint256(blobhash(0));
+    uint256 kzgCommitmentReduced = 0;
+    kzgCommitmentReduced = (kzgCommitmentReduced + uint256(kzgCommitment[0])) % SNARK_SCALAR_FIELD;
+    kzgCommitmentReduced = (kzgCommitmentReduced * (2**128) % SNARK_SCALAR_FIELD + uint256(kzgCommitment[1])) % SNARK_SCALAR_FIELD;
+    kzgCommitmentReduced = (kzgCommitmentReduced * (2**128) % SNARK_SCALAR_FIELD + uint256(kzgCommitment[2])) % SNARK_SCALAR_FIELD;
 
     // We need to look up the correct verifier before we can verify.
     ITreeVerifier insertionVerifier =
               batchInsertionVerifiers.getVerifierFor(batchSize);
 
     // With that, we can properly try and verify.
-    try insertionVerifier.verifyProof(insertionProof, commitments, commitmentPok, [reducedElement, expectedEvaluation, commitment4844, uint256(startIndex), preRoot, postRoot]) {
+    try insertionVerifier.verifyProof(insertionProof, commitments, commitmentPok, [reducedElement, expectedEvaluation, kzgCommitmentReduced, uint256(startIndex), preRoot, postRoot]) {
       // If it did verify, we need to update the contract's state. We set the currently valid
       // root to the root after the insertions.
       _latestRoot = postRoot;
@@ -455,6 +461,10 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
       // We also need to add the previous root to the history, and set the timestamp at
       // which it was expired.
       rootHistory[preRoot] = uint128(block.timestamp);
+
+      bytes32 versionedHash = blobhash(0);
+      // TODO do we need return values?
+      evaluatePoint(versionedHash, bytes32(kzgChallenge), bytes32(expectedEvaluation), kzgCommitment, kzgProof);
 
       emit TreeChanged(preRoot, TreeChange.Insertion, postRoot);
     } catch Error(string memory errString) {
@@ -470,6 +480,35 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     ///////////////////////////////////////////////////////////////////////////////
     ///                             UTILITY FUNCTIONS                           ///
     ///////////////////////////////////////////////////////////////////////////////
+
+    address constant PRECOMPILE_POINT_EVALUATION = address(0x0a);
+
+    /**
+     * @notice Verify p(z) = y given commitment that corresponds to the polynomial p(x) and a KZG proof.
+     *         Also verify that the provided commitment matches the provided versioned_hash.
+     * @param versioned_hash Reference to a blob in the execution layer (obtained from the data storage or execution environment).
+     * @param x x-coordinate at which the blob is being evaluated.
+     * @param y y-coordinate at which the blob is being evaluated.
+     * @param commitment Commitment to the blob being evaluated (obtained from the KZG commitment scheme).
+     * @param kzgProof Proof associated with the commitment (obtained from the KZG proof generation).
+     * @return The number of field elements in the blob and the BLS modulus.
+     */
+    function evaluatePoint(
+      bytes32 versioned_hash,
+      bytes32 x,
+      bytes32 y,
+      uint128[3] calldata commitment,
+      uint128[3] calldata kzgProof
+    ) public view  returns (uint256, uint256) {
+      bytes memory input = abi.encodePacked(versioned_hash, x, y, commitment[0], commitment[1], commitment[2], kzgProof[0], kzgProof[1], kzgProof[2]);
+
+      (bool success, bytes memory output) = PRECOMPILE_POINT_EVALUATION.staticcall(input);
+      require(success, "Call to point evaluation precompiled contract failed");
+
+      (uint256 fieldElementsPerBlob, uint256 blsModulus) = abi.decode(output, (uint256, uint256));
+
+      return (fieldElementsPerBlob, blsModulus);
+    }
 
     /// @notice Calculates the input hash for the identity registration verifier.
     /// @dev Implements the computation described below.

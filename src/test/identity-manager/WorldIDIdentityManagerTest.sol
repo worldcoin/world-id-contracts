@@ -69,19 +69,21 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///////////////////////////////////////////////////////////////////
     ///                       4844 INSERTION                        ///
     ///////////////////////////////////////////////////////////////////
-    /// @dev generated using `./semaphore-mtb/gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3`
+    /// @dev generated using `./gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3 | ./gnark-mbu prove --mode insertion --keys-file test_insertion.ps`
     bytes32 internal constant insertionInputHash4844 =
-        0x14a24bedc17b5596c60da74552640bd130d41d96b8c587dcadcf23217399e17b;
+        0x2e7fa6e0106ec5f1f0d1f1cf2e88a83be4ccd41252e58a3c5d4d3e2a5732c823;
     uint256 internal constant insertionExpectedEvaluation =
-        0x089a73624138a75a072efb2ae8a7252a76cedd43d32a218f969b85f5180e19ed;
+        0x1531a91122fb4fabf7c00e799ea016480a911a1e73d5d175931030f9ac4936b8;
     uint256 internal constant insertionPostRoot4844 =
-        0x0c3f30b0604dae9a378e2bf62826bf5a772e9ad745df6f8c8256dff351fecee8;
-    uint256 internal constant commitment4844 =
-        0x1fa5f9a88600cd1e54672243198eebb8228f96fb484f99ae5b448305b8ef33ca;
+        0x193289951bec3e4a099d9f1b0fb22cf20fe9dc4ea75c253352f22848b08c888b;
+    uint256 internal constant kzgChallenge =
+        0x1df51d31c17a37aaa50c9cc065748332b7360cc01c56887a76abb65425c3033f;
 
     uint256[8] insertionProof4844;
     uint256[2] commitments;
     uint256[2] commitmentsPok;
+    uint128[3] kzgCommitment;
+    uint128[3] kzgProof;
 
     ///////////////////////////////////////////////////////////////////
     ///                           DELETION                          ///
@@ -161,23 +163,35 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             0x24830332559eada283d4473b17091b239443e75e9e09f0ebce8e72c235ee665d
         ];
         insertionProof4844 = [
-            0x114a48696484c06795dd6fe38911d709f630370c09a80c34e17b81a1a48391cf,
-            0x167abb69a7cfd8da218930aef5900782e99ceb027bf56606346f4dbf5c86e934,
-            0x1394c78fe9353d6a9c7c5f8e01319f870eb18cfd795db14e15642703733c621e,
-            0x05782527fde61c8631db1d0b691316460ca357e6b73af6abb75f846f9317abce,
-            0x22131ba5dc7f3241e08bf1b196b88526660bbdcef404e67fab2ee2314724a20f,
-            0x232e6ab5923c46c34e63be67234b9d9df99e8ee8a06c96b87c47e84c5e76b76f,
-            0x1bc5f30b2983bc34cf1a0482de179ed92ed104f793c8e8f03cece1e74c6de5b9,
-            0x2cd25e78135d9321259991bde7c6d7c102a0d9e6d46a54667a5d8d58f079c740
+            0x2f5ae7fc679b34692112588008be5e97f7c46f8d560c954247389aeb629daf11,
+            0x17d8bace9fe8c73de8c9b7454207064927860cd263d38e23c86d9bf34e0f10f3,
+            0x1e6e85f17c1cb2c93653935f1367951db0e2a49334ccdf9724a04e467ace87e,
+            0x8811c2290aabf5b2933240d99777e572273a51d72a1aa70d573a5b5abf9433a,
+            0x1e833ad6b33eeb808e35e2e54f61b375d49e7aaf9ffd488aa62c3cbf3d330089,
+            0xea873c6a2663fb7de0549c9bbcaa76b391b1b4ea13473c01ec05355e0bda61c,
+            0x45c888effef1742afe8e50e1929f05c813830f136b42c93ff34e615878ce724,
+            0x57f82f0e4d1d1b077e9a87e3904adda40e2a9c0b97a1c8862026681cdf082a4
         ];
         commitments = [
-            0x0d8bda1cdea96425d118338f50a2681ab0c1678ceb1ef03bacdbc771661c7048,
-            0x2afae716e9aed192b5166763dfc1e56ebb14f0ca5ede28cb617f2c18d1cbcf88
+            0xef47b8f2ae8faf1367ff706c9907e41b294c93edf331c89ec5a12a6815ab617,
+            0x136975431ff05e249e81bd517a864a37035dc92131a51b6e183f93860880b8cc
         ];
         commitmentsPok = [
-            0x1a9cd7f16112c3c8311dd44a4e94ded8fd5d77f27220fa2dc7bf64b45e940be4,
-            0x122893762bd8c517858a7dc4514c6b30fdf840c37cdf33dc66b0c6ce91b05af0
+            0x2ce5a6a460b269b52b3a484b2519cfe85655088beaf762e22e242bec7d4cb0df,
+            0xba500232a08592a7ff8be8f8dd93a70362b8d2964380ce2650a387fd2cdccbc
         ];
+        kzgProof = [
+            0xb863c6112b5f483977be5ad6d6f43799,
+            0xab6f0e786482e4f07d87202e0baabfbc,
+            0x205c33ea8ad073f57d5ddcbc99d7aade
+        ];
+        kzgCommitment = [
+            0x943df914ff6ba2182903cefc2f215b4e,
+            0x9299eaba67dd7457cf30946fe0888dce,
+            0x6a52d73f04a255dde9c6edaddda577bb
+        ];
+
+        prepareBlobhash(kzgToVersionedHash(kzgCommitment));
 
         // Create the deletion proof term.
         // output from semaphore-mtb prove in src/test/data/DeletionProof.json
@@ -415,12 +429,28 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         actualProof = [uint256(prf[0]), prf[1], prf[2], prf[3], prf[4], prf[5], prf[6], prf[7]];
     }
 
+    bytes1 constant VERSIONED_HASH_VERSION_KZG = 0x01;
+
+    // @notice TODO write a comment
+    // implementation as per https://github.com/ethereum/EIPs/blob/master/EIPS/eip-4844.md#helpers
+    function kzgToVersionedHash(uint128[3] memory commitment) public pure returns (bytes32) {
+      bytes memory commitmentBytes = abi.encodePacked(commitment[0], commitment[1], commitment[2]);
+      bytes32 hash = sha256(commitmentBytes);
+
+      bytes memory truncatedHash = new bytes(31);
+      for (uint i = 0; i < 31; i++) {
+        truncatedHash[i] = hash[i + 1];
+      }
+
+      return bytes32(abi.encodePacked(VERSIONED_HASH_VERSION_KZG, truncatedHash));
+    }
+
     /// @notice TODO write a comment
-    function prepareBlobhash(uint256 value)
+    function prepareBlobhash(bytes32 value)
     public
     {
         bytes32[] memory blobhashes = new bytes32[](1);
-        blobhashes[0] = bytes32(value);
+        blobhashes[0] = value;
         vm.blobhashes(blobhashes);
     }
 
