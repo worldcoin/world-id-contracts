@@ -1,23 +1,26 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.21;
+pragma solidity ^0.8.24;
 
 import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import {WorldIDTest} from "../WorldIDTest.sol";
 
 import {ITreeVerifier} from "../../interfaces/ITreeVerifier.sol";
+import {ITreeVerifier4844} from "../../interfaces/ITreeVerifier4844.sol";
 import {ISemaphoreVerifier} from "src/interfaces/ISemaphoreVerifier.sol";
 import {IBridge} from "../../interfaces/IBridge.sol";
 
 import {SimpleStateBridge} from "../mock/SimpleStateBridge.sol";
-import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
+import {SimpleVerifier, SimpleVerifier4844, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {UnimplementedTreeVerifier} from "../../utils/UnimplementedTreeVerifier.sol";
 import {SemaphoreVerifier} from "src/SemaphoreVerifier.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
+import {VerifierLookupTable4844} from "../../data/VerifierLookupTable4844.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV3 as ManagerImplV3} from "../../WorldIDIdentityManagerImplV3.sol";
 
 /// @title World ID Identity Manager Test.
 /// @notice Contains tests for the WorldID identity manager.
@@ -30,18 +33,23 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///////////////////////////////////////////////////////////////////////////////
 
     IdentityManager internal identityManager;
+    // V3
+    ManagerImplV3 internal managerImplV3;
     // V2
-    ManagerImpl internal managerImpl;
+    ManagerImpl internal managerImplV2;
     // V1
     ManagerImplV1 internal managerImplV1;
 
     ITreeVerifier internal treeVerifier;
+    ITreeVerifier4844 internal treeVerifier4844;
     uint256 internal initialRoot = 0x0;
     uint8 internal treeDepth = 16;
 
     address internal identityManagerAddress;
+    // V3
+    address internal managerImplV3Address;
     // V2
-    address internal managerImplAddress;
+    address internal managerImplV2Address;
     // V1
     address internal managerImplV1Address;
 
@@ -64,6 +72,23 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     uint256[] identityCommitments;
     uint256 identityCommitmentsSize = 3;
     uint256[8] insertionProof;
+
+    ///////////////////////////////////////////////////////////////////
+    ///                       4844 INSERTION                        ///
+    ///////////////////////////////////////////////////////////////////
+    /// @dev generated using `./gnark-mbu gen-test-params --mode insertion --tree-depth 16 --batch-size 3 | ./gnark-mbu prove --mode insertion --keys-file test_insertion.ps`
+    bytes32 internal constant insertionInputHash4844 =
+        0x14a24bedc17b5596c60da74552640bd130d41d96b8c587dcadcf23217399e17b;
+    uint256 internal constant insertionExpectedEvaluation =
+        0x3d5d4a7d6098f2147ed77be69d93179e6179479b8771c2554e5404c06f836408;
+    uint256 internal constant insertionPostRoot4844 =
+        0x0c3f30b0604dae9a378e2bf62826bf5a772e9ad745df6f8c8256dff351fecee8;
+
+    uint256[8] insertionProof4844;
+    uint256[2] commitments;
+    uint256[2] commitmentsPok;
+    uint128[3] kzgCommitment;
+    uint128[3] kzgProof;
 
     ///////////////////////////////////////////////////////////////////
     ///                           DELETION                          ///
@@ -113,6 +138,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     // Verifiers
     uint256 initialBatchSize = 30;
     VerifierLookupTable internal defaultInsertVerifiers;
+    VerifierLookupTable4844 internal defaultInsertVerifiers4844;
     VerifierLookupTable internal defaultDeletionVerifiers;
     VerifierLookupTable internal defaultUpdateVerifiers;
 
@@ -141,6 +167,39 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             0x1011cfd2347e8db6cd489a8090331a73db380b6774ec3bc14c77a2dabe0e83dd,
             0x2f5f37e84d6acff8cfd7988d33aaea072dbe5071093b2df022d23047f134ac45,
             0x24830332559eada283d4473b17091b239443e75e9e09f0ebce8e72c235ee665d
+        ];
+
+        insertionProof4844 = [
+            0x18dba02648df62914fe9c6dba182c73480253ed22b383c4ae7ead51152e73300,
+            0x0660cf8023a5785e930e0333864ed17c8641a559e7bad817af736f6648a76447,
+            0x2662090884185d3f910ce62dadf005a278226d877f41d3c52bd1d6b4a91aa2be,
+            0x18a279bd46da024aa71cc7f64c396b3c64a6f13a1cf5fc443ad916ac93478b4d,
+            0x0fdd92b46d74766433d3a501da207f8dfb16e4d74fe2a6dcad008f2e656f8842,
+            0x2212ff3545056108d1162467172c368a89614ad29469f4d71f02e4ebcb6eb3ac,
+            0x041dbe374440a1a1acdef5bc7d204ce3b20e4d6fbd41b41b787896e51ed023e9,
+            0x047eddec1fc18e112fe15ce861484e8309f0605260e063c9591a6e0450934c80
+        ];
+
+        commitments = [
+            0x04dd4ea218ac1d6b85f5d8ffb3007ad0c029302d1af96f0830ade252ccba5b98,
+            0x18702f80829840758f18e3a9e624a8d049944dcc494bf260f8e0f9047cebf027
+        ];
+
+        commitmentsPok = [
+            0x0ab698df05861ae9048ba5c388857fc32a0db801ab3b8bfc4c9b298819da6a66,
+            0x085221b73b2a59518c04f1f6f41a7879637cf9f984ed4e05bd28e6507fb67614
+        ];
+
+        kzgProof = [
+            0x925d42714da54a935f209022d256986a,
+            0x2b545ab39f127832297a492ed5875be9,
+            0x1a983b57c0639403a38ad7d24e0095bc
+        ];
+
+        kzgCommitment = [
+            0xb422b2e3bf75a087b84d8086fd35b8a2,
+            0x299a559c92ef938fd63d6e6009b74bb9,
+            0x47670537338c47c4472f9be9886b65ac
         ];
 
         // Create the deletion proof term.
@@ -187,10 +246,14 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         defaultUpdateVerifiers.addVerifier(initialBatchSize, treeVerifier);
         defaultDeletionVerifiers = new VerifierLookupTable();
         defaultDeletionVerifiers.addVerifier(initialBatchSize, treeVerifier);
+        treeVerifier4844 = new SimpleVerifier4844(initialBatchSize);
+        defaultInsertVerifiers4844 = new VerifierLookupTable4844();
+        defaultInsertVerifiers4844.addVerifier(initialBatchSize, treeVerifier4844);
         makeNewIdentityManager(
             treeDepth,
             initialRoot,
             defaultInsertVerifiers,
+            defaultInsertVerifiers4844,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
             semaphoreVerifier
@@ -198,8 +261,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
-        hevm.label(managerImplAddress, "ManagerImplementation");
         hevm.label(managerImplV1Address, "ManagerImplementationV1");
+        hevm.label(managerImplV1Address, "ManagerImplementationV2");
+        hevm.label(managerImplV3Address, "ManagerImplementationV3");
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -211,12 +275,14 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///
     /// @param actualPreRoot The pre-root to use.
     /// @param insertVerifiers The insertion verifier lookup table.
+    /// @param insertVerifiers4844 The insertion verifier lookup table for EIP-4844 proofs.
     /// @param updateVerifiers The udpate verifier lookup table.
     /// @param actualSemaphoreVerifier The Semaphore verifier instance to use.
     function makeNewIdentityManager(
         uint8 actualTreeDepth,
         uint256 actualPreRoot,
         VerifierLookupTable insertVerifiers,
+        VerifierLookupTable4844 insertVerifiers4844,
         VerifierLookupTable deletionVerifiers,
         VerifierLookupTable updateVerifiers,
         ISemaphoreVerifier actualSemaphoreVerifier
@@ -239,16 +305,28 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         identityManagerAddress = address(identityManager);
 
         // creates Manager Impl V2, which will be used for tests
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
+        managerImplV2 = new ManagerImpl();
+        managerImplV2Address = address(managerImplV2);
 
-        bytes memory initCallV2 = abi.encodeCall(ManagerImpl.initializeV2, (deletionVerifiers));
-        bytes memory upgradeCall = abi.encodeCall(
-            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+        bytes memory initCallV2 = abi.encodeCall(managerImplV2.initializeV2, (deletionVerifiers));
+        bytes memory upgradeCallV2 = abi.encodeCall(
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplV2Address), initCallV2)
         );
 
         // Test
-        assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
+        assertCallSucceedsOn(identityManagerAddress, upgradeCallV2, new bytes(0x0));
+
+        // creates Manager Impl V3, which will be used for tests
+        managerImplV3 = new ManagerImplV3();
+        managerImplV3Address = address(managerImplV3);
+
+        bytes memory initCallV3 = abi.encodeCall(managerImplV3.initializeV3, (insertVerifiers4844));
+        bytes memory upgradeCallV3 = abi.encodeCall(
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplV3Address), initCallV3)
+        );
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, upgradeCallV3, new bytes(0x0));
     }
 
     /// @notice Initialises a new identity manager using the provided information.
@@ -264,7 +342,8 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         (
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers
+            VerifierLookupTable updateVerifiers,
+            VerifierLookupTable4844 insertVerifiers4844
         ) = makeVerifierLookupTables(batchSizes);
         defaultInsertVerifiers = insertVerifiers;
         defaultDeletionVerifiers = deletionVerifiers;
@@ -275,6 +354,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             treeDepth,
             actualPreRoot,
             insertVerifiers,
+            insertVerifiers4844,
             deletionVerifiers,
             updateVerifiers,
             semaphoreVerifier
@@ -289,6 +369,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @return insertVerifiers The insertion verifier lookup table.
     /// @return deletionVerifiers The deletion verifier lookup table.
     /// @return updateVerifiers The update verifier lookup table.
+    /// @return insertVerifiers4844 The insertion verifier lookup table for EIP-4844 proofs.
     ///
     /// @custom:reverts VerifierExists If `batchSizes` contains a duplicate.
     /// @custom:reverts string If any batch size exceeds 1000.
@@ -298,7 +379,8 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         returns (
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers
+            VerifierLookupTable updateVerifiers,
+            VerifierLookupTable4844 insertVerifiers4844
         )
     {
         // Construct the verifier LUTs from the provided `batchSizes` info.
@@ -311,6 +393,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         insertVerifiers = new VerifierLookupTable();
         deletionVerifiers = new VerifierLookupTable();
         updateVerifiers = new VerifierLookupTable();
+        insertVerifiers4844 = new VerifierLookupTable4844();
         for (uint256 i = 0; i < batchSizes.length; ++i) {
             uint256 batchSize = batchSizes[i];
             if (batchSize > 1000) {
@@ -321,15 +404,18 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             insertVerifiers.addVerifier(batchSize, batchVerifier);
             deletionVerifiers.addVerifier(batchSize, batchVerifier);
             updateVerifiers.addVerifier(batchSize, batchVerifier);
+
+            ITreeVerifier4844 batchVerifier4844 = new SimpleVerifier4844(batchSize);
+            insertVerifiers4844.addVerifier(batchSize, batchVerifier4844);
         }
     }
 
     /// @notice Creates a new identity manager without initializing the delegate.
     /// @dev It is constructed in the globals.
     function makeUninitIdentityManager() public {
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
-        identityManager = new IdentityManager(managerImplAddress, new bytes(0x0));
+        managerImplV2 = new ManagerImpl();
+        managerImplV2Address = address(managerImplV2);
+        identityManager = new IdentityManager(managerImplV2Address, new bytes(0x0));
         identityManagerAddress = address(identityManager);
     }
 
@@ -377,6 +463,36 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         }
 
         actualProof = [uint256(prf[0]), prf[1], prf[2], prf[3], prf[4], prf[5], prf[6], prf[7]];
+    }
+
+    bytes1 constant VERSIONED_HASH_VERSION_KZG = 0x01;
+
+    /// @notice Convert a KZG commitment to a versioned hash as per EIP-4844.
+    ///         Implementation as per https://github.com/ethereum/EIPs/blob/master/EIPS/eip-4844.md#helpers
+    /// @param  commitment KZG commitment split to 3 128-bit words.
+    /// @return versioned hash in the form of a 32-byte word.
+    function kzgToVersionedHash(uint128[3] memory commitment) public pure returns (bytes32) {
+        bytes memory commitmentBytes = abi.encodePacked(commitment[0], commitment[1], commitment[2]);
+        bytes32 hash = sha256(commitmentBytes);
+
+        bytes memory truncatedHash = new bytes(31);
+        for (uint256 i = 0; i < 31; i++) {
+            truncatedHash[i] = hash[i + 1];
+        }
+
+        return bytes32(abi.encodePacked(VERSIONED_HASH_VERSION_KZG, truncatedHash));
+    }
+
+    /// @notice Store the given value as a blobhash to be used in tests.
+    ///         The given value will be stored in the 0th blobhash slot and can be retrieved with `blobhash(0)`
+    ///         convenience wrapper of with the `BLOBHASH` opcode.
+    /// @dev    This function is effective only for the next function call, so prepare blobhash as the very last
+    ///         step before the intended usage.
+    /// @param value Value to be set as contents of the 0th blobhash slot.
+    function prepareBlobhash(bytes32 value) public {
+        bytes32[] memory blobhashes = new bytes32[](1);
+        blobhashes[0] = value;
+        vm.blobhashes(blobhashes);
     }
 
     /// @notice Prepares a verifier test case.

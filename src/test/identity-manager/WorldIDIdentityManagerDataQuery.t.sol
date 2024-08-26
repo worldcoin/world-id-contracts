@@ -7,6 +7,7 @@ import {SemaphoreTreeDepthValidator} from "../../utils/SemaphoreTreeDepthValidat
 import {SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
+import {VerifierLookupTable4844} from "../../data/VerifierLookupTable4844.sol";
 
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
@@ -24,6 +25,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             treeDepth,
             newPreRoot,
             defaultInsertVerifiers,
+            defaultInsertVerifiers4844,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
             semaphoreVerifier
@@ -50,12 +52,14 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         (
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers
+            VerifierLookupTable updateVerifiers,
+            VerifierLookupTable4844 insertVerifiers4844
         ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
             insertVerifiers,
+            insertVerifiers4844,
             deletionVerifiers,
             updateVerifiers,
             semaphoreVerifier
@@ -91,12 +95,14 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         (
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers
+            VerifierLookupTable updateVerifiers,
+            VerifierLookupTable4844 insertVerifiers4844
         ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
             insertVerifiers,
+            insertVerifiers4844,
             deletionVerifiers,
             updateVerifiers,
             semaphoreVerifier
@@ -128,7 +134,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(badRoot != initialRoot);
         bytes memory callData = abi.encodeCall(ManagerImplV1.queryRoot, badRoot);
-        bytes memory returnData = abi.encode(managerImpl.NO_SUCH_ROOT());
+        bytes memory returnData = abi.encode(managerImplV2.NO_SUCH_ROOT());
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, returnData);
@@ -140,7 +146,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.queryRoot(initialRoot);
+        managerImplV2.queryRoot(initialRoot);
     }
 
     /// @notice Checks that it is possible to get the latest root from the contract.
@@ -150,6 +156,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             treeDepth,
             actualRoot,
             defaultInsertVerifiers,
+            defaultInsertVerifiers4844,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
             semaphoreVerifier
@@ -167,7 +174,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.latestRoot();
+        managerImplV2.latestRoot();
     }
 
     /// @notice Checks that it is possible to get the tree depth the contract was initialized with.
@@ -178,6 +185,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
             actualTreeDepth,
             insertionPreRoot,
             defaultInsertVerifiers,
+            defaultInsertVerifiers4844,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
             semaphoreVerifier

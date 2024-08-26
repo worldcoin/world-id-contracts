@@ -24,7 +24,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     function testInitialisation() public {
         // Setup
         delete identityManager;
-        delete managerImpl;
+        delete managerImplV2;
         delete managerImplV1;
 
         bytes memory V1CallData = abi.encodeCall(
@@ -39,7 +39,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         );
 
         managerImplV1 = new ManagerImplV1();
-        managerImplAddress = address(managerImpl);
+        managerImplV2Address = address(managerImplV2);
 
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
@@ -48,13 +48,13 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         identityManagerAddress = address(identityManager);
 
         // creates Manager Impl V2, which will be used for tests
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
+        managerImplV2 = new ManagerImpl();
+        managerImplV2Address = address(managerImplV2);
 
         bytes memory initCallV2 =
             abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
         bytes memory upgradeCall = abi.encodeCall(
-            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplV2Address), initCallV2)
         );
 
         vm.expectEmit(true, true, true, true);
@@ -70,7 +70,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     function testInitialisation2() public {
         // Setup
         delete identityManager;
-        delete managerImpl;
+        delete managerImplV2;
         delete managerImplV1;
 
         bytes memory V1CallData = abi.encodeCall(
@@ -85,12 +85,12 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         );
 
         // creates Manager Impl V2, which will be used for tests
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
+        managerImplV2 = new ManagerImpl();
+        managerImplV2Address = address(managerImplV2);
 
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
-        identityManager = new IdentityManager(managerImplAddress, V1CallData);
+        identityManager = new IdentityManager(managerImplV2Address, V1CallData);
         identityManagerAddress = address(identityManager);
 
         bytes memory initCallV2 =
@@ -145,10 +145,10 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     function testCannotPassUnsupportedTreeDepth() public {
         // Setup
         delete identityManager;
-        delete managerImpl;
+        delete managerImplV2;
 
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
+        managerImplV2 = new ManagerImpl();
+        managerImplV2Address = address(managerImplV2);
         uint8 unsupportedDepth = 15;
 
         bytes memory callData = abi.encodeCall(
@@ -165,6 +165,6 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         vm.expectRevert(abi.encodeWithSelector(ManagerImplV1.UnsupportedTreeDepth.selector, 15));
 
         // Test
-        identityManager = new IdentityManager(managerImplAddress, callData);
+        identityManager = new IdentityManager(managerImplV2Address, callData);
     }
 }
