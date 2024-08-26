@@ -29,16 +29,4 @@ library SimpleVerify {
     function isValidInput(uint256 a) public pure returns (bool) {
         return a % 2 == 0;
     }
-
-    function calculateInputHash(
-        uint32 startIndex,
-        uint256 preRoot,
-        uint256 postRoot,
-        uint256[] calldata identityCommitments
-    ) public pure returns (bytes32 hash) {
-        bytes memory bytesToHash =
-            abi.encodePacked(startIndex, preRoot, postRoot, identityCommitments);
-
-        hash = keccak256(bytesToHash);
-    }
 }
