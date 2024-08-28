@@ -18,6 +18,8 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     /// @notice Taken from Initializable.sol
     event Initialized(uint8 version);
 
+    event Upgraded(address);
+
     event WorldIDIdentityManagerImplV2Initialized();
 
     /// @notice Checks that it is possible to initialise the contract.
@@ -45,7 +47,6 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         emit Initialized(1);
 
         identityManager = new IdentityManager(managerImplV1Address, V1CallData);
-
         identityManagerAddress = address(identityManager);
 
         // creates Manager Impl V2, which will be used for tests
@@ -66,6 +67,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
 
         vm.expectEmit(true, true, true, true);
         emit Initialized(2);
+
         // Test
         assertCallSucceedsOn(
             identityManagerAddress,

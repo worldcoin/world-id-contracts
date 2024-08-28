@@ -43,10 +43,15 @@ contract WorldIDTest is Test {
         address target,
         bytes memory callData,
         bytes memory expectedReturnData
-    ) public {
+    ) internal {
         (bool status, bytes memory returnData) = target.call(callData);
-        assertTrue(status);
-        assertEq(expectedReturnData, returnData);
+        if (!status) {
+            assembly {
+                revert(add(returnData, 0x20), mload(returnData))
+            }
+        }
+        assertTrue(status, "unexpected status");
+        assertEq(expectedReturnData, returnData, "wrong ret data");
     }
 
     /// @notice Asserts that making the external call using `callData` on `target` fails.
