@@ -8,24 +8,23 @@ out = 'out'
 libs = ['lib']
 ffi = true
 
-# Here we need some specific remappings.
 remappings = [
   'ds-test/=lib/ds-test/src/',
   '@zk-kit/=lib/zk-kit/packages/',
   'openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/',
   'contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/',
-  'semaphore/=lib/semaphore/packages/contracts/contracts/'
-]
+  'semaphore/=lib/semaphore/packages/contracts/contracts/',
+] # Here we need some specific remappings.
 
 # The default is to optimise, but let's be clear about it.
 optimizer = true
 
 # Make formatting consistent.
 [profile.default.fmt]
-line_length = 100               # The maximum length of lines.
-tab_width = 4                   # Indent by two spaces for each level.
-bracket_spacing = false         # Don't put spaces between brackets and content.
-int_types = "long"              # Specify full integer type names.
+line_length = 100       # The maximum length of lines.
+tab_width = 4           # Indent by two spaces for each level.
+bracket_spacing = false # Don't put spaces between brackets and content.
+int_types = "long"      # Specify full integer type names.
 
 # We want to optimise via the new optimiser backend for better results.
 via_ir = true
@@ -42,7 +41,7 @@ constant_optimizer = true # Computes some constant expressions at compile time.
 yul = true                # Enables the new ABI optimiser.
 
 [profile.default.optimizer_details.yul_details]
-stack_allocation = true   # Improves allocation of stack slots for variables.
+stack_allocation = true # Improves allocation of stack slots for variables.
 
 # === Debug Profile ===========================================================
 
@@ -71,7 +70,7 @@ gas_reports = [
   "Verifier",
   "WorldIDRouter",
   "WorldIDRouterImplV1",
-  "VerifierLookupTable"
+  "VerifierLookupTable",
 ]
 
 # === Production Profile ======================================================

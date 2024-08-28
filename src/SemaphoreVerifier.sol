@@ -33,8 +33,10 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
     //     t = 4965661367192848881
     //     P = 36⋅t⁴ + 36⋅t³ + 24⋅t² + 6⋅t + 1
     //     R = 36⋅t⁴ + 36⋅t³ + 18⋅t² + 6⋅t + 1
-    uint256 constant P = 0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47;
-    uint256 constant R = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001;
+    uint256 constant P =
+        0x30644e72e131a029b85045b68181585d97816a916871ca8d3c208c16d87cfd47;
+    uint256 constant R =
+        0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001;
 
     // Extension field Fp2 = Fp[i] / (i² + 1)
     // Note: This is the complex extension field of Fp with i² = -1.
@@ -54,23 +56,24 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
     // Exponents for inversions and square roots mod P
     uint256 constant EXP_INVERSE_FP =
         0x30644E72E131A029B85045B68181585D97816A916871CA8D3C208C16D87CFD45; // P - 2
-    uint256 constant EXP_SQRT_FP = 0xC19139CB84C680A6E14116DA060561765E05AA45A1C72A34F082305B61F3F52; // (P + 1) / 4;
+    uint256 constant EXP_SQRT_FP =
+        0xC19139CB84C680A6E14116DA060561765E05AA45A1C72A34F082305B61F3F52; // (P + 1) / 4;
 
     // Groth16 alpha point in G1
     uint256 constant ALPHA_X =
-        20491192805390485299153009773594534940189261866228447918068658471970481763042;
+        16428432848801857252194528405604668803277877773566238944394625302971855135431;
     uint256 constant ALPHA_Y =
-        9383485363053290200918347156157836566562967994039712273449902621266178545958;
+        16846502678714586896801519656441059708016666274385668027902869494772365009666;
 
     // Groth16 beta point in G2 in powers of i
     uint256 constant BETA_NEG_X_0 =
-        6375614351688725206403948262868962793625744043794305715222011528459656738731;
+        16348171800823588416173124589066524623406261996681292662100840445103873053252;
     uint256 constant BETA_NEG_X_1 =
-        4252822878758300859123897981450591353533073413197771768651442665752259397132;
+        3182164110458002340215786955198810119980427837186618912744689678939861918171;
     uint256 constant BETA_NEG_Y_0 =
-        11383000245469012944693504663162918391286475477077232690815866754273895001727;
+        2201110634874208316029461379665464214311652449122716859599404043531197932830;
     uint256 constant BETA_NEG_Y_1 =
-        41207766310529818958173054109690360505148424997958324311878202295167071904;
+        16967440155991088963264821016081390709021985423659024754853266501192363523869;
 
     // Groth16 gamma point in G2 in powers of i
     uint256 constant GAMMA_NEG_X_0 =
@@ -84,35 +87,35 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
 
     // Groth16 delta point in G2 in powers of i
     uint256 constant DELTA_NEG_X_0 =
-        15028154694713144242204861571552635520290993855826554325002991692907421516918;
+        10857046999023057135944570762232829481370756359578518086990519993285655852781;
     uint256 constant DELTA_NEG_X_1 =
-        10202326166286888893675634318107715186834588694714750762952081034135561546271;
+        11559732032986387107991004021392285783925812861821192530917403151452391805634;
     uint256 constant DELTA_NEG_Y_0 =
-        9121952986466441409625823112409402110610350380222160673756836983949377617226;
+        13392588948715843804641432497768002650278120570034223513918757245338268106653;
     uint256 constant DELTA_NEG_Y_1 =
-        3402203030459169245973828223647408421795734658790470725360311404592929738724;
+        17805874995975841540914202342111839520379459829704422454583296818431106115052;
 
     // Constant and public input points
     uint256 constant CONSTANT_X =
-        1452272927738590248356371174422184656932731110936062990115610832462181634644;
+        16135255682976275202631494675486089100755485113355314122080398630672974962971;
     uint256 constant CONSTANT_Y =
-        3608050114233210789542189629343107890943266759827387991788718454179833288695;
+        8198409905806492694003687547805144134655281045670545885146196093183677755575;
     uint256 constant PUB_0_X =
-        14798240452388909327945424685903532333765637883272751382037716636327236955001;
+        700888014338392616452849835410426119056471676542431231249561888172046148811;
     uint256 constant PUB_0_Y =
-        10773894897711848209682368488916121016695006898681985691467605219098835500201;
+        17962298617874568549376649289370817230544941527715459317674629888507501532553;
     uint256 constant PUB_1_X =
-        17204267933132009093604099819536245144503489322639121825381131096467570698650;
+        14372211438486224192754800596391192852287354079645539084273297139451314096741;
     uint256 constant PUB_1_Y =
-        7704298975420304156332734115679983371345754866278811368869074990486717531131;
+        2286798918641761214626165195185048272749210551676582555072501454049260768286;
     uint256 constant PUB_2_X =
-        8060465662017324080560848316478407038163145149983639907596180500095598669247;
+        8586261510982808007543306157097620471945658310792455002469806712942256345324;
     uint256 constant PUB_2_Y =
-        20475082166427284188002500222093571716651248980245637602667562336751029856573;
+        14426655717360074571281943342232274481426347035935859535849093553262660956922;
     uint256 constant PUB_3_X =
-        7457566682692308112726332096733260585025339741083447785327706250123165087868;
+        14880751719330042842319641428393010084929762564428051307033101857996613690926;
     uint256 constant PUB_3_Y =
-        11904519443874922292602150685069370036383697877657723976244907400392778002614;
+        1852832020413357866812091359706007185982163048268432723051442402450891182586;
 
     /// Negation in Fp.
     /// @notice Returns a number x such that a + x = 0 in Fp.
@@ -204,11 +207,11 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
     /// @param hint A hint which of two possible signs to pick in the equation.
     /// @return x0 The real part of the square root.
     /// @return x1 The imaginary part of the square root.
-    function sqrt_Fp2(uint256 a0, uint256 a1, bool hint)
-        internal
-        view
-        returns (uint256 x0, uint256 x1)
-    {
+    function sqrt_Fp2(
+        uint256 a0,
+        uint256 a1,
+        bool hint
+    ) internal view returns (uint256 x0, uint256 x1) {
         // If this square root reverts there is no solution in Fp2.
         uint256 d = sqrt_Fp(addmod(mulmod(a0, a0, P), mulmod(a1, a1, P), P));
         if (hint) {
@@ -221,8 +224,8 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
         // Check result to make sure we found a root.
         // Note: this also fails if a0 or a1 is not reduced.
         if (
-            a0 != addmod(mulmod(x0, x0, P), negate(mulmod(x1, x1, P)), P)
-                || a1 != mulmod(2, mulmod(x0, x1, P), P)
+            a0 != addmod(mulmod(x0, x0, P), negate(mulmod(x1, x1, P)), P) ||
+            a1 != mulmod(2, mulmod(x0, x1, P), P)
         ) {
             revert ProofInvalid();
         }
@@ -235,7 +238,10 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
     /// @param x The X coordinate in Fp.
     /// @param y The Y coordinate in Fp.
     /// @return c The compresed point (x with one signal bit).
-    function compress_g1(uint256 x, uint256 y) internal view returns (uint256 c) {
+    function compress_g1(
+        uint256 x,
+        uint256 y
+    ) internal view returns (uint256 c) {
         if (x >= P || y >= P) {
             // G1 point not in field.
             revert ProofInvalid();
@@ -263,7 +269,9 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
     /// @param c The compresed point (x with one signal bit).
     /// @return x The X coordinate in Fp.
     /// @return y The Y coordinate in Fp.
-    function decompress_g1(uint256 c) internal view returns (uint256 x, uint256 y) {
+    function decompress_g1(
+        uint256 c
+    ) internal view returns (uint256 x, uint256 y) {
         // Note that X = 0 is not on the curve since 0³ + 3 = 3 is not a square.
         // so we can use it to represent the point at infinity.
         if (c == 0) {
@@ -298,11 +306,12 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
     /// @param y1 The imaginary part of the Y coordinate.
     /// @return c0 The first half of the compresed point (x0 with two signal bits).
     /// @return c1 The second half of the compressed point (x1 unmodified).
-    function compress_g2(uint256 x0, uint256 x1, uint256 y0, uint256 y1)
-        internal
-        view
-        returns (uint256 c0, uint256 c1)
-    {
+    function compress_g2(
+        uint256 x0,
+        uint256 x1,
+        uint256 y0,
+        uint256 y1
+    ) internal view returns (uint256 c0, uint256 c1) {
         if (x0 >= P || x1 >= P || y0 >= P || y1 >= P) {
             // G2 point not in field.
             revert ProofInvalid();
@@ -320,16 +329,26 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
             uint256 n3ab = mulmod(mulmod(x0, x1, P), P - 3, P);
             uint256 a_3 = mulmod(mulmod(x0, x0, P), x0, P);
             uint256 b_3 = mulmod(mulmod(x1, x1, P), x1, P);
-            y0_pos = addmod(FRACTION_27_82_FP, addmod(a_3, mulmod(n3ab, x1, P), P), P);
-            y1_pos = negate(addmod(FRACTION_3_82_FP, addmod(b_3, mulmod(n3ab, x0, P), P), P));
+            y0_pos = addmod(
+                FRACTION_27_82_FP,
+                addmod(a_3, mulmod(n3ab, x1, P), P),
+                P
+            );
+            y1_pos = negate(
+                addmod(FRACTION_3_82_FP, addmod(b_3, mulmod(n3ab, x0, P), P), P)
+            );
         }
 
         // Determine hint bit
         // If this sqrt fails the x coordinate is not on the curve.
         bool hint;
         {
-            uint256 d = sqrt_Fp(addmod(mulmod(y0_pos, y0_pos, P), mulmod(y1_pos, y1_pos, P), P));
-            hint = !isSquare_Fp(mulmod(addmod(y0_pos, d, P), FRACTION_1_2_FP, P));
+            uint256 d = sqrt_Fp(
+                addmod(mulmod(y0_pos, y0_pos, P), mulmod(y1_pos, y1_pos, P), P)
+            );
+            hint = !isSquare_Fp(
+                mulmod(addmod(y0_pos, d, P), FRACTION_1_2_FP, P)
+            );
         }
 
         // Recover y
@@ -357,11 +376,10 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
     /// @return x1 The imaginary poart of the X coordinate.
     /// @return y0 The real part of the Y coordinate.
     /// @return y1 The imaginary part of the Y coordinate.
-    function decompress_g2(uint256 c0, uint256 c1)
-        internal
-        view
-        returns (uint256 x0, uint256 x1, uint256 y0, uint256 y1)
-    {
+    function decompress_g2(
+        uint256 c0,
+        uint256 c1
+    ) internal view returns (uint256 x0, uint256 x1, uint256 y0, uint256 y1) {
         // Note that X = (0, 0) is not on the curve since 0³ + 3/(9 + i) is not a square.
         // so we can use it to represent the point at infinity.
         if (c0 == 0 && c1 == 0) {
@@ -382,7 +400,9 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
         uint256 b_3 = mulmod(mulmod(x1, x1, P), x1, P);
 
         y0 = addmod(FRACTION_27_82_FP, addmod(a_3, mulmod(n3ab, x1, P), P), P);
-        y1 = negate(addmod(FRACTION_3_82_FP, addmod(b_3, mulmod(n3ab, x0, P), P), P));
+        y1 = negate(
+            addmod(FRACTION_3_82_FP, addmod(b_3, mulmod(n3ab, x0, P), P), P)
+        );
 
         // Note: sqrt_Fp2 reverts if there is no solution, i.e. the point is not on the curve.
         // Note: (X³ + 3/(9 + i)) is irreducible in Fp2, so y can not be zero.
@@ -401,11 +421,9 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
     /// @param input The public inputs. These are elements of the scalar field Fr.
     /// @return x The X coordinate of the resulting G1 point.
     /// @return y The Y coordinate of the resulting G1 point.
-    function publicInputMSM(uint256[4] calldata input)
-        internal
-        view
-        returns (uint256 x, uint256 y)
-    {
+    function publicInputMSM(
+        uint256[4] calldata input
+    ) internal view returns (uint256 x, uint256 y) {
         // Note: The ECMUL precompile does not reject unreduced values, so we check this.
         // Note: Unrolling this loop does not cost much extra in code-size, the bulk of the
         //       code-size is in the PUB_ constants.
@@ -425,29 +443,53 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
             s := calldataload(input)
             mstore(add(g, 0x40), s)
             success := and(success, lt(s, R))
-            success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
-            success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+            success := and(
+                success,
+                staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40)
+            )
+            success := and(
+                success,
+                staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40)
+            )
             mstore(g, PUB_1_X)
             mstore(add(g, 0x20), PUB_1_Y)
             s := calldataload(add(input, 32))
             mstore(add(g, 0x40), s)
             success := and(success, lt(s, R))
-            success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
-            success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+            success := and(
+                success,
+                staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40)
+            )
+            success := and(
+                success,
+                staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40)
+            )
             mstore(g, PUB_2_X)
             mstore(add(g, 0x20), PUB_2_Y)
             s := calldataload(add(input, 64))
             mstore(add(g, 0x40), s)
             success := and(success, lt(s, R))
-            success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
-            success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+            success := and(
+                success,
+                staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40)
+            )
+            success := and(
+                success,
+                staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40)
+            )
             mstore(g, PUB_3_X)
             mstore(add(g, 0x20), PUB_3_Y)
             s := calldataload(add(input, 96))
             mstore(add(g, 0x40), s)
             success := and(success, lt(s, R))
-            success := and(success, staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40))
-            success := and(success, staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40))
+            success := and(
+                success,
+                staticcall(gas(), PRECOMPILE_MUL, g, 0x60, g, 0x40)
+            )
+            success := and(
+                success,
+                staticcall(gas(), PRECOMPILE_ADD, f, 0x80, f, 0x40)
+            )
             x := mload(f)
             y := mload(add(f, 0x20))
         }
@@ -465,13 +507,16 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
     /// verifyProof. I.e. Groth16 points (A, B, C) encoded as in EIP-197.
     /// @return compressed The compressed proof. Elements are in the same order as for
     /// verifyCompressedProof. I.e. points (A, B, C) in compressed format.
-    function compressProof(uint256[8] calldata proof)
-        public
-        view
-        returns (uint256[4] memory compressed)
-    {
+    function compressProof(
+        uint256[8] calldata proof
+    ) public view returns (uint256[4] memory compressed) {
         compressed[0] = compress_g1(proof[0], proof[1]);
-        (compressed[2], compressed[1]) = compress_g2(proof[3], proof[2], proof[5], proof[4]);
+        (compressed[2], compressed[1]) = compress_g2(
+            proof[3],
+            proof[2],
+            proof[5],
+            proof[4]
+        );
         compressed[3] = compress_g1(proof[6], proof[7]);
     }
 
@@ -484,13 +529,15 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
     /// matching the output of compressProof.
     /// @param input the public input field elements in the scalar field Fr.
     /// Elements must be reduced.
-    function verifyCompressedProof(uint256[4] calldata compressedProof, uint256[4] calldata input)
-        public
-        view
-    {
+    function verifyCompressedProof(
+        uint256[4] calldata compressedProof,
+        uint256[4] calldata input
+    ) public view {
         (uint256 Ax, uint256 Ay) = decompress_g1(compressedProof[0]);
-        (uint256 Bx0, uint256 Bx1, uint256 By0, uint256 By1) =
-            decompress_g2(compressedProof[2], compressedProof[1]);
+        (uint256 Bx0, uint256 Bx1, uint256 By0, uint256 By1) = decompress_g2(
+            compressedProof[2],
+            compressedProof[1]
+        );
         (uint256 Cx, uint256 Cy) = decompress_g1(compressedProof[3]);
         (uint256 Lx, uint256 Ly) = publicInputMSM(input);
 
@@ -531,7 +578,14 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
         bool success;
         uint256[1] memory output;
         assembly ("memory-safe") {
-            success := staticcall(gas(), PRECOMPILE_VERIFY, pairings, 0x300, output, 0x20)
+            success := staticcall(
+                gas(),
+                PRECOMPILE_VERIFY,
+                pairings,
+                0x300,
+                output,
+                0x20
+            )
         }
         if (!success || output[0] != 1) {
             // Either proof or verification key invalid.
@@ -549,7 +603,10 @@ contract SemaphoreVerifier is ISemaphoreVerifier {
     /// of compressProof.
     /// @param input the public input field elements in the scalar field Fr.
     /// Elements must be reduced.
-    function verifyProof(uint256[8] calldata proof, uint256[4] calldata input) public view {
+    function verifyProof(
+        uint256[8] calldata proof,
+        uint256[4] calldata input
+    ) public view {
         (uint256 x, uint256 y) = publicInputMSM(input);
 
         // Note: The precompile expects the F2 coefficients in big-endian order.

@@ -45,16 +45,20 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         emit Initialized(1);
 
         identityManager = new IdentityManager(managerImplV1Address, V1CallData);
+
         identityManagerAddress = address(identityManager);
 
         // creates Manager Impl V2, which will be used for tests
         managerImpl = new ManagerImpl();
         managerImplAddress = address(managerImpl);
 
-        bytes memory initCallV2 =
-            abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+        bytes memory initCallV2 = abi.encodeCall(
+            ManagerImpl.initializeV2,
+            (defaultDeletionVerifiers)
+        );
         bytes memory upgradeCall = abi.encodeCall(
-            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+            UUPSUpgradeable.upgradeToAndCall,
+            (address(managerImplAddress), initCallV2)
         );
 
         vm.expectEmit(true, true, true, true);
@@ -63,7 +67,11 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         vm.expectEmit(true, true, true, true);
         emit Initialized(2);
         // Test
-        assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
+        assertCallSucceedsOn(
+            identityManagerAddress,
+            upgradeCall,
+            new bytes(0x0)
+        );
     }
 
     /// @notice Checks that it is possible to initialise the contract.
@@ -93,12 +101,18 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         identityManager = new IdentityManager(managerImplAddress, V1CallData);
         identityManagerAddress = address(identityManager);
 
-        bytes memory initCallV2 =
-            abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+        bytes memory initCallV2 = abi.encodeCall(
+            ManagerImpl.initializeV2,
+            (defaultDeletionVerifiers)
+        );
 
         // can't expectEmit Initialized 2 due to the low-level call wrapper, but the trace
         // shows Initialized(2) is emitted
-        assertCallSucceedsOn(identityManagerAddress, initCallV2, new bytes(0x0));
+        assertCallSucceedsOn(
+            identityManagerAddress,
+            initCallV2,
+            new bytes(0x0)
+        );
     }
 
     /// @notice Checks that it is not possible to initialise the contract more than once.
@@ -114,13 +128,17 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
                 semaphoreVerifier
             )
         );
-        bytes memory expectedReturn =
-            encodeStringRevert("Initializable: contract is already initialized");
+        bytes memory expectedReturn = encodeStringRevert(
+            "Initializable: contract is already initialized"
+        );
 
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
 
-        callData = abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+        callData = abi.encodeCall(
+            ManagerImpl.initializeV2,
+            (defaultDeletionVerifiers)
+        );
 
         assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
     }
@@ -162,7 +180,12 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
             )
         );
 
-        vm.expectRevert(abi.encodeWithSelector(ManagerImplV1.UnsupportedTreeDepth.selector, 15));
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                ManagerImplV1.UnsupportedTreeDepth.selector,
+                15
+            )
+        );
 
         // Test
         identityManager = new IdentityManager(managerImplAddress, callData);
