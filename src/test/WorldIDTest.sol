@@ -4,8 +4,6 @@ pragma solidity ^0.8.21;
 import {Vm} from "forge-std/Vm.sol";
 import {Test} from "forge-std/Test.sol";
 
-import "forge-std/console.sol";
-
 /// @title World ID Test
 /// @notice Contains test utilities for WorldID.
 /// @author Worldcoin
