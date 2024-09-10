@@ -49,12 +49,8 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(identities.length <= 1000);
-        (
-            VerifierLookupTable insertVerifiers,
-            VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers,
-            VerifierLookupTable4844 insertVerifiers4844
-        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
+        (insertVerifiers, deletionVerifiers, updateVerifiers, insertVerifiers4844) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
@@ -92,12 +88,8 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(identities.length <= 1000);
-        (
-            VerifierLookupTable insertVerifiers,
-            VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers,
-            VerifierLookupTable4844 insertVerifiers4844
-        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
+        (insertVerifiers, deletionVerifiers, updateVerifiers, insertVerifiers4844) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,

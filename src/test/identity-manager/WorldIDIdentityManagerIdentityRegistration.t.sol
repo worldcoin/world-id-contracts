@@ -37,12 +37,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
     function testRegisterIdentitiesWithCorrectInputsFromKnown() public {
         // Setup
         ITreeVerifier actualVerifier = new TreeVerifier();
-        (
-            VerifierLookupTable insertVerifiers,
-            VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers,
-            VerifierLookupTable4844 insertVerifiers4844
-        ) = makeVerifierLookupTables(TC.makeDynArray([40]));
+        (insertVerifiers, deletionVerifiers, updateVerifiers, insertVerifiers4844) =
+            makeVerifierLookupTables(TC.makeDynArray([40]));
         insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
@@ -87,12 +83,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(identities.length <= 1000);
         vm.assume(identityOperator != nullAddress && identityOperator != thisAddress);
-        (
-            VerifierLookupTable insertVerifiers,
-            VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers,
-            VerifierLookupTable4844 insertVerifiers4844
-        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length]));
+        (insertVerifiers, deletionVerifiers, updateVerifiers, insertVerifiers4844) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
@@ -136,12 +128,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(identities.length <= 1000 && identities.length > 0);
         uint256 secondIdentsLength = identities.length / 2;
-        (
-            VerifierLookupTable insertVerifiers,
-            VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers,
-            VerifierLookupTable4844 insertVerifiers4844
-        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length, secondIdentsLength]));
+        (insertVerifiers, deletionVerifiers, updateVerifiers, insertVerifiers4844) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length, secondIdentsLength]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
@@ -190,12 +178,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(SimpleVerify.isValidInput(uint256(prf[0])));
         vm.assume(newPreRoot != newPostRoot);
         vm.assume(identities.length > 0);
-        (
-            VerifierLookupTable insertVerifiers,
-            VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers,
-            VerifierLookupTable4844 insertVerifiers4844
-        ) = makeVerifierLookupTables(TC.makeDynArray([identities.length - 1]));
+        (insertVerifiers, deletionVerifiers, updateVerifiers, insertVerifiers4844) =
+            makeVerifierLookupTables(TC.makeDynArray([identities.length - 1]));
         makeNewIdentityManager(
             treeDepth,
             newPreRoot,
@@ -228,12 +212,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         vm.assume(!SimpleVerify.isValidInput(uint256(prf[0])));
         ITreeVerifier actualVerifier = new TreeVerifier();
-        (
-            VerifierLookupTable insertVerifiers,
-            VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers,
-            VerifierLookupTable4844 insertVerifiers4844
-        ) = makeVerifierLookupTables(TC.makeDynArray([70]));
+        (insertVerifiers, deletionVerifiers, updateVerifiers, insertVerifiers4844) =
+            makeVerifierLookupTables(TC.makeDynArray([70]));
         insertVerifiers.addVerifier(identityCommitments.length, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
@@ -260,12 +240,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         // Setup
         vm.assume(newStartIndex != startIndex);
         ITreeVerifier actualVerifier = new TreeVerifier();
-        (
-            VerifierLookupTable insertVerifiers,
-            VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers,
-            VerifierLookupTable4844 insertVerifiers4844
-        ) = makeVerifierLookupTables(TC.makeDynArray([70]));
+        (insertVerifiers, deletionVerifiers, updateVerifiers, insertVerifiers4844) =
+            makeVerifierLookupTables(TC.makeDynArray([70]));
         insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
@@ -304,12 +280,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         uint256[] memory identities = cloneArray(identityCommitments);
         identities[invalidSlot] = identity;
         ITreeVerifier actualVerifier = new TreeVerifier();
-        (
-            VerifierLookupTable insertVerifiers,
-            VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers,
-            VerifierLookupTable4844 insertVerifiers4844
-        ) = makeVerifierLookupTables(TC.makeDynArray([70]));
+        (insertVerifiers, deletionVerifiers, updateVerifiers, insertVerifiers4844) =
+            makeVerifierLookupTables(TC.makeDynArray([70]));
         insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
         makeNewIdentityManager(
             treeDepth,
@@ -338,11 +310,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         managerImplV2 = new ManagerImpl();
         managerImplV2Address = address(managerImplV2);
         ITreeVerifier actualVerifier = new TreeVerifier();
-        (
-            VerifierLookupTable insertVerifiers,
-            VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers,
-        ) = makeVerifierLookupTables(TC.makeDynArray([70]));
+        (insertVerifiers, deletionVerifiers, updateVerifiers,) =
+            makeVerifierLookupTables(TC.makeDynArray([70]));
         insertVerifiers.addVerifier(identityCommitmentsSize, actualVerifier);
 
         bytes memory callData = abi.encodeCall(
@@ -429,12 +398,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
         vm.assume(identitiesLength != 0 && identitiesLength <= 1000);
         vm.assume(zeroPosition < identitiesLength && zeroPosition > 0);
         uint256[] memory identities = new uint256[](identitiesLength);
-        (
-            VerifierLookupTable insertVerifiers,
-            VerifierLookupTable deletionVerifiers,
-            VerifierLookupTable updateVerifiers,
-            VerifierLookupTable4844 insertVerifiers4844
-        ) = makeVerifierLookupTables(TC.makeDynArray([identitiesLength]));
+        (insertVerifiers, deletionVerifiers, updateVerifiers, insertVerifiers4844) =
+            makeVerifierLookupTables(TC.makeDynArray([identitiesLength]));
         makeNewIdentityManager(
             treeDepth,
             initialRoot,
