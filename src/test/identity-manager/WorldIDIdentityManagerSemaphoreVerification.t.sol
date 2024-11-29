@@ -34,6 +34,7 @@ contract WorldIDIdentityManagerSemaphoreVerification is WorldIDIdentityManagerTe
             actualTreeDepth,
             insertionPreRoot,
             defaultInsertVerifiers,
+            defaultInsertVerifiers4844,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
             actualSemaphoreVerifier
@@ -63,6 +64,7 @@ contract WorldIDIdentityManagerSemaphoreVerification is WorldIDIdentityManagerTe
             actualTreeDepth,
             inclusionRoot,
             defaultInsertVerifiers,
+            defaultInsertVerifiers4844,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
             actualSemaphoreVerifier
@@ -86,6 +88,7 @@ contract WorldIDIdentityManagerSemaphoreVerification is WorldIDIdentityManagerTe
             treeDepth,
             inclusionRoot,
             defaultInsertVerifiers,
+            defaultInsertVerifiers4844,
             defaultDeletionVerifiers,
             defaultUpdateVerifiers,
             actualSemaphoreVerifier

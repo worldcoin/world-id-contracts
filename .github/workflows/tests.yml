@@ -27,12 +27,9 @@ jobs:
         run: make build
 
       - name: Run Tests
-        run: make test
+        run: |
+          make test
+          make snapshot
 
       - name: Check formatting
         run: make format-check
-
-      - name: Run Benchmarks
-        run: |
-          make bench
-          make snapshot

@@ -32,7 +32,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.calculateIdentityRegistrationInputHash(
+        managerImplV2.calculateIdentityRegistrationInputHash(
             startIndex, insertionPreRoot, insertionPostRoot, identityCommitments
         );
     }
@@ -57,7 +57,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.calculateIdentityDeletionInputHash(
+        managerImplV2.calculateIdentityDeletionInputHash(
             packedDeletionIndices, deletionPreRoot, deletionPostRoot, deletionBatchSize
         );
     }

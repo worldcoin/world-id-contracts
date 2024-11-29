@@ -74,6 +74,6 @@ contract WorldIDIdentityManagerUpdate is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.upgradeToAndCall(mockUpgradeAddress, initCall);
+        managerImplV2.upgradeToAndCall(mockUpgradeAddress, initCall);
     }
 }

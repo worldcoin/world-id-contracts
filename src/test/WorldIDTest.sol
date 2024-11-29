@@ -14,7 +14,7 @@ contract WorldIDTest is Test {
     ///                                TEST DATA                                ///
     ///////////////////////////////////////////////////////////////////////////////
 
-    Vm internal hevm = Vm(HEVM_ADDRESS);
+    Vm internal hevm = Vm(VM_ADDRESS);
     address internal nullAddress = address(0x0);
     address internal thisAddress = address(this);
 
