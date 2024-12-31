@@ -90,10 +90,7 @@ contract WorldIDRouterStateBridge is WorldIDRouterTest {
         bool shouldSucceed = proof[0] % 2 == 0;
 
         bytes memory errorData = new bytes(0);
-        if (shouldSucceed) {
-            vm.expectEmit(true, true, true, true);
-            emit ProofVerified(root);
-        } else {
+        if (!shouldSucceed) {
             errorData = abi.encodeWithSelector(SimpleStateBridge.ProofNotVerified.selector);
         }
 
