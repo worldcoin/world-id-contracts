@@ -123,7 +123,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallSetRegisterIdentitiesVerifierLookupTableWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        (VerifierLookupTable insertVerifiers,,) = makeVerifierLookupTables(TC.makeDynArray([75]));
+        (insertVerifiers,,,) = makeVerifierLookupTables(TC.makeDynArray([75]));
         bytes memory callData = abi.encodeCall(
             ManagerImplV1.setRegisterIdentitiesVerifierLookupTable, (insertVerifiers)
         );
@@ -153,7 +153,7 @@ contract WorldIDIdentityManagerUninit is WorldIDIdentityManagerTest {
     function testShouldNotCallSetDeleteIdentitiesVerifierLookupTableWhileUninit() public {
         // Setup
         makeUninitIdentityManager();
-        (, VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([75]));
+        (,, deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([75]));
         bytes memory callData =
             abi.encodeCall(ManagerImpl.setDeleteIdentitiesVerifierLookupTable, (deletionVerifiers));
         bytes memory expectedError =

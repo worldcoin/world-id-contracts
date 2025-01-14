@@ -137,7 +137,7 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.identityOperator();
+        managerImplV2.identityOperator();
     }
 
     /// @notice Ensures that it is possible for the owner to set the address of the identity
@@ -180,6 +180,6 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.setIdentityOperator(newOperator);
+        managerImplV2.setIdentityOperator(newOperator);
     }
 }

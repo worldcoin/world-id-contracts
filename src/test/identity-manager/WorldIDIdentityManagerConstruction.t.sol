@@ -45,18 +45,18 @@ contract WorldIDIdentityManagerConstruction is WorldIDIdentityManagerTest {
         );
 
         // Test
-        identityManager = new IdentityManager(address(managerImpl), callData);
+        identityManager = new IdentityManager(address(managerImplV2), callData);
 
         identityManagerAddress = address(identityManager);
 
         // creates Manager Impl V2, which will be used for tests
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
+        managerImplV2 = new ManagerImpl();
+        managerImplV2Address = address(managerImplV2);
 
         bytes memory initCallV2 =
             abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
         bytes memory upgradeCall = abi.encodeCall(
-            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplV2Address), initCallV2)
         );
 
         // Test

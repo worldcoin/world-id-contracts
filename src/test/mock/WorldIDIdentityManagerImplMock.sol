@@ -13,7 +13,8 @@ contract WorldIDIdentityManagerImplMock is WorldIDIdentityManagerImplV1 {
     }
 
     /// @notice Used to initialize the new things in the upgraded contract.
-    function initialize(uint32 data) public virtual reinitializer(3) {
+    /// The reinitializer value is high not to conflict with subsequent implementations.
+    function initialize(uint32 data) public virtual reinitializer(255) {
         _someMoreData = data;
     }
 
