@@ -147,7 +147,8 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         );
         uint256 secondPostRoot = uint256(newPostRoot) + 1;
         bytes memory secondCallData = abi.encodeCall(
-            ManagerImplV2.deleteIdentities, (actualProof, secondIndices, newPostRoot, secondPostRoot)
+            ManagerImplV2.deleteIdentities,
+            (actualProof, secondIndices, newPostRoot, secondPostRoot)
         );
 
         vm.expectEmit(true, true, true, true);

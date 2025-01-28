@@ -17,12 +17,14 @@ contract SimpleSemaphoreVerifier is ISemaphoreVerifier {
         }
     }
 
-    function verifyCompressedProof(uint256[4] calldata proof, uint256[4] memory input) external pure {
+    function verifyCompressedProof(uint256[4] calldata proof, uint256[4] memory input)
+        external
+        pure
+    {
         delete input;
 
-        if (proof[0] % 2 == 0) {
+        if (proof[0] % 2 != 0) {
             revert Semaphore__InvalidProof();
         }
     }
-
 }

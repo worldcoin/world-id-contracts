@@ -20,7 +20,9 @@ import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdenti
 contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     /// @notice Taken from WorldIDIdentityManagerImplV1.sol
     event DependencyUpdated(
-        ManagerImplV2.Dependency indexed kind, address indexed oldAddress, address indexed newAddress
+        ManagerImplV2.Dependency indexed kind,
+        address indexed oldAddress,
+        address indexed newAddress
     );
     event RootHistoryExpirySet(uint256 indexed oldExpiryTime, uint256 indexed newExpiryTime);
 
@@ -124,8 +126,9 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         // Setup
         (, VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
         address newVerifiersAddress = address(deletionVerifiers);
-        bytes memory callData =
-            abi.encodeCall(ManagerImplV2.setDeleteIdentitiesVerifierLookupTable, (deletionVerifiers));
+        bytes memory callData = abi.encodeCall(
+            ManagerImplV2.setDeleteIdentitiesVerifierLookupTable, (deletionVerifiers)
+        );
         bytes memory checkCallData =
             abi.encodeCall(ManagerImplV2.getDeleteIdentitiesVerifierLookupTableAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifiersAddress);

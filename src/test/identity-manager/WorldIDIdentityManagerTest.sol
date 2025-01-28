@@ -18,18 +18,21 @@ import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 import {WorldIDIdentityManagerImplV2 as ManagerImplV2} from "../../WorldIDIdentityManagerImplV2.sol";
-
+import {WorldIDIdentityManagerImplV3 as ManagerImplV3} from "../../WorldIDIdentityManagerImplV3.sol";
 /// @title World ID Identity Manager Test.
 /// @notice Contains tests for the WorldID identity manager.
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
+
 contract WorldIDIdentityManagerTest is WorldIDTest {
     ///////////////////////////////////////////////////////////////////////////////
     ///                                TEST DATA                                ///
     ///////////////////////////////////////////////////////////////////////////////
 
     IdentityManager internal identityManager;
+    // V3
+    ManagerImplV3 internal managerImplV3;
     // V2
     ManagerImplV2 internal managerImplV2;
     // V1
@@ -40,6 +43,8 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     uint8 internal treeDepth = 16;
 
     address internal identityManagerAddress;
+    // V3
+    address internal managerImplV3Address;
     // V2
     address internal managerImplV2Address;
     // V1
@@ -249,6 +254,61 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
+    }
+
+    /// @notice Initialises a new identity manager using the provided information.
+    /// @dev It is initialised in the globals.
+    ///
+    /// @param actualPreRoot The pre-root to use.
+    /// @param insertVerifiers The insertion verifier lookup table.
+    /// @param updateVerifiers The udpate verifier lookup table.
+    /// @param actualSemaphoreVerifier The Semaphore verifier instance to use.
+    function makeNewIdentityManagerV3(
+        uint8 actualTreeDepth,
+        uint256 actualPreRoot,
+        VerifierLookupTable insertVerifiers,
+        VerifierLookupTable deletionVerifiers,
+        VerifierLookupTable updateVerifiers,
+        ISemaphoreVerifier actualSemaphoreVerifier
+    ) public {
+        managerImplV1 = new ManagerImplV1();
+        managerImplV1Address = address(managerImplV1);
+
+        bytes memory initCallData = abi.encodeCall(
+            ManagerImplV1.initialize,
+            (
+                actualTreeDepth,
+                actualPreRoot,
+                insertVerifiers,
+                updateVerifiers,
+                actualSemaphoreVerifier
+            )
+        );
+
+        identityManager = new IdentityManager(managerImplV1Address, initCallData);
+        identityManagerAddress = address(identityManager);
+
+        // creates Manager Impl V2, which will be used for tests
+        managerImplV2 = new ManagerImplV2();
+        managerImplV2Address = address(managerImplV2);
+
+        bytes memory initCallV2 = abi.encodeCall(ManagerImplV2.initializeV2, (deletionVerifiers));
+        bytes memory upgradeCallV2 = abi.encodeCall(
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplV2Address), initCallV2)
+        );
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, upgradeCallV2, new bytes(0x0));
+
+        // creates Manager Impl V3
+        managerImplV3 = new ManagerImplV3();
+        managerImplV3Address = address(managerImplV3);
+
+        bytes memory upgradeCallV3 =
+            abi.encodeCall(UUPSUpgradeable.upgradeTo, (address(managerImplV3Address)));
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, upgradeCallV3);
     }
 
     /// @notice Initialises a new identity manager using the provided information.

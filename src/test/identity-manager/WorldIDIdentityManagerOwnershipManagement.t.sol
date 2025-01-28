@@ -183,4 +183,3 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         managerImplV2.setIdentityOperator(newOperator);
     }
 }
-
