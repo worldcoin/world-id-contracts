@@ -128,7 +128,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(badRoot != initialRoot);
         bytes memory callData = abi.encodeCall(ManagerImplV1.queryRoot, badRoot);
-        bytes memory returnData = abi.encode(managerImpl.NO_SUCH_ROOT());
+        bytes memory returnData = abi.encode(managerImplV2.NO_SUCH_ROOT());
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, callData, returnData);
@@ -140,7 +140,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.queryRoot(initialRoot);
+        managerImplV2.queryRoot(initialRoot);
     }
 
     /// @notice Checks that it is possible to get the latest root from the contract.
@@ -167,7 +167,7 @@ contract WorldIDIdentityManagerDataQuery is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.latestRoot();
+        managerImplV2.latestRoot();
     }
 
     /// @notice Checks that it is possible to get the tree depth the contract was initialized with.

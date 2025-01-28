@@ -6,7 +6,7 @@ import {UUPSUpgradeable} from "contracts-upgradeable/proxy/utils/UUPSUpgradeable
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImplV2} from "../../WorldIDIdentityManagerImplV2.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Initialization Tests
@@ -24,7 +24,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     function testInitialisation() public {
         // Setup
         delete identityManager;
-        delete managerImpl;
+        delete managerImplV2;
         delete managerImplV1;
 
         bytes memory V1CallData = abi.encodeCall(
@@ -39,7 +39,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         );
 
         managerImplV1 = new ManagerImplV1();
-        managerImplAddress = address(managerImpl);
+        managerImplV1Address = address(managerImplV1);
 
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
@@ -48,13 +48,13 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         identityManagerAddress = address(identityManager);
 
         // creates Manager Impl V2, which will be used for tests
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
+        managerImplV2 = new ManagerImplV2();
+        managerImplV2Address = address(managerImplV2);
 
         bytes memory initCallV2 =
-            abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+            abi.encodeCall(ManagerImplV2.initializeV2, (defaultDeletionVerifiers));
         bytes memory upgradeCall = abi.encodeCall(
-            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplV2Address), initCallV2)
         );
 
         vm.expectEmit(true, true, true, true);
@@ -70,7 +70,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     function testInitialisation2() public {
         // Setup
         delete identityManager;
-        delete managerImpl;
+        delete managerImplV2;
         delete managerImplV1;
 
         bytes memory V1CallData = abi.encodeCall(
@@ -85,16 +85,16 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         );
 
         // creates Manager Impl V2, which will be used for tests
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
+        managerImplV2 = new ManagerImplV2();
+        managerImplV2Address = address(managerImplV2);
 
         vm.expectEmit(true, true, true, true);
         emit Initialized(1);
-        identityManager = new IdentityManager(managerImplAddress, V1CallData);
+        identityManager = new IdentityManager(managerImplV2Address, V1CallData);
         identityManagerAddress = address(identityManager);
 
         bytes memory initCallV2 =
-            abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+            abi.encodeCall(ManagerImplV2.initializeV2, (defaultDeletionVerifiers));
 
         // can't expectEmit Initialized 2 due to the low-level call wrapper, but the trace
         // shows Initialized(2) is emitted
@@ -120,7 +120,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         // Test
         assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
 
-        callData = abi.encodeCall(ManagerImpl.initializeV2, (defaultDeletionVerifiers));
+        callData = abi.encodeCall(ManagerImplV2.initializeV2, (defaultDeletionVerifiers));
 
         assertCallFailsOn(identityManagerAddress, callData, expectedReturn);
     }
@@ -128,7 +128,7 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     /// @notice Checks that it is impossible to initialize the delegate on its own.
     function testCannotInitializeTheDelegate() public {
         // Setup
-        ManagerImplV1 localImpl = new ManagerImpl();
+        ManagerImplV1 localImpl = new ManagerImplV1();
         vm.expectRevert("Initializable: contract is already initialized");
 
         // Test
@@ -145,10 +145,10 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
     function testCannotPassUnsupportedTreeDepth() public {
         // Setup
         delete identityManager;
-        delete managerImpl;
+        delete managerImplV2;
 
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
+        managerImplV2 = new ManagerImplV2();
+        managerImplV2Address = address(managerImplV2);
         uint8 unsupportedDepth = 15;
 
         bytes memory callData = abi.encodeCall(
@@ -165,6 +165,6 @@ contract WorldIDIdentityManagerInitialization is WorldIDIdentityManagerTest {
         vm.expectRevert(abi.encodeWithSelector(ManagerImplV1.UnsupportedTreeDepth.selector, 15));
 
         // Test
-        identityManager = new IdentityManager(managerImplAddress, callData);
+        identityManager = new IdentityManager(managerImplV2Address, callData);
     }
 }

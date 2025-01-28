@@ -10,7 +10,7 @@ import {Verifier as TreeVerifier} from "src/test/DeletionTreeVerifier16.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImplV2} from "../../WorldIDIdentityManagerImplV2.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 import {console} from "forge-std/console.sol";
@@ -27,7 +27,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
     /// Taken from WorldIDIdentityManagerImplV1.sol
     event TreeChanged(
         uint256 indexed deletionPreRoot,
-        ManagerImpl.TreeChange indexed kind,
+        ManagerImplV2.TreeChange indexed kind,
         uint256 indexed deletionPostRoot
     );
 
@@ -50,7 +50,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
             semaphoreVerifier
         );
         bytes memory deleteCallData = abi.encodeCall(
-            ManagerImpl.deleteIdentities,
+            ManagerImplV2.deleteIdentities,
             (deletionProof, packedDeletionIndices, deletionPreRoot, deletionPostRoot)
         );
         bytes memory latestRootCallData = abi.encodeCall(ManagerImplV1.latestRoot, ());
@@ -97,7 +97,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         );
         uint256[8] memory actualProof = prepareDeleteIdentitiesTestCase(prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities,
+            ManagerImplV2.deleteIdentities,
             (actualProof, packedDeletionIndices, newPreRoot, newPostRoot)
         );
 
@@ -142,12 +142,12 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         );
         uint256[8] memory actualProof = prepareDeleteIdentitiesTestCase(prf);
         bytes memory firstCallData = abi.encodeCall(
-            ManagerImpl.deleteIdentities,
+            ManagerImplV2.deleteIdentities,
             (actualProof, packedDeletionIndices, newPreRoot, newPostRoot)
         );
         uint256 secondPostRoot = uint256(newPostRoot) + 1;
         bytes memory secondCallData = abi.encodeCall(
-            ManagerImpl.deleteIdentities, (actualProof, secondIndices, newPostRoot, secondPostRoot)
+            ManagerImplV2.deleteIdentities, (actualProof, secondIndices, newPostRoot, secondPostRoot)
         );
 
         vm.expectEmit(true, true, true, true);
@@ -191,7 +191,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         uint256[8] memory actualProof = prepareDeleteIdentitiesTestCase(prf);
 
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities,
+            ManagerImplV2.deleteIdentities,
             (actualProof, packedDeletionIndices, newPreRoot, newPostRoot)
         );
         bytes memory errorData = abi.encodeWithSelector(VerifierLookupTable.NoSuchVerifier.selector);
@@ -227,7 +227,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         );
         uint256[8] memory actualProof = prepareDeleteIdentitiesTestCase(prf);
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities,
+            ManagerImplV2.deleteIdentities,
             (actualProof, packedDeletionIndices, newPreRoot, newPostRoot)
         );
         bytes memory expectedError =
@@ -258,7 +258,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         );
 
         bytes memory deletionCallData = abi.encodeCall(
-            ManagerImpl.deleteIdentities,
+            ManagerImplV2.deleteIdentities,
             (deletionProof, packedDeletionIndices, deletionPreRoot, newPostRoot)
         );
         bytes memory expectedError =
@@ -274,7 +274,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
         // Setup
         vm.assume(nonOperator != address(this) && nonOperator != address(0x0));
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities,
+            ManagerImplV2.deleteIdentities,
             (deletionProof, packedDeletionIndices, deletionPreRoot, deletionPostRoot)
         );
         bytes memory errorData =
@@ -304,7 +304,7 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
             semaphoreVerifier
         );
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.deleteIdentities,
+            ManagerImplV2.deleteIdentities,
             (deletionProof, packedDeletionIndices, actualRoot, deletionPostRoot)
         );
         bytes memory expectedError = abi.encodeWithSelector(
@@ -318,12 +318,12 @@ contract WorldIDIdentityManagerIdentityDeletion is WorldIDIdentityManagerTest {
     /// @notice Tests that identities can only be deleted through the proxy.
     function testCannotDelteIdentitiesIfNotViaProxy() public {
         // Setup
-        address expectedOwner = managerImpl.owner();
+        address expectedOwner = managerImplV2.owner();
         vm.expectRevert("Function must be called through delegatecall");
         vm.prank(expectedOwner);
 
         // Test
-        managerImpl.deleteIdentities(
+        managerImplV2.deleteIdentities(
             deletionProof, packedDeletionIndices, initialRoot, deletionPostRoot
         );
     }

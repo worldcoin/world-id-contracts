@@ -12,7 +12,7 @@ import {Verifier as TreeVerifier} from "src/test/InsertionTreeVerifier16.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImplV2} from "../../WorldIDIdentityManagerImplV2.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Identity Registration Tests
@@ -27,7 +27,7 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
     /// Taken from WorldIDIdentityManagerImplV1.sol
     event TreeChanged(
         uint256 indexed insertionPreRoot,
-        ManagerImpl.TreeChange indexed kind,
+        ManagerImplV2.TreeChange indexed kind,
         uint256 indexed insertionPostRoot
     );
 
@@ -319,8 +319,8 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
     function testCannotRegisterIdentitiesIfPostRootIncorrect(uint256 newPostRoot) public {
         // Setup
         vm.assume(newPostRoot != insertionPostRoot && newPostRoot < SNARK_SCALAR_FIELD);
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
+        managerImplV2 = new ManagerImplV2();
+        managerImplV2Address = address(managerImplV2);
         ITreeVerifier actualVerifier = new TreeVerifier();
         (
             VerifierLookupTable insertVerifiers,
@@ -334,13 +334,13 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
             (treeDepth, insertionPreRoot, insertVerifiers, updateVerifiers, semaphoreVerifier)
         );
 
-        identityManager = new IdentityManager(managerImplAddress, callData);
+        identityManager = new IdentityManager(managerImplV2Address, callData);
         identityManagerAddress = address(identityManager);
 
         // Init V2
-        bytes memory initCallV2 = abi.encodeCall(ManagerImpl.initializeV2, (deletionVerifiers));
+        bytes memory initCallV2 = abi.encodeCall(managerImplV2.initializeV2, (deletionVerifiers));
         bytes memory upgradeCall = abi.encodeCall(
-            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplV2Address), initCallV2)
         );
         assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
 
@@ -451,12 +451,12 @@ contract WorldIDIdentityManagerIdentityRegistration is WorldIDIdentityManagerTes
     /// @notice Tests that identities can only be registered through the proxy.
     function testCannotRegisterIdentitiesIfNotViaProxy() public {
         // Setup
-        address expectedOwner = managerImpl.owner();
+        address expectedOwner = managerImplV2.owner();
         vm.expectRevert("Function must be called through delegatecall");
         vm.prank(expectedOwner);
 
         // Test
-        managerImpl.registerIdentities(
+        managerImplV2.registerIdentities(
             insertionProof, initialRoot, startIndex, identityCommitments, insertionPostRoot
         );
     }

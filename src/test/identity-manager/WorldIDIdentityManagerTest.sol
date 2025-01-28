@@ -17,7 +17,7 @@ import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
-import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImplV2} from "../../WorldIDIdentityManagerImplV2.sol";
 
 /// @title World ID Identity Manager Test.
 /// @notice Contains tests for the WorldID identity manager.
@@ -31,7 +31,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
     IdentityManager internal identityManager;
     // V2
-    ManagerImpl internal managerImpl;
+    ManagerImplV2 internal managerImplV2;
     // V1
     ManagerImplV1 internal managerImplV1;
 
@@ -41,7 +41,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
     address internal identityManagerAddress;
     // V2
-    address internal managerImplAddress;
+    address internal managerImplV2Address;
     // V1
     address internal managerImplV1Address;
 
@@ -198,7 +198,7 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
 
         hevm.label(address(this), "Sender");
         hevm.label(identityManagerAddress, "IdentityManager");
-        hevm.label(managerImplAddress, "ManagerImplementation");
+        hevm.label(managerImplV2Address, "ManagerImplementationV2");
         hevm.label(managerImplV1Address, "ManagerImplementationV1");
     }
 
@@ -239,12 +239,12 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         identityManagerAddress = address(identityManager);
 
         // creates Manager Impl V2, which will be used for tests
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
+        managerImplV2 = new ManagerImplV2();
+        managerImplV2Address = address(managerImplV2);
 
-        bytes memory initCallV2 = abi.encodeCall(ManagerImpl.initializeV2, (deletionVerifiers));
+        bytes memory initCallV2 = abi.encodeCall(ManagerImplV2.initializeV2, (deletionVerifiers));
         bytes memory upgradeCall = abi.encodeCall(
-            UUPSUpgradeable.upgradeToAndCall, (address(managerImplAddress), initCallV2)
+            UUPSUpgradeable.upgradeToAndCall, (address(managerImplV2Address), initCallV2)
         );
 
         // Test
@@ -327,9 +327,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @notice Creates a new identity manager without initializing the delegate.
     /// @dev It is constructed in the globals.
     function makeUninitIdentityManager() public {
-        managerImpl = new ManagerImpl();
-        managerImplAddress = address(managerImpl);
-        identityManager = new IdentityManager(managerImplAddress, new bytes(0x0));
+        managerImplV2 = new ManagerImplV2();
+        managerImplV2Address = address(managerImplV2);
+        identityManager = new IdentityManager(managerImplV2Address, new bytes(0x0));
         identityManagerAddress = address(identityManager);
     }
 
