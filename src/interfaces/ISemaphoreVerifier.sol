@@ -15,4 +15,17 @@ interface ISemaphoreVerifier {
     /// @param input the public input field elements in the scalar field Fr.
     /// Elements must be reduced.
     function verifyProof(uint256[8] calldata proof, uint256[4] calldata input) external view;
+
+    /// Verify a Groth16 proof with compressed points.
+    /// @notice Reverts with InvalidProof if the proof is invalid or
+    /// with PublicInputNotInField the public input is not reduced.
+    /// @notice There is no return value. If the function does not revert, the
+    /// proof was succesfully verified.
+    /// @param compressedProof the points (A, B, C) in compressed format
+    /// matching the output of compressProof.
+    /// @param input the public input field elements in the scalar field Fr.
+    /// Elements must be reduced.
+    function verifyCompressedProof(uint256[4] calldata compressedProof, uint256[4] calldata input)
+        external
+        view;
 }
