@@ -667,12 +667,11 @@ contract WorldIDIdentityManagerImplV1 is WorldIDImpl, IWorldID {
     /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.
     ///
-    /// @param proof The zero-knowledge proof
     /// @param root The of the Merkle tree
     /// @param signalHash A keccak256 hash of the Semaphore signal
     /// @param nullifierHash The nullifier hash
     /// @param externalNullifierHash A keccak256 hash of the external nullifier
-    ///
+    /// @param proof The zero-knowledge proof
     /// @custom:reverts string If the zero-knowledge proof cannot be verified for the public inputs.
     function verifyProof(
         uint256 root,

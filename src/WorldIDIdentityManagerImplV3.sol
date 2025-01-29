@@ -2,7 +2,7 @@ pragma solidity ^0.8.21;
 
 import "./WorldIDIdentityManagerImplV2.sol";
 
-/// @title WorldID Identity Manager Implementation Version 2
+/// @title WorldID Identity Manager Implementation Version 3
 /// @author Worldcoin
 /// @notice An implementation of a batch-based identity manager for the WorldID protocol.
 /// @dev The manager is based on the principle of verifying externally-created Zero Knowledge Proofs
@@ -58,12 +58,11 @@ contract WorldIDIdentityManagerImplV3 is WorldIDIdentityManagerImplV2 {
     /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.
     ///
-    /// @param proof The zero-knowledge proof
     /// @param root The of the Merkle tree
     /// @param signalHash A keccak256 hash of the Semaphore signal
     /// @param nullifierHash The nullifier hash
     /// @param externalNullifierHash A keccak256 hash of the external nullifier
-    ///
+    /// @param proof The zero-knowledge proof
     /// @custom:reverts string If the zero-knowledge proof cannot be verified for the public inputs.
     function verifyProof(
         uint256 root,
