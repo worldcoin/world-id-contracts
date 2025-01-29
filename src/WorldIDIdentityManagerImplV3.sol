@@ -81,4 +81,27 @@ contract WorldIDIdentityManagerImplV3 is WorldIDIdentityManagerImplV2 {
             semaphoreVerifier.verifyProof(proof, input);
         }
     }
+
+    /// @notice A verifier for the semaphore protocol that supports compressed proofs
+    /// @dev Note that a double-signaling check is not included here, and should be carried by the
+    ///      caller.
+    ///
+    /// @param root The of the Merkle tree
+    /// @param signalHash A keccak256 hash of the Semaphore signal
+    /// @param nullifierHash The nullifier hash
+    /// @param externalNullifierHash A keccak256 hash of the external nullifier
+    /// @param compressedProof The zero-knowledge proof
+    /// @custom:reverts string If the zero-knowledge proof cannot be verified for the public inputs.
+    function verifyCompressedProof(
+        uint256 root,
+        uint256 signalHash,
+        uint256 nullifierHash,
+        uint256 externalNullifierHash,
+        uint256[4] calldata compressedProof
+    ) public view virtual onlyProxy onlyInitialized {
+        // Check the preconditions on the inputs.
+        requireValidRoot(root);
+        uint256[4] memory input = [root, nullifierHash, signalHash, externalNullifierHash];
+        semaphoreVerifier.verifyCompressedProof(compressedProof, input);
+    }
 }

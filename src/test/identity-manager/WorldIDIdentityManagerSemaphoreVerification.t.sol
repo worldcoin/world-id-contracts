@@ -10,6 +10,7 @@ import {SemaphoreVerifier} from "src/test/SemaphoreVerifier16.sol";
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
 import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
+import {WorldIDIdentityManagerImplV3 as ManagerImplV3} from "../../WorldIDIdentityManagerImplV3.sol";
 
 /// @title World ID Identity Manager Semaphore Proof Verification Tests
 /// @notice Contains tests for the WorldID identity manager.
@@ -51,6 +52,14 @@ contract WorldIDIdentityManagerSemaphoreVerification is WorldIDIdentityManagerTe
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, verifyProofCallData);
+
+        bytes memory verifyCompressedProofCallData = abi.encodeCall(
+            ManagerImplV3.verifyCompressedProof,
+            (insertionPreRoot, nullifierHash, signalHash, externalNullifierHash, prf)
+        );
+
+        // Test
+        assertCallSucceedsOn(identityManagerAddress, verifyCompressedProofCallData);
     }
 
     /// @notice Checks that the proof validates properly with the correct inputs.
