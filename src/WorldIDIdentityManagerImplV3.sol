@@ -18,7 +18,7 @@ contract WorldIDIdentityManagerImplV3 is WorldIDIdentityManagerImplV2 {
     //
     // - All updates made after deploying a given version of the implementation should inherit from
     //   the latest version of the implementation. This contract inherits from its previous implementation
-    //   WorldIDIdentityManagerImplV1. This prevents storage clashes.
+    //   WorldIDIdentityManagerImplV2. This prevents storage clashes.
     // - All functions that are less access-restricted than `private` should be marked `virtual` in
     //   order to enable the fixing of bugs in the existing interface.
     // - Any function that reads from or modifies state (i.e. is not marked `pure`) must be
@@ -86,7 +86,7 @@ contract WorldIDIdentityManagerImplV3 is WorldIDIdentityManagerImplV2 {
     /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.
     ///
-    /// @param root The of the Merkle tree
+    /// @param root The root of the Merkle tree
     /// @param signalHash A keccak256 hash of the Semaphore signal
     /// @param nullifierHash The nullifier hash
     /// @param externalNullifierHash A keccak256 hash of the external nullifier
