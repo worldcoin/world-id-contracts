@@ -329,7 +329,7 @@ contract WorldIDRouterImplV1 is WorldIDImpl, IWorldIDGroups {
     /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.
     ///
-    /// @param root The of the Merkle tree
+    /// @param root The root of the Merkle tree
     /// @param groupId The group identifier for the group to verify a proof for.
     /// @param signalHash A keccak256 hash of the Semaphore signal
     /// @param nullifierHash The nullifier hash

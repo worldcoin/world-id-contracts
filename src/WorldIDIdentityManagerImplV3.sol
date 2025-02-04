@@ -58,7 +58,7 @@ contract WorldIDIdentityManagerImplV3 is WorldIDIdentityManagerImplV2 {
     /// @dev Note that a double-signaling check is not included here, and should be carried by the
     ///      caller.
     ///
-    /// @param root The of the Merkle tree
+    /// @param root The root of the Merkle tree
     /// @param signalHash A keccak256 hash of the Semaphore signal
     /// @param nullifierHash The nullifier hash
     /// @param externalNullifierHash A keccak256 hash of the external nullifier
