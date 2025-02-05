@@ -9,7 +9,7 @@ import {SimpleVerifier, SimpleVerify} from "../mock/SimpleVerifier.sol";
 import {TypeConverter as TC} from "../utils/TypeConverter.sol";
 import {VerifierLookupTable} from "../../data/VerifierLookupTable.sol";
 
-import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImplV2} from "../../WorldIDIdentityManagerImplV2.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Getter and Setter Tests
@@ -20,7 +20,9 @@ import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdenti
 contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     /// @notice Taken from WorldIDIdentityManagerImplV1.sol
     event DependencyUpdated(
-        ManagerImpl.Dependency indexed kind, address indexed oldAddress, address indexed newAddress
+        ManagerImplV2.Dependency indexed kind,
+        address indexed oldAddress,
+        address indexed newAddress
     );
     event RootHistoryExpirySet(uint256 indexed oldExpiryTime, uint256 indexed newExpiryTime);
 
@@ -43,7 +45,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.getRegisterIdentitiesVerifierLookupTableAddress();
+        managerImplV2.getRegisterIdentitiesVerifierLookupTableAddress();
     }
 
     /// @notice Checks that it is possible to set the lookup table currently being used to verify
@@ -93,7 +95,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.setRegisterIdentitiesVerifierLookupTable(insertionVerifiers);
+        managerImplV2.setRegisterIdentitiesVerifierLookupTable(insertionVerifiers);
     }
 
     /// @notice Checks that it is possible to get the address of the contract currently being used
@@ -101,7 +103,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
     function testCanGetDeleteIdentitiesVerifierLookupTableAddress() public {
         // Setup
         bytes memory callData =
-            abi.encodeCall(ManagerImpl.getDeleteIdentitiesVerifierLookupTableAddress, ());
+            abi.encodeCall(ManagerImplV2.getDeleteIdentitiesVerifierLookupTableAddress, ());
         bytes memory expectedReturn = abi.encode(address(defaultDeletionVerifiers));
 
         // Test
@@ -115,7 +117,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.getDeleteIdentitiesVerifierLookupTableAddress();
+        managerImplV2.getDeleteIdentitiesVerifierLookupTableAddress();
     }
 
     /// @notice Checks that it is possible to set the lookup table currently being used to verify
@@ -124,10 +126,11 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         // Setup
         (, VerifierLookupTable deletionVerifiers,) = makeVerifierLookupTables(TC.makeDynArray([40]));
         address newVerifiersAddress = address(deletionVerifiers);
-        bytes memory callData =
-            abi.encodeCall(ManagerImpl.setDeleteIdentitiesVerifierLookupTable, (deletionVerifiers));
+        bytes memory callData = abi.encodeCall(
+            ManagerImplV2.setDeleteIdentitiesVerifierLookupTable, (deletionVerifiers)
+        );
         bytes memory checkCallData =
-            abi.encodeCall(ManagerImpl.getDeleteIdentitiesVerifierLookupTableAddress, ());
+            abi.encodeCall(ManagerImplV2.getDeleteIdentitiesVerifierLookupTableAddress, ());
         bytes memory expectedReturn = abi.encode(newVerifiersAddress);
         vm.expectEmit(true, false, true, true);
         emit DependencyUpdated(
@@ -162,7 +165,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.setDeleteIdentitiesVerifierLookupTable(deletionVerifiers);
+        managerImplV2.setDeleteIdentitiesVerifierLookupTable(deletionVerifiers);
     }
 
     /// @notice Ensures that we can get the address of the semaphore verifier.
@@ -181,7 +184,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.getSemaphoreVerifierAddress();
+        managerImplV2.getSemaphoreVerifierAddress();
     }
 
     /// @notice Checks that it is possible to set the contract currently being used to verify
@@ -224,7 +227,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.setSemaphoreVerifier(newVerifier);
+        managerImplV2.setSemaphoreVerifier(newVerifier);
     }
 
     /// @notice Ensures that it's possible to get the root history expiry time.
@@ -243,7 +246,7 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.getRootHistoryExpiry();
+        managerImplV2.getRootHistoryExpiry();
     }
 
     /// @notice Ensures that it is possible to set the root history expiry time.
@@ -290,6 +293,6 @@ contract WorldIDIdentityManagerGettersSetters is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.setRootHistoryExpiry(newExpiry);
+        managerImplV2.setRootHistoryExpiry(newExpiry);
     }
 }

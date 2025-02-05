@@ -3,7 +3,7 @@ pragma solidity ^0.8.21;
 
 import {WorldIDIdentityManagerTest} from "./WorldIDIdentityManagerTest.sol";
 
-import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImplV2} from "../../WorldIDIdentityManagerImplV2.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Calculation Tests
@@ -32,7 +32,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.calculateIdentityRegistrationInputHash(
+        managerImplV2.calculateIdentityRegistrationInputHash(
             startIndex, insertionPreRoot, insertionPostRoot, identityCommitments
         );
     }
@@ -42,7 +42,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
     function testCalculateIdentityDeletionInputHashFromParametersOnKnownInput() public {
         // Setup
         bytes memory callData = abi.encodeCall(
-            ManagerImpl.calculateIdentityDeletionInputHash,
+            ManagerImplV2.calculateIdentityDeletionInputHash,
             (packedDeletionIndices, deletionPreRoot, deletionPostRoot, deletionBatchSize)
         );
         bytes memory returnData = abi.encode(deletionInputHash);
@@ -57,7 +57,7 @@ contract WorldIDIdentityManagerCalculation is WorldIDIdentityManagerTest {
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.calculateIdentityDeletionInputHash(
+        managerImplV2.calculateIdentityDeletionInputHash(
             packedDeletionIndices, deletionPreRoot, deletionPostRoot, deletionBatchSize
         );
     }

@@ -7,6 +7,7 @@ import "../src/WorldIDRouterImplV1.sol";
 import "../src/WorldIDIdentityManager.sol";
 import "../src/WorldIDIdentityManagerImplV1.sol";
 import "../src/WorldIDIdentityManagerImplV2.sol";
+import "../src/WorldIDIdentityManagerImplV3.sol";
 import "../src/SemaphoreVerifier.sol";
 
 import {Verifier as InsertionB10} from "../src/verifiers/insertion/b10.sol";
@@ -75,12 +76,17 @@ contract Deploy is Script {
 
         WorldIDIdentityManagerImplV1 impl1 = new WorldIDIdentityManagerImplV1();
         WorldIDIdentityManagerImplV2 impl2 = new WorldIDIdentityManagerImplV2();
+        WorldIDIdentityManagerImplV3 impl3 = new WorldIDIdentityManagerImplV3();
 
         WorldIDIdentityManager worldID = new WorldIDIdentityManager(address(impl1), initializeCall);
 
         // Recast to access api
         WorldIDIdentityManagerImplV1 worldIDImplV1 = WorldIDIdentityManagerImplV1(address(worldID));
         worldIDImplV1.upgradeToAndCall(address(impl2), initializeV2Call);
+
+        // Upgrade to V3
+        WorldIDIdentityManagerImplV2 worldIDImplV2 = WorldIDIdentityManagerImplV2(address(worldID));
+        worldIDImplV2.upgradeTo(address(impl3));
 
         vm.stopBroadcast();
 

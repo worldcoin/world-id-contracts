@@ -16,7 +16,7 @@ import {WorldIDIdentityManagerImplMock} from "../mock/WorldIDIdentityManagerImpl
 import {WorldIDImpl} from "../../abstract/WorldIDImpl.sol";
 
 import {WorldIDIdentityManager as IdentityManager} from "../../WorldIDIdentityManager.sol";
-import {WorldIDIdentityManagerImplV2 as ManagerImpl} from "../../WorldIDIdentityManagerImplV2.sol";
+import {WorldIDIdentityManagerImplV2 as ManagerImplV2} from "../../WorldIDIdentityManagerImplV2.sol";
 import {WorldIDIdentityManagerImplV1 as ManagerImplV1} from "../../WorldIDIdentityManagerImplV1.sol";
 
 /// @title World ID Identity Manager Ownership Management Tests
@@ -137,7 +137,7 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.identityOperator();
+        managerImplV2.identityOperator();
     }
 
     /// @notice Ensures that it is possible for the owner to set the address of the identity
@@ -180,6 +180,6 @@ contract WorldIDIdentityManagerOwnershipManagement is WorldIDIdentityManagerTest
         vm.expectRevert("Function must be called through delegatecall");
 
         // Test
-        managerImpl.setIdentityOperator(newOperator);
+        managerImplV2.setIdentityOperator(newOperator);
     }
 }

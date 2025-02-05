@@ -12,7 +12,7 @@ interface IWorldID is IBaseWorldID {
     ///      caller.
     /// @dev It is highly recommended that the implementation is restricted to `view` if possible.
     ///
-    /// @param root The of the Merkle tree
+    /// @param root The root of the Merkle tree
     /// @param signalHash A keccak256 hash of the Semaphore signal
     /// @param nullifierHash The nullifier hash
     /// @param externalNullifierHash A keccak256 hash of the external nullifier
