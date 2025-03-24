@@ -17,9 +17,7 @@ import {WorldIDIdentityManagerImplV3 as ManagerImplV3} from "../../WorldIDIdenti
 /// @author Worldcoin
 /// @dev This test suite tests both the proxy and the functionality of the underlying implementation
 ///      so as to test everything in the context of how it will be deployed.
-contract WorldIDIdentityManagerSemaphoreVerification is
-    WorldIDIdentityManagerTest
-{
+contract WorldIDIdentityManagerSemaphoreVerification is WorldIDIdentityManagerTest {
     error ProofInvalid();
 
     /// @notice Checks that the proof validates properly with the correct inputs.
@@ -27,8 +25,7 @@ contract WorldIDIdentityManagerSemaphoreVerification is
         // Setup
         SemaphoreVerifier actualSemaphoreVerifier = new SemaphoreVerifier();
 
-        uint256[4] memory compressedProof = actualSemaphoreVerifier
-            .compressProof(inclusionProof);
+        uint256[4] memory compressedProof = actualSemaphoreVerifier.compressProof(inclusionProof);
 
         // Use IdentityManager V3
         makeNewIdentityManagerV3(
@@ -113,10 +110,9 @@ contract WorldIDIdentityManagerSemaphoreVerification is
     }
 
     /// @notice Checks that the proof validates properly with the correct inputs.
-    function testProofVerificationWithIncorrectProof(
-        uint8 actualTreeDepth,
-        uint256[8] memory prf
-    ) public {
+    function testProofVerificationWithIncorrectProof(uint8 actualTreeDepth, uint256[8] memory prf)
+        public
+    {
         ISemaphoreVerifier actualSemaphoreVerifier = new SemaphoreVerifier();
         // Setup
         vm.assume(SemaphoreTreeDepthValidator.validate(actualTreeDepth));
@@ -141,13 +137,11 @@ contract WorldIDIdentityManagerSemaphoreVerification is
         );
 
         // Custom error elector doesn't work for low level calls, use string instead
-        bytes memory errorData = abi.encodeWithSelector(
-            SemaphoreVerifier.ProofInvalid.selector
-        );
+        bytes memory errorData = abi.encodeWithSelector(SemaphoreVerifier.ProofInvalid.selector);
 
         // Test
         vm.expectRevert(errorData);
-        (bool success, ) = identityManagerAddress.call(verifyProofCallData);
+        (bool success,) = identityManagerAddress.call(verifyProofCallData);
         assertTrue(success, "expectRevert: call did not revert");
     }
 
@@ -176,7 +170,8 @@ contract WorldIDIdentityManagerSemaphoreVerification is
         // 2) Make the public input array with at least one element >= R.
         //    R is 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001
         //    Just reuse the constant from your contract if it's public; otherwise hardcode it.
-        uint256 unreducedSignalHash = 0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001; // >= R
+        uint256 unreducedSignalHash =
+            0x30644e72e131a029b85045b68181585d2833e84879b9709143e1f593f0000001; // >= R
 
         bytes memory verifyProofCallData = abi.encodeCall(
             ManagerImplV3.verifyCompressedProof,
@@ -193,9 +188,7 @@ contract WorldIDIdentityManagerSemaphoreVerification is
         assertCallFailsOn(
             identityManagerAddress,
             verifyProofCallData,
-            abi.encodeWithSelector(
-                SemaphoreVerifier.PublicInputNotInField.selector
-            )
+            abi.encodeWithSelector(SemaphoreVerifier.PublicInputNotInField.selector)
         );
     }
 }

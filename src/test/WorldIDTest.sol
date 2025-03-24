@@ -25,11 +25,8 @@ contract WorldIDTest is Test {
     ///
     /// @param target The target at which to make the call.
     /// @param callData The ABI-encoded call to a function.
-    function assertCallSucceedsOn(
-        address target,
-        bytes memory callData
-    ) public {
-        (bool status, ) = target.call(callData);
+    function assertCallSucceedsOn(address target, bytes memory callData) public {
+        (bool status,) = target.call(callData);
         assert(status);
     }
 
@@ -53,7 +50,7 @@ contract WorldIDTest is Test {
     /// @param target The target at which to make the call.
     /// @param callData The ABI-encoded call to a function.
     function assertCallFailsOn(address target, bytes memory callData) public {
-        (bool status, ) = target.call(callData);
+        (bool status,) = target.call(callData);
         assert(!status);
     }
 
@@ -78,9 +75,7 @@ contract WorldIDTest is Test {
     /// @param reason The string reason for the revert.
     ///
     /// @return data The ABI encoding of the revert.
-    function encodeStringRevert(
-        string memory reason
-    ) public pure returns (bytes memory data) {
+    function encodeStringRevert(string memory reason) public pure returns (bytes memory data) {
         return abi.encodeWithSignature("Error(string)", reason);
     }
 }
