@@ -201,10 +201,10 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             semaphoreVerifier
         );
 
-        hevm.label(address(this), "Sender");
-        hevm.label(identityManagerAddress, "IdentityManager");
-        hevm.label(managerImplV2Address, "ManagerImplementationV2");
-        hevm.label(managerImplV1Address, "ManagerImplementationV1");
+        vm.label(address(this), "Sender");
+        vm.label(identityManagerAddress, "IdentityManager");
+        vm.label(managerImplV2Address, "ManagerImplementationV2");
+        vm.label(managerImplV1Address, "ManagerImplementationV1");
     }
 
     ///////////////////////////////////////////////////////////////////////////////

@@ -43,9 +43,9 @@ contract WorldIDRouterTest is WorldIDTest {
         makeNewRouter(thisWorldID);
 
         // Label the addresses for better errors.
-        hevm.label(thisAddress, "Sender");
-        hevm.label(routerAddress, "Router");
-        hevm.label(routerImplAddress, "RouterImplementation");
+        vm.label(thisAddress, "Sender");
+        vm.label(routerAddress, "Router");
+        vm.label(routerImplAddress, "RouterImplementation");
     }
 
     ///////////////////////////////////////////////////////////////////////////////

@@ -32,8 +32,8 @@ contract VerifierLookupTableTest is WorldIDTest {
         makeNewLUT(defaultBatchSize);
 
         // Label the addresses for better errors.
-        hevm.label(thisAddress, "Sender");
-        hevm.label(lookupTableAddress, "LUT");
+        vm.label(thisAddress, "Sender");
+        vm.label(lookupTableAddress, "LUT");
     }
 
     ///////////////////////////////////////////////////////////////////////////////
