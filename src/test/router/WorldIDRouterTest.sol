@@ -30,7 +30,9 @@ contract WorldIDRouterTest is WorldIDTest {
     /// @notice Emitted when a group is enabled in the router.
     ///
     /// @param initialGroupIdentityManager The address of the identity manager to be used for the first group
-    event GroupIdentityManagerRouterImplInitialized(IWorldID initialGroupIdentityManager);
+    event GroupIdentityManagerRouterImplInitialized(
+        IWorldID initialGroupIdentityManager
+    );
 
     ///////////////////////////////////////////////////////////////////////////////
     ///                            TEST ORCHESTRATION                           ///
@@ -43,9 +45,9 @@ contract WorldIDRouterTest is WorldIDTest {
         makeNewRouter(thisWorldID);
 
         // Label the addresses for better errors.
-        hevm.label(thisAddress, "Sender");
-        hevm.label(routerAddress, "Router");
-        hevm.label(routerImplAddress, "RouterImplementation");
+        vm.label(thisAddress, "Sender");
+        vm.label(routerAddress, "Router");
+        vm.label(routerImplAddress, "RouterImplementation");
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -64,7 +66,10 @@ contract WorldIDRouterTest is WorldIDTest {
 
         emit GroupIdentityManagerRouterImplInitialized(initialGroupAddress);
 
-        bytes memory initCallData = abi.encodeCall(RouterImpl.initialize, (initialGroupAddress));
+        bytes memory initCallData = abi.encodeCall(
+            RouterImpl.initialize,
+            (initialGroupAddress)
+        );
 
         router = new Router(routerImplAddress, initCallData);
         routerAddress = address(router);

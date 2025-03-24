@@ -82,9 +82,17 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
         0x18cb13df3e79b9f847a1494d0a2e6f3cc0041d9cae7e5ccb8cd1852ecdc4af58;
     uint256 internal constant deletionPostRoot =
         0x82fcf94594d7363636338e2c29242cc77e3d04f36c8ad64d294d2ab4d251708;
-    bytes packedDeletionIndices = abi.encodePacked(
-        uint32(0), uint32(2), uint32(4), uint32(6), uint32(8), uint32(10), uint32(12), uint32(14)
-    );
+    bytes packedDeletionIndices =
+        abi.encodePacked(
+            uint32(0),
+            uint32(2),
+            uint32(4),
+            uint32(6),
+            uint32(8),
+            uint32(10),
+            uint32(12),
+            uint32(14)
+        );
     uint32 deletionBatchSize = 8;
     uint256[8] deletionProof;
 
@@ -201,10 +209,10 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             semaphoreVerifier
         );
 
-        hevm.label(address(this), "Sender");
-        hevm.label(identityManagerAddress, "IdentityManager");
-        hevm.label(managerImplV2Address, "ManagerImplementationV2");
-        hevm.label(managerImplV1Address, "ManagerImplementationV1");
+        vm.label(address(this), "Sender");
+        vm.label(identityManagerAddress, "IdentityManager");
+        vm.label(managerImplV2Address, "ManagerImplementationV2");
+        vm.label(managerImplV1Address, "ManagerImplementationV1");
     }
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -240,20 +248,31 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             )
         );
 
-        identityManager = new IdentityManager(managerImplV1Address, initCallData);
+        identityManager = new IdentityManager(
+            managerImplV1Address,
+            initCallData
+        );
         identityManagerAddress = address(identityManager);
 
         // creates Manager Impl V2, which will be used for tests
         managerImplV2 = new ManagerImplV2();
         managerImplV2Address = address(managerImplV2);
 
-        bytes memory initCallV2 = abi.encodeCall(ManagerImplV2.initializeV2, (deletionVerifiers));
+        bytes memory initCallV2 = abi.encodeCall(
+            ManagerImplV2.initializeV2,
+            (deletionVerifiers)
+        );
         bytes memory upgradeCall = abi.encodeCall(
-            UUPSUpgradeable.upgradeToAndCall, (address(managerImplV2Address), initCallV2)
+            UUPSUpgradeable.upgradeToAndCall,
+            (address(managerImplV2Address), initCallV2)
         );
 
         // Test
-        assertCallSucceedsOn(identityManagerAddress, upgradeCall, new bytes(0x0));
+        assertCallSucceedsOn(
+            identityManagerAddress,
+            upgradeCall,
+            new bytes(0x0)
+        );
     }
 
     /// @notice Initialises a new identity manager using the provided information.
@@ -285,27 +304,40 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             )
         );
 
-        identityManager = new IdentityManager(managerImplV1Address, initCallData);
+        identityManager = new IdentityManager(
+            managerImplV1Address,
+            initCallData
+        );
         identityManagerAddress = address(identityManager);
 
         // creates Manager Impl V2, which will be used for tests
         managerImplV2 = new ManagerImplV2();
         managerImplV2Address = address(managerImplV2);
 
-        bytes memory initCallV2 = abi.encodeCall(ManagerImplV2.initializeV2, (deletionVerifiers));
+        bytes memory initCallV2 = abi.encodeCall(
+            ManagerImplV2.initializeV2,
+            (deletionVerifiers)
+        );
         bytes memory upgradeCallV2 = abi.encodeCall(
-            UUPSUpgradeable.upgradeToAndCall, (address(managerImplV2Address), initCallV2)
+            UUPSUpgradeable.upgradeToAndCall,
+            (address(managerImplV2Address), initCallV2)
         );
 
         // Test
-        assertCallSucceedsOn(identityManagerAddress, upgradeCallV2, new bytes(0x0));
+        assertCallSucceedsOn(
+            identityManagerAddress,
+            upgradeCallV2,
+            new bytes(0x0)
+        );
 
         // creates Manager Impl V3
         managerImplV3 = new ManagerImplV3();
         managerImplV3Address = address(managerImplV3);
 
-        bytes memory upgradeCallV3 =
-            abi.encodeCall(UUPSUpgradeable.upgradeTo, (address(managerImplV3Address)));
+        bytes memory upgradeCallV3 = abi.encodeCall(
+            UUPSUpgradeable.upgradeTo,
+            (address(managerImplV3Address))
+        );
 
         // Test
         assertCallSucceedsOn(identityManagerAddress, upgradeCallV3);
@@ -320,7 +352,10 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///
     /// @custom:reverts string If any batch size exceeds 1000.
     /// @custom:reverts string If `batchSizes` is empty.
-    function makeNewIdentityManager(uint256 actualPreRoot, uint256[] calldata batchSizes) public {
+    function makeNewIdentityManager(
+        uint256 actualPreRoot,
+        uint256[] calldata batchSizes
+    ) public {
         (
             VerifierLookupTable insertVerifiers,
             VerifierLookupTable deletionVerifiers,
@@ -353,7 +388,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @custom:reverts VerifierExists If `batchSizes` contains a duplicate.
     /// @custom:reverts string If any batch size exceeds 1000.
     /// @custom:reverts string If `batchSizes` is empty.
-    function makeVerifierLookupTables(uint256[] memory batchSizes)
+    function makeVerifierLookupTables(
+        uint256[] memory batchSizes
+    )
         public
         returns (
             VerifierLookupTable insertVerifiers,
@@ -389,7 +426,10 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     function makeUninitIdentityManager() public {
         managerImplV2 = new ManagerImplV2();
         managerImplV2Address = address(managerImplV2);
-        identityManager = new IdentityManager(managerImplV2Address, new bytes(0x0));
+        identityManager = new IdentityManager(
+            managerImplV2Address,
+            new bytes(0x0)
+        );
         identityManagerAddress = address(identityManager);
     }
 
@@ -406,7 +446,9 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @param arr The array to clone.
     ///
     /// @return out The clone of `arr`.
-    function cloneArray(uint256[] memory arr) public pure returns (uint256[] memory out) {
+    function cloneArray(
+        uint256[] memory arr
+    ) public pure returns (uint256[] memory out) {
         out = new uint256[](arr.length);
         for (uint256 i = 0; i < arr.length; ++i) {
             out[i] = arr[i];
@@ -423,7 +465,10 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     ///
     /// @return preparedIdents The conversion of `idents` to the proper type.
     /// @return actualProof The conversion of `prf` to the proper type.
-    function prepareInsertIdentitiesTestCase(uint128[] memory idents, uint128[8] memory prf)
+    function prepareInsertIdentitiesTestCase(
+        uint128[] memory idents,
+        uint128[8] memory prf
+    )
         public
         pure
         returns (uint256[] memory preparedIdents, uint256[8] memory actualProof)
@@ -436,7 +481,16 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
             preparedIdents[i] = uint256(idents[i]);
         }
 
-        actualProof = [uint256(prf[0]), prf[1], prf[2], prf[3], prf[4], prf[5], prf[6], prf[7]];
+        actualProof = [
+            uint256(prf[0]),
+            prf[1],
+            prf[2],
+            prf[3],
+            prf[4],
+            prf[5],
+            prf[6],
+            prf[7]
+        ];
     }
 
     /// @notice Prepares a verifier test case.
@@ -446,11 +500,18 @@ contract WorldIDIdentityManagerTest is WorldIDTest {
     /// @param prf The generated proof terms to convert.
     ///
     /// @return actualProof The conversion of `prf` to the proper type.
-    function prepareDeleteIdentitiesTestCase(uint128[8] memory prf)
-        public
-        pure
-        returns (uint256[8] memory actualProof)
-    {
-        actualProof = [uint256(prf[0]), prf[1], prf[2], prf[3], prf[4], prf[5], prf[6], prf[7]];
+    function prepareDeleteIdentitiesTestCase(
+        uint128[8] memory prf
+    ) public pure returns (uint256[8] memory actualProof) {
+        actualProof = [
+            uint256(prf[0]),
+            prf[1],
+            prf[2],
+            prf[3],
+            prf[4],
+            prf[5],
+            prf[6],
+            prf[7]
+        ];
     }
 }

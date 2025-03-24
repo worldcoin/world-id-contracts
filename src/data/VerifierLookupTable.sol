@@ -48,7 +48,10 @@ contract VerifierLookupTable is Ownable2Step {
     ///
     /// @param batchSize The size of the batch that the verifier has been added for.
     /// @param verifierAddress The address of the verifier that was associated with `batchSize`.
-    event VerifierAdded(uint256 indexed batchSize, address indexed verifierAddress);
+    event VerifierAdded(
+        uint256 indexed batchSize,
+        address indexed verifierAddress
+    );
 
     /// @notice Emitted when a verifier is updated in the lookup table.
     ///
@@ -85,7 +88,9 @@ contract VerifierLookupTable is Ownable2Step {
     /// @return verifier The tree verifier for the provided `batchSize`.
     ///
     /// @custom:reverts NoSuchVerifier If there is no verifier associated with the `batchSize`.
-    function getVerifierFor(uint256 batchSize) public view returns (ITreeVerifier verifier) {
+    function getVerifierFor(
+        uint256 batchSize
+    ) public view returns (ITreeVerifier verifier) {
         // Check the preconditions for querying the verifier.
         validateVerifier(batchSize);
 
@@ -100,7 +105,10 @@ contract VerifierLookupTable is Ownable2Step {
     ///
     /// @custom:reverts VerifierExists If `batchSize` already has an associated verifier.
     /// @custom:reverts string If the caller is not the owner.
-    function addVerifier(uint256 batchSize, ITreeVerifier verifier) public onlyOwner {
+    function addVerifier(
+        uint256 batchSize,
+        ITreeVerifier verifier
+    ) public onlyOwner {
         // Check that there is no entry for that batch size.
         if (verifier_lut[batchSize] != nullVerifier) {
             revert VerifierExists();
@@ -119,14 +127,17 @@ contract VerifierLookupTable is Ownable2Step {
     /// @return oldVerifier The old verifier instance associated with this batch size.
     ///
     /// @custom:reverts string If the caller is not the owner.
-    function updateVerifier(uint256 batchSize, ITreeVerifier verifier)
-        public
-        onlyOwner
-        returns (ITreeVerifier oldVerifier)
-    {
+    function updateVerifier(
+        uint256 batchSize,
+        ITreeVerifier verifier
+    ) public onlyOwner returns (ITreeVerifier oldVerifier) {
         oldVerifier = verifier_lut[batchSize];
         verifier_lut[batchSize] = verifier;
-        emit VerifierUpdated(batchSize, address(oldVerifier), address(verifier));
+        emit VerifierUpdated(
+            batchSize,
+            address(oldVerifier),
+            address(verifier)
+        );
     }
 
     /// @notice Disables the verifier for the provided batch size.
@@ -136,11 +147,9 @@ contract VerifierLookupTable is Ownable2Step {
     /// @return oldVerifier The old verifier associated with the batch size.
     ///
     /// @custom:reverts string If the caller is not the owner.
-    function disableVerifier(uint256 batchSize)
-        public
-        onlyOwner
-        returns (ITreeVerifier oldVerifier)
-    {
+    function disableVerifier(
+        uint256 batchSize
+    ) public onlyOwner returns (ITreeVerifier oldVerifier) {
         oldVerifier = updateVerifier(batchSize, ITreeVerifier(nullAddress));
         emit VerifierDisabled(batchSize);
     }
