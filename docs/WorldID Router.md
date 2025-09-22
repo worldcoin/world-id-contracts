@@ -1,7 +1,7 @@
 # WorldID Router
 
 While there are currently no plans to add multiple groups to WorldID, doing so would demand a new
-pair of [signup sequencer](https://github.com/worldcoin/signup-sequencer) and identity manager for
+pair of [signup sequencer](https://github.com/worldcoin/signup-sequencer) and an identity manager for
 each group. While the sequencer is easily able to work directly with a given identity manager
 instance, this becomes far more complicated for other clients of WorldID.
 
@@ -15,7 +15,7 @@ is intended to be used as follows:
 3. When wanting to query WorldID they should first ask the router for the address of the manager for
    the appropriate group.
 
-This not only simplifies writing client interactions with WorldID, but also simplifies those client
+This not only simplifies writing client interactions with WorldID, but also simplifies those clients
 interactions in the face of changes to addresses for identity managers (such as those necessitated
 by actioning the [disaster recovery plan](./Disaster%20Recovery%20Plan.md)).
 

@@ -71,7 +71,7 @@ which of the _owner_ and _identity operator_ has the permission to perform these
 While there have been some discussions pertaining to the implementation of _timelocks_ for sensitive
 actions, many of these actions are required for administrating the contracts in conjunction with
 external services (such as the [signup sequencer](https://github.com/worldcoin/signup-sequencer)).
-To this end, timelocks would cause problems due to delays that could risk desynchronisation between
+To this end, timelocks would cause problems due to delays that could risk desynchronization between
 the contract and external services.
 
 ## Development
