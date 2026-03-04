@@ -1,10 +1,7 @@
-<p align="center">
-  <a href="https://worldcoin.org/world-id">
-<img src="https://github.com/worldcoin/world-id-docs/raw/main/public/images/shared-readme/readme-world-id.png" alt="World ID Logo"/>
-  </a>
-</p>
+> [!IMPORTANT]
+> World ID 3.0 is entering a sunsetting phase. While it is still actively used in production and supported, it is recommended to continue with the new World ID 4.0 Protocol which can be found in the [@worldcoin/world-id-protocol](https://github.com/worldcoin/world-id-protocol) repository. You can read more about the migration [here](https://docs.world.org/world-id/4-0-migration).
 
-# WorldID Semaphore Contracts
+# World ID 3.0 Contracts
 
 > These are the underlying contracts that power World ID. If you're looking to integrate with World
 > ID, you should use the [Foundry](https://github.com/worldcoin/world-id-starter) or
