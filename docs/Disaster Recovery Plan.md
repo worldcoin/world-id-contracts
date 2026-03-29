@@ -237,7 +237,7 @@ you reach the root cause of the problem. Some potential root causes to consider 
 
 > #### Fix the Problem: Task 1
 >
-> 1. Identity the initial symptom that allowed the discovery of the issue.
+> 1. Identify the initial symptom that allowed the discovery of the issue.
 > 2. Identify the cause of that symptom.
 > 3. Repeat until the root cause is discovered.
 
@@ -268,7 +268,7 @@ must be taken when testing the fix, undue time cannot be spent deploying the fix
 >
 > 1. `make build` to ensure that everything is compiled.
 > 2. `make test` to ensure that all the tests pass.
-> 3. Obtain the deployment private key from the infrastructre team.
+> 3. Obtain the deployment private key from the infrastructure team.
 > 4. Obtain the verifier lookup table addresses from the infrastructure team if possible. Record
 >    them below if obtained.
 > 5. `make deploy` to start the deployment process.
@@ -363,14 +363,14 @@ The post-mortem is an analysis of the following:
 - Why the issue was not caught _before_ the DRP had to be activated.
 - How processes can be improved (if at all) to avoid having to use the DRP in similar situations in
   the future.
-- Whether such risks can be mitigated for the future.
+- Whether such risks can be mitigated in the future.
 
 ### DRP Analysis
 
 The DRP analysis aims to determine what worked well and what needs improvement with regards to the
-disaster recovery plan. As part of the process you should identitfy at least the following:
+disaster recovery plan. As part of the process you should identify at least the following:
 
 - What worked well in the plan.
 - What did not work well or was difficult.
 - What friction points delayed the disaster recovery response.
-- How the plan can be improved to fix the difficulties and minimise friction in future incidents.
+- How the plan can be improved to fix the difficulties and minimize friction in future incidents.
